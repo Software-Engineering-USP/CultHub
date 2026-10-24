@@ -1,75 +1,54 @@
-# React + TypeScript + Vite
+# CultHub — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite + Tailwind CSS 3 + React Router.
 
-Currently, two official plugins are available:
+## Como rodar
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # tsc -b && vite build
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+> As imagens dos eventos e dos mapas **não ficam no código**: copie o conteúdo de
+> `foo/assets/` para `public/assets/` (ex.: `public/assets/jazz-source.png`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Rotas
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| URL                         | Página                                   |
+| --------------------------- | ---------------------------------------- |
+| `/`                         | Mapa, destaques e todos os eventos       |
+| `/eventos/:id`              | Detalhes do evento                       |
+| `/eventos/:id/origem`       | Definir origem ("Como chegar")           |
+| `/eventos/:id/rota`         | Rota de exemplo                          |
+| `/entrar`                   | Entrar / criar conta                     |
+| `/conta`                    | Minha conta                              |
+
+Hoje só o evento `sp-jazz-blues-festival` tem detalhes (`details` em `src/data/events.ts`).
+
+## Estrutura
 
 ```
+src/
+  components/
+    layout/    Layout, Header, Footer
+    ui/        Button, Surface, Field, DemoNote, Breadcrumbs, ícones...
+    events/    EventCard, EventStrip, CommentItem, RoutePreview
+    weather/   WeatherCard, WeatherStrip, WeatherStats
+  pages/       uma por rota
+  data/        dados demonstrativos (trocar por chamadas à API do backend)
+  hooks/       useDocumentTitle, useEvent
+  lib/         categorias, classes Tailwind compartilhadas, helpers
+```
+
+## Tailwind
+
+Os tokens do `foo/style.css` estão em `tailwind.config.js`:
+
+- cores: `page`, `surface`, `maroon`, `ink`, `muted`, `accent`, `line`, `cat-*` (fundo dos cards) e `dot-*` (legenda);
+- sombras: `shadow-soft`, `shadow-card`, `shadow-popover`, `shadow-badge`;
+- breakpoints iguais aos do CSS original, **desktop-first**: use `max-lg:` (≤1150px), `max-md:` (≤900px) e `max-sm:` (≤600px).
+
+Use tamanhos de fonte em pixels (`text-[13px]`) em vez de `text-sm`/`text-xs`: as classes nomeadas do
+Tailwind também definem `line-height` e mudariam o espaçamento do design.
