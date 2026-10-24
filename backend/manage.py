@@ -3,7 +3,7 @@
 
 import os
 import sys
-
+from models import Usuario, Comentario, AgendaEvento
 
 def main():
     """Run administrative tasks."""
