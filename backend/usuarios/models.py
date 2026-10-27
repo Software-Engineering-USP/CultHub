@@ -1,9 +1,26 @@
 import uuid
 
+from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
-from usuarios.managers import UsuarioManager
+
+class UsuarioManager(BaseUserManager):
+    use_in_migrations = True
+
+    # `password` (e não `senha`): nome usado pelo `createsuperuser` do Django
+    def create_user(self, email, password=None, **campos):
+        if not email or not email.strip():
+            raise ValueError("O e-mail é obrigatório.")
+        usuario = self.model(email=email, **campos)
+        usuario.set_password(password)
+        usuario.save(using=self._db)
+        return usuario
+
+    def create_superuser(self, email, password=None, **campos):
+        campos.setdefault("is_staff", True)
+        campos.setdefault("is_superuser", True)
+        return self.create_user(email, password, **campos)
 
 
 # Usuário do CultHub, com login por e-mail (Entrega 2, Figura 8)
@@ -25,7 +42,6 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     objects = UsuarioManager()
 
     USERNAME_FIELD = "email"
-    EMAIL_FIELD = "email"
     REQUIRED_FIELDS = ("nome",)
 
     class Meta:
@@ -35,9 +51,14 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+    # Único lugar que normaliza o e-mail. O Django chama isto também na
+    # validação do admin, antes de checar se o e-mail já existe.
+    @classmethod
+    def normalize_username(cls, username):
+        return super().normalize_username(username).strip().lower()
+
     def save(self, *args, **kwargs):
-        # E-mail sempre em minúsculas, venha da API, do admin ou do shell
-        self.email = self.email.strip().lower()
+        self.email = self.normalize_username(self.email)
         super().save(*args, **kwargs)
 
     @property

@@ -98,6 +98,12 @@ class EntrarSairTest(APITestCase):
         self.assertEqual(self.entrar(lembrar=True).status_code, 200)
         self.assertFalse(self.client.session.get_expire_at_browser_close())
 
+    def test_lembrar_true_em_segundo_login_do_mesmo_usuario(self):
+        self.entrar()
+        self.assertTrue(self.client.session.get_expire_at_browser_close())
+        self.assertEqual(self.entrar(lembrar=True).status_code, 200)
+        self.assertFalse(self.client.session.get_expire_at_browser_close())
+
     def test_entrar_email_outra_caixa(self):
         resposta = self.entrar(email=" LIVIA@exemplo.com")
         self.assertEqual(resposta.status_code, 200)
@@ -154,18 +160,3 @@ class CsrfTest(APITestCase):
             HTTP_X_CSRFTOKEN=token,
         )
         self.assertEqual(resposta.status_code, 201)
-
-
-class LembrarDeNovoTest(APITestCase):
-    def test_lembrar_true_em_segundo_login_do_mesmo_usuario(self):
-        Usuario.objects.create_user(
-            "livia@exemplo.com", "senha1234", nome="Lívia Costa"
-        )
-        dados = {"email": "livia@exemplo.com", "senha": "senha1234"}
-        self.client.post("/api/auth/entrar/", dados, format="json")
-        self.assertTrue(self.client.session.get_expire_at_browser_close())
-        resposta = self.client.post(
-            "/api/auth/entrar/", {**dados, "lembrar": True}, format="json"
-        )
-        self.assertEqual(resposta.status_code, 200)
-        self.assertFalse(self.client.session.get_expire_at_browser_close())

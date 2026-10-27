@@ -1,14 +1,11 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from usuarios.forms import UsuarioChangeForm, UsuarioCreationForm
 from usuarios.models import Usuario
 
 
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
-    form = UsuarioChangeForm
-    add_form = UsuarioCreationForm
     ordering = ("email",)
     list_display = ("email", "nome", "is_staff")
     search_fields = ("email", "nome")

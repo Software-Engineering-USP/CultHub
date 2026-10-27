@@ -7,10 +7,6 @@ from catalogo.models import CategoriaCultural
 from usuarios.models import Usuario
 
 
-def normalizar_email(email):
-    return email.strip().lower()
-
-
 class PerfilSerializer(serializers.ModelSerializer):
     """Dados do próprio usuário (tela "Minha conta")."""
 
@@ -19,7 +15,6 @@ class PerfilSerializer(serializers.ModelSerializer):
         slug_field="codigo",
         queryset=CategoriaCultural.objects.all(),
     )
-    iniciais = serializers.ReadOnlyField()
 
     class Meta:
         model = Usuario
@@ -42,7 +37,7 @@ class CadastroSerializer(serializers.Serializer):
     aceite_termos = serializers.BooleanField()
 
     def validate_email(self, email):
-        email = normalizar_email(email)
+        email = Usuario.normalize_username(email)
         if Usuario.objects.filter(email=email).exists():
             raise serializers.ValidationError(
                 "Já existe uma conta com este e-mail."
@@ -78,7 +73,7 @@ class EntrarSerializer(serializers.Serializer):
     def validate(self, dados):
         usuario = authenticate(
             self.context.get("request"),
-            username=normalizar_email(dados["email"]),
+            username=Usuario.normalize_username(dados["email"]),
             password=dados["senha"],
         )
         if usuario is None:

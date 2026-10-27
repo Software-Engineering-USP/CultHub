@@ -33,3 +33,15 @@ class UsuarioAdminTest(TestCase):
         self.assertTrue(
             Usuario.objects.filter(email="novo@exemplo.com").exists()
         )
+
+    def test_admin_email_duplicado_outra_caixa_da_erro_de_form(self):
+        dados = {
+            "email": "ADM@exemplo.com",
+            "nome": "Outro",
+            "password1": "senha-forte-123",
+            "password2": "senha-forte-123",
+        }
+        resposta = self.client.post("/admin/usuarios/usuario/add/", dados)
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.context["adminform"].form.errors["email"])
+        self.assertEqual(Usuario.objects.count(), 1)
