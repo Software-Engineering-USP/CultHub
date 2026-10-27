@@ -11,16 +11,16 @@ CATEGORIAS = [
 
 
 def criar_categorias(apps, schema_editor):
-    CategoriaCultural = apps.get_model("catalogo", "CategoriaCultural")
+    categoria_cultural = apps.get_model("catalogo", "CategoriaCultural")
     for codigo, nome in CATEGORIAS:
-        CategoriaCultural.objects.get_or_create(
+        categoria_cultural.objects.get_or_create(
             codigo=codigo, defaults={"nome": nome}
         )
 
 
 def apagar_categorias(apps, schema_editor):
-    CategoriaCultural = apps.get_model("catalogo", "CategoriaCultural")
-    CategoriaCultural.objects.filter(
+    categoria_cultural = apps.get_model("catalogo", "CategoriaCultural")
+    categoria_cultural.objects.filter(
         codigo__in=[codigo for codigo, _ in CATEGORIAS]
     ).delete()
 
