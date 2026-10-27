@@ -3,9 +3,15 @@
 [tool.ruff]
 # Set the maximum line length to 79.
 line-length = 79
+# Migrações são geradas pelo Django; não vale lintar
+extend-exclude = ["**/migrations"]
 
 [tool.ruff.lint]
 # Add the `line-too-long` rule to the enforced rule set. By default, Ruff omits rules that
 # overlap with the use of a formatter, like Black, but we can override this behavior by
 # explicitly adding the rule.
 extend-select = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Nome do pacote do projeto Django, criado pelo startproject
+"CultHubBackend/__init__.py" = ["N999"]

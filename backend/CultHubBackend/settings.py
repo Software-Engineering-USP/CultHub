@@ -20,12 +20,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-*-+a2m=0c249$j&sq&2jsozyif0!y+uf(h97d@94a5o$-!vba3"
+SECRET_KEY = (
+    "django-insecure-*-+a2m=0c249$j&sq&2jsozyif0!y+uf(h97d@94a5o$-!vba3"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
+
+# Front (Vite) servindo a API via proxy
+CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 
 
 # Application definition
@@ -37,6 +42,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "drf_spectacular",
+    "catalogo",
+    "usuarios",
 ]
 
 MIDDLEWARE = [
@@ -85,26 +94,40 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation.MinimumLengthValidator"
+        ),
+        "OPTIONS": {"min_length": 8},
     },
 ]
+
+# Usuário próprio, com login por e-mail
+AUTH_USER_MODEL = "usuarios.Usuario"
+
+# API: sessão do Django + CSRF; tudo exige login, salvo onde liberado
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "CultHub API",
+    "DESCRIPTION": "API do CultHub (MAC0332/USP).",
+    "VERSION": "0.1.0",
+}
 
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "pt-br"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "America/Sao_Paulo"
 
 USE_I18N = True
 
