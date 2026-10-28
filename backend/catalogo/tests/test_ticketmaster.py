@@ -1,3 +1,4 @@
+import http.client
 import io
 import urllib.error
 from datetime import UTC, datetime
@@ -104,3 +105,19 @@ class BuscarPaginaTests(SimpleTestCase):
         self.assertIn("size=200", url)
         self.assertIn("countryCode=BR", url)
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 30)
+
+    @override_settings(TICKETMASTER_API_KEY="segredo123")
+    def test_erros_de_transporte_viram_erro_sem_segredo(self):
+        for falha in (
+            ConnectionResetError("https://x?apikey=segredo123"),
+            http.client.RemoteDisconnected("apikey=segredo123"),
+            http.client.IncompleteRead(b"abc"),
+        ):
+            with (
+                self.subTest(falha=type(falha).__name__),
+                patch("urllib.request.urlopen", side_effect=falha),
+                self.assertRaises(ErroTicketmaster) as ctx,
+            ):
+                ticketmaster.buscar_pagina(0, INICIO)
+            self.assertNotIn("segredo123", str(ctx.exception))
+            self.assertIsNone(ctx.exception.__cause__)

@@ -61,6 +61,16 @@ class Local(models.Model):
         return self.nome
 
 
+# Campos dos quais `inicio`/`fim` dependem (ver `Evento.save`).
+CAMPOS_DO_MOMENTO = {
+    "data_inicio",
+    "hora_inicio",
+    "data_fim",
+    "hora_fim",
+    "fuso",
+}
+
+
 # Evento do catálogo: importado de um provedor ou cadastrado manualmente.
 class Evento(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -119,6 +129,9 @@ class Evento(models.Model):
     def save(self, *args, **kwargs):
         self.inicio = self._momento(self.data_inicio, self.hora_inicio)
         self.fim = self._momento(self.data_fim, self.hora_fim)
+        campos = kwargs.get("update_fields")
+        if campos is not None and CAMPOS_DO_MOMENTO & set(campos):
+            kwargs["update_fields"] = {*campos, "inicio", "fim"}
         super().save(*args, **kwargs)
 
 

@@ -1,5 +1,6 @@
 """Cliente mínimo da Discovery API do Ticketmaster (só stdlib)."""
 
+import http.client
 import json
 import time
 import urllib.error
@@ -41,6 +42,10 @@ def buscar_pagina(pagina, inicio):
         ) from None
     except TimeoutError:
         raise ErroTicketmaster("tempo esgotado") from None
+    except (OSError, http.client.HTTPException) as erro:
+        raise ErroTicketmaster(
+            f"falha de transporte ({type(erro).__name__})"
+        ) from None
     except ValueError:
         raise ErroTicketmaster("resposta não é JSON válido") from None
 
