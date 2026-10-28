@@ -17,25 +17,21 @@ export default function WeatherCard({ event }: { event: CultEvent }) {
         <Eyebrow className="text-[10px] text-muted">EXEMPLO</Eyebrow>
       </div>
 
-      <div className="mb-4 mt-6 flex items-center gap-[18px]">
+      <div className="mt-6 mb-4 flex items-center gap-[18px]">
         <SunIcon />
         <div>
-          <p className="text-[46px] font-[650] leading-[1.15] tracking-[-.06em] text-ink">
+          <p className="text-[46px] leading-[1.15] font-[650] tracking-[-.06em] text-ink">
             {demoWeather.temperature}
           </p>
           <p className="text-[12px] text-muted">{event.schedule} • exemplo</p>
         </div>
       </div>
 
-      <p>
-        Noite agradável com poucas nuvens e sensação confortável para o trajeto até o {event.venue}.
-      </p>
+      <p>Noite agradável com poucas nuvens e sensação confortável para o trajeto até o {event.venue}.</p>
 
       <WeatherStats variant="card" />
 
-      <DemoNote>
-        Dados fictícios para ilustrar o layout. Não é uma previsão atual ou em tempo real.
-      </DemoNote>
+      <DemoNote>Dados fictícios para ilustrar o layout. Não é uma previsão atual ou em tempo real.</DemoNote>
     </Surface>
   )
 }

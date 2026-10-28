@@ -15,14 +15,14 @@ export default function Layout() {
     <>
       <a
         href="#conteudo"
-        className="fixed left-3 top-2 z-100 translate-y-[-160%] rounded-[10px] bg-maroon px-[18px] py-[10px] text-white focus:translate-y-0"
+        className="fixed top-2 left-3 z-100 translate-y-[-160%] rounded-[10px] bg-maroon px-[18px] py-[10px] text-white focus:translate-y-0"
       >
         Pular para o conteúdo
       </a>
 
       <div className="mx-auto w-full max-w-[1440px] px-20 max-lg:px-9 max-md:px-7 max-sm:px-[18px]">
         <Header />
-        <main id="conteudo" className="pb-16 pt-[42px] max-md:pt-[30px] max-sm:pb-10 max-sm:pt-7">
+        <main id="conteudo" className="pt-[42px] pb-16 max-md:pt-[30px] max-sm:pt-7 max-sm:pb-10">
           <Outlet />
         </main>
         <Footer />

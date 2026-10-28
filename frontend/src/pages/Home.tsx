@@ -76,7 +76,7 @@ export default function Home() {
           tabIndex={0}
           role="region"
           aria-label={`${featured.length} experiências em destaque, role horizontalmente para explorar`}
-          className="grid auto-cols-[350px] grid-flow-col snap-x snap-proximity gap-5 overflow-x-auto px-[2px] pb-4 [scrollbar-color:#c2a789_transparent] scrollbar-thin max-sm:auto-cols-[min(310px,85vw)] max-sm:gap-[15px] *:snap-start"
+          className="grid snap-x snap-proximity scrollbar-thin [scrollbar-color:#c2a789_transparent] auto-cols-[350px] grid-flow-col gap-5 overflow-x-auto px-[2px] pb-4 *:snap-start max-sm:auto-cols-[min(310px,85vw)] max-sm:gap-[15px]"
         >
           {featured.map((event, index) => (
             <EventCard key={event.id} event={event} priority={index === 0} />
@@ -95,7 +95,7 @@ export default function Home() {
           title="Todos os Eventos Encontrados"
           description={`Exibindo ${events.length} evento(s) encontrado(s)`}
         >
-          <span className="whitespace-nowrap rounded-xl border border-line bg-surface/65 px-4 py-[10px] text-[12px] max-sm:text-[11px]">
+          <span className="rounded-xl border border-line bg-surface/65 px-4 py-[10px] text-[12px] whitespace-nowrap max-sm:text-[11px]">
             Ordenar: <strong>Relevância</strong> <span className="text-muted">· exemplo fixo</span>
           </span>
         </SectionHeading>
@@ -107,8 +107,8 @@ export default function Home() {
         </div>
 
         <DemoNote className="mt-5">
-          Busca, filtros e ordenação são demonstrativos. Apenas o Jazz &amp; Blues Festival possui uma
-          página de detalhes neste exemplo.
+          Busca, filtros e ordenação são demonstrativos. Apenas o Jazz &amp; Blues Festival possui uma página
+          de detalhes neste exemplo.
         </DemoNote>
       </section>
     </div>

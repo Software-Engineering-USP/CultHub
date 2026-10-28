@@ -17,7 +17,7 @@ export default function WeatherStats({ variant }: WeatherStatsProps) {
       className={cn(
         'grid grid-cols-3',
         variant === 'card'
-          ? 'mb-4 mt-6 gap-3 border-t border-line pt-5'
+          ? 'mt-6 mb-4 gap-3 border-t border-line pt-5'
           : 'm-0 gap-6 border-x border-line px-6 max-lg:gap-[14px] max-lg:px-4 max-md:flex-1 max-md:border-0 max-md:pl-0 max-sm:w-full max-sm:basis-full max-sm:border-t max-sm:pt-[15px]',
       )}
     >

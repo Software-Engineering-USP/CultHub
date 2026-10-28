@@ -20,7 +20,7 @@ export default function SignIn() {
     <>
       <BackLink to="/">← Continuar como visitante</BackLink>
 
-      <div className="mb-[30px] mt-3 max-sm:mt-1">
+      <div className="mt-3 mb-[30px] max-sm:mt-1">
         <h1 className="max-w-[850px] max-md:text-[32px] max-sm:text-[30px]">
           Seu próximo encontro com a cultura começa aqui.
         </h1>
@@ -45,8 +45,7 @@ export default function SignIn() {
               São Paulo tem muito para descobrir.
             </h2>
             <p className="text-[13px]">
-              Música, teatro, arte e encontros. Guarde o que te inspira e encontre tudo de novo na sua
-              conta.
+              Música, teatro, arte e encontros. Guarde o que te inspira e encontre tudo de novo na sua conta.
             </p>
 
             <div aria-hidden="true" className="mt-[25px] flex gap-[9px]">
@@ -67,7 +66,7 @@ export default function SignIn() {
           <h2 id="login-titulo" className="text-[23px]">
             Bem-vindo de volta
           </h2>
-          <p className="mb-6 mt-[7px] text-[12px]">Entre na sua conta CultHub.</p>
+          <p className="mt-[7px] mb-6 text-[12px]">Entre na sua conta CultHub.</p>
 
           <form
             aria-label="Entrar (demonstração)"
@@ -91,7 +90,7 @@ export default function SignIn() {
               autoComplete="off"
             />
 
-            <div className="mb-5 mt-1 flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="lembrar">
                 <input id="lembrar" type="checkbox" className={checkboxClass} />
                 Lembrar de mim
@@ -106,15 +105,15 @@ export default function SignIn() {
             </Button>
 
             <DemoNote id="login-aviso" className="mt-[14px]">
-              Formulário de demonstração, sem envio ou autenticação. Não use credenciais reais.
-              Recuperação de senha indisponível.
+              Formulário de demonstração, sem envio ou autenticação. Não use credenciais reais. Recuperação de
+              senha indisponível.
             </DemoNote>
           </form>
 
           <TextLink to="/conta" className="mt-[22px] inline-block">
             Ver perfil de exemplo →
           </TextLink>
-          <DemoNote size="sm" className="mb-6 mt-[14px]">
+          <DemoNote size="sm" className="mt-[14px] mb-6">
             Conheça a conta fictícia de Lívia Costa, sem precisar fazer login.
           </DemoNote>
         </Surface>
@@ -123,7 +122,7 @@ export default function SignIn() {
           <h2 id="cadastro-titulo" className="text-[23px]">
             Primeira vez por aqui?
           </h2>
-          <p className="mb-6 mt-[7px] text-[12px]">Crie sua conta e monte seu radar cultural.</p>
+          <p className="mt-[7px] mb-6 text-[12px]">Crie sua conta e monte seu radar cultural.</p>
 
           <form
             aria-label="Criar conta (demonstração)"
@@ -156,12 +155,12 @@ export default function SignIn() {
               help="Use pelo menos 8 caracteres. Apenas um exemplo, não insira uma senha real."
             />
 
-            <div className="mb-5 mt-1 flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="termos">
                 <input id="termos" type="checkbox" className={checkboxClass} />
                 <span>
-                  Aceito os termos e a política de privacidade <strong>ilustrativos</strong>. Esta opção
-                  não registra consentimento nem cria uma conta.
+                  Aceito os termos e a política de privacidade <strong>ilustrativos</strong>. Esta opção não
+                  registra consentimento nem cria uma conta.
                 </span>
               </label>
             </div>
@@ -171,8 +170,8 @@ export default function SignIn() {
             </Button>
 
             <DemoNote id="cadastro-aviso" className="mt-[14px]">
-              Formulário visual de demonstração. Nenhum cadastro é realizado e nenhum dado é enviado. Não
-              há termos contratuais ativos nesta versão.
+              Formulário visual de demonstração. Nenhum cadastro é realizado e nenhum dado é enviado. Não há
+              termos contratuais ativos nesta versão.
             </DemoNote>
           </form>
         </Surface>
@@ -186,8 +185,8 @@ export default function SignIn() {
         <p className="text-[12px]">
           Não precisa de conta para descobrir eventos no mapa.
           <br />
-          <strong>Entre apenas quando quiser salvar ou comentar.</strong> Nesta demonstração, esses
-          recursos estão desativados.
+          <strong>Entre apenas quando quiser salvar ou comentar.</strong> Nesta demonstração, esses recursos
+          estão desativados.
         </p>
         <TextLink to="/">Voltar para explorar →</TextLink>
       </Surface>

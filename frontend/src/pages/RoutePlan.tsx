@@ -123,12 +123,12 @@ export default function RoutePlan() {
 
           <div>
             <h3 className="text-[13px]">Itinerário demonstrativo</h3>
-            <ol className="mb-[22px] mt-4">
+            <ol className="mt-4 mb-[22px]">
               {itinerary.map((step, index) => (
                 <li key={step.title} className="relative pb-[19px] pl-8 text-[11px] last:pb-0">
                   <span
                     aria-hidden="true"
-                    className="absolute left-0 top-px grid h-[22px] w-[22px] place-items-center rounded-full bg-[#ede0c9] text-[10px] font-bold text-maroon"
+                    className="absolute top-px left-0 grid h-[22px] w-[22px] place-items-center rounded-full bg-[#ede0c9] text-[10px] font-bold text-maroon"
                   >
                     {index + 1}
                   </span>
@@ -162,8 +162,8 @@ export default function RoutePlan() {
             alt="Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real."
           />
           <DemoNote as="figcaption" className="mt-[10px]">
-            Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em
-            um serviço de mapas atualizado.
+            Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um
+            serviço de mapas atualizado.
           </DemoNote>
         </figure>
       </div>

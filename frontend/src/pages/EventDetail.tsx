@@ -38,13 +38,16 @@ export default function EventDetail() {
         items={[{ label: 'Explorar', to: '/' }, { label: category.label }, { label: shortName }]}
       />
 
-      <div className="relative mb-8 overflow-hidden rounded-[32px] bg-[#2b2522] after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:top-[55%] after:bg-linear-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-[22px]">
+      <div className="relative mb-8 overflow-hidden rounded-[32px] bg-[#2b2522] after:pointer-events-none after:absolute after:inset-x-0 after:top-[55%] after:bottom-0 after:bg-linear-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-[22px]">
         <img
           src={event.image}
           alt={event.imageAlt}
           className="block h-[400px] w-full object-cover object-[center_47%] max-md:h-[330px] max-sm:h-[235px]"
         />
-        <CategoryBadge size="lg" className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4">
+        <CategoryBadge
+          size="lg"
+          className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4"
+        >
           {category.label} • {shortName}
         </CategoryBadge>
       </div>
@@ -59,7 +62,7 @@ export default function EventDetail() {
               {event.title}
             </h1>
 
-            <div className="mb-2 mt-[22px] flex flex-wrap gap-[10px]">
+            <div className="mt-[22px] mb-2 flex flex-wrap gap-[10px]">
               <Button variant="secondary" disabled aria-describedby="acoes-aviso">
                 ♡ Salvar
               </Button>
@@ -93,9 +96,9 @@ export default function EventDetail() {
                   Onde acontece
                 </h2>
                 <strong className="mt-[10px] block">{event.venue}</strong>
-                <p className="mb-[13px] mt-[9px] text-[13px]">
-                  O local aparece no mapa ilustrativo do CultHub. Consulte os canais oficiais do espaço
-                  para endereço de acesso, acessibilidade e orientações de chegada.
+                <p className="mt-[9px] mb-[13px] text-[13px]">
+                  O local aparece no mapa ilustrativo do CultHub. Consulte os canais oficiais do espaço para
+                  endereço de acesso, acessibilidade e orientações de chegada.
                 </p>
                 <TextLink to={`/eventos/${event.id}/origem`}>Ver local no mapa →</TextLink>
               </div>
@@ -104,7 +107,7 @@ export default function EventDetail() {
 
           <Surface as="aside" aria-label="Preço e planejamento da visita" bg="bg-[#fff0d9]">
             <CategoryBadge>{category.label}</CategoryBadge>
-            <p className="mt-[22px] text-[36px] font-[750] leading-[1.2] tracking-[-.04em] text-maroon max-md:mt-[14px] max-sm:text-[32px]">
+            <p className="mt-[22px] text-[36px] leading-[1.2] font-[750] tracking-[-.04em] text-maroon max-md:mt-[14px] max-sm:text-[32px]">
               {event.price}
             </p>
             <p className="text-[12px] text-muted">Preço informado no exemplo</p>

@@ -21,7 +21,7 @@ export default function WeatherStrip({ event }: { event: CultEvent }) {
           {event.schedule} • {demoWeather.condition}
         </p>
       </div>
-      <span className="mx-auto text-[32px] font-[650] leading-[1.15] tracking-[-.06em] text-ink max-md:ml-auto max-md:mr-0 max-sm:text-[28px]">
+      <span className="mx-auto text-[32px] leading-[1.15] font-[650] tracking-[-.06em] text-ink max-md:mr-0 max-md:ml-auto max-sm:text-[28px]">
         {demoWeather.temperature}
       </span>
       <WeatherStats variant="strip" />

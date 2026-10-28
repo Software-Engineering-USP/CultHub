@@ -17,11 +17,7 @@ interface DemoNoteProps extends HTMLAttributes<HTMLElement> {
 export default function DemoNote({ as: Tag = 'p', size = 'base', className, ...rest }: DemoNoteProps) {
   return (
     <Tag
-      className={cn(
-        'leading-[1.65] text-muted [&_a]:text-maroon [&_a]:underline',
-        sizes[size],
-        className,
-      )}
+      className={cn('leading-[1.65] text-muted [&_a]:text-maroon [&_a]:underline', sizes[size], className)}
       {...rest}
     />
   )

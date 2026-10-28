@@ -84,7 +84,7 @@ export default function Account() {
             </a>
             <Link
               to="/entrar"
-              className={`${menuLink} mt-3 rounded-none border-t border-line pb-[11px] pt-5 text-maroon max-md:m-0 max-md:rounded-[10px] max-md:border-0 max-md:py-[11px]`}
+              className={`${menuLink} mt-3 rounded-none border-t border-line pt-5 pb-[11px] text-maroon max-md:m-0 max-md:rounded-[10px] max-md:border-0 max-md:py-[11px]`}
             >
               Sair da conta <small>(demonstração)</small>
             </Link>
@@ -111,10 +111,34 @@ export default function Account() {
               onSubmit={preventSubmit}
             >
               <div className="grid grid-cols-2 gap-x-5 max-sm:grid-cols-[minmax(0,1fr)]">
-                <Field id="nome" label="Nome completo" type="text" defaultValue={currentUser.name} autoComplete="off" />
-                <Field id="email" label="E-mail" type="email" defaultValue={currentUser.email} autoComplete="off" />
-                <Field id="cidade" label="Cidade" type="text" defaultValue={currentUser.city} autoComplete="off" />
-                <Field id="bairro" label="Bairro" type="text" defaultValue={currentUser.district} autoComplete="off" />
+                <Field
+                  id="nome"
+                  label="Nome completo"
+                  type="text"
+                  defaultValue={currentUser.name}
+                  autoComplete="off"
+                />
+                <Field
+                  id="email"
+                  label="E-mail"
+                  type="email"
+                  defaultValue={currentUser.email}
+                  autoComplete="off"
+                />
+                <Field
+                  id="cidade"
+                  label="Cidade"
+                  type="text"
+                  defaultValue={currentUser.city}
+                  autoComplete="off"
+                />
+                <Field
+                  id="bairro"
+                  label="Bairro"
+                  type="text"
+                  defaultValue={currentUser.district}
+                  autoComplete="off"
+                />
               </div>
 
               <div className="mt-1 flex items-center justify-between gap-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-[14px]">
@@ -147,11 +171,11 @@ export default function Account() {
                     id={`pref-${id}`}
                     type="checkbox"
                     defaultChecked={currentUser.preferences.includes(id)}
-                    className="peer absolute left-[15px] top-3 mt-[2px] h-4 w-4 accent-maroon"
+                    className="peer absolute top-3 left-[15px] mt-[2px] h-4 w-4 accent-maroon"
                   />
                   <label
                     htmlFor={`pref-${id}`}
-                    className={`block rounded-[30px] border border-line bg-[#f7f3eb] py-[11px] pl-10 pr-[17px] text-[12px] peer-checked:border-[#ba7e48] peer-checked:bg-[#ffe4bc] peer-checked:font-[650] peer-checked:text-maroon ${peerFocusRing}`}
+                    className={`block rounded-[30px] border border-line bg-[#f7f3eb] py-[11px] pr-[17px] pl-10 text-[12px] peer-checked:border-[#ba7e48] peer-checked:bg-[#ffe4bc] peer-checked:font-[650] peer-checked:text-maroon ${peerFocusRing}`}
                   >
                     {categories[id].label}
                   </label>
@@ -160,8 +184,8 @@ export default function Account() {
             </fieldset>
 
             <DemoNote id="preferencias-aviso" className="mt-4">
-              Seleção visual em CSS. Você pode marcar categorias, mas as escolhas não são salvas e não
-              filtram eventos. A seleção inicial acima descreve apenas o exemplo.
+              Seleção visual em CSS. Você pode marcar categorias, mas as escolhas não são salvas e não filtram
+              eventos. A seleção inicial acima descreve apenas o exemplo.
             </DemoNote>
           </Surface>
 
