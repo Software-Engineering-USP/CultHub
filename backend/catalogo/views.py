@@ -1,5 +1,6 @@
 from django.db.models import F
 from django.utils import timezone
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
 
@@ -28,6 +29,26 @@ def _eventos():
     )
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            "q",
+            str,
+            description="Busca no título, descrição ou nome do local.",
+        ),
+        OpenApiParameter(
+            "categorias",
+            str,
+            description="Códigos de categoria separados por vírgula (OU).",
+        ),
+        OpenApiParameter(
+            "preco",
+            str,
+            enum=["gratuito", "pago"],
+            description="Somente gratuitos ou somente pagos.",
+        ),
+    ]
+)
 class EventoListView(ListAPIView):
     """Eventos futuros ou em andamento, por data, hora e título."""
 
@@ -39,7 +60,10 @@ class EventoListView(ListAPIView):
         eventos = visiveis(_eventos(), timezone.now())
         eventos = aplicar_filtros(eventos, self.request.query_params)
         return eventos.order_by(
-            "data_inicio", F("hora_inicio").asc(nulls_last=True), "titulo"
+            "data_inicio",
+            F("hora_inicio").asc(nulls_last=True),
+            "titulo",
+            "id",
         )
 
 
