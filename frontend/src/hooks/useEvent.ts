@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
-import { findEvent } from '../data/events'
-import type { CultEvent } from '../data/events'
+import { findEvent } from '@/data/events'
+import type { CultEvent } from '@/types'
 
 /** Evento da rota atual (/eventos/:id/...), se existir. */
 export function useEvent(): CultEvent | undefined {

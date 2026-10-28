@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { CultEvent } from '../../data/events'
+import type { CultEvent } from '@/types'
 import { categories } from '../../lib/categories'
 import { cn } from '../../lib/cn'
 import CategoryBadge from '../ui/CategoryBadge'

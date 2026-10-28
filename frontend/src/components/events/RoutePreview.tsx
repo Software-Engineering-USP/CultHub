@@ -1,5 +1,5 @@
-import type { CultEvent } from '../../data/events'
-import { demoRoutes } from '../../data/events'
+import type { CultEvent } from '@/types'
+import { demoRoutes } from '@/data/routes'
 import { ButtonLink } from '../ui/Button'
 import DemoNote from '../ui/DemoNote'
 import Eyebrow from '../ui/Eyebrow'

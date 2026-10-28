@@ -1,30 +1,7 @@
-import type { CategoryId } from '../lib/categories'
+import type { CultEvent } from '@/types'
 
 // Dados demonstrativos extraídos das páginas estáticas (pasta foo).
 // Quando o backend expor uma API, basta trocar estas constantes por chamadas.
-
-export interface EventDetails {
-  about: string[]
-  startTime: string
-}
-
-export interface CultEvent {
-  id: string
-  title: string
-  /** Nome curto usado em breadcrumbs e selos */
-  shortTitle?: string
-  category: CategoryId
-  description: string
-  venue: string
-  schedule: string
-  price: string
-  /** Caminho em public/assets */
-  image: string
-  imageAlt: string
-  featured?: boolean
-  /** Só eventos com detalhes têm página própria */
-  details?: EventDetails
-}
 
 export const events: CultEvent[] = [
   {
@@ -138,58 +115,4 @@ export const events: CultEvent[] = [
 
 export function findEvent(id: string): CultEvent | undefined {
   return events.find((event) => event.id === id)
-}
-
-export const currentUser = {
-  name: 'Lívia Costa',
-  initials: 'LC',
-  email: 'livia.costa@exemplo.com',
-  city: 'São Paulo, SP',
-  district: 'Vila Mariana',
-  preferences: ['music', 'art'] as CategoryId[],
-  savedEventIds: ['sp-jazz-blues-festival', 'van-gogh-imersivo'],
-}
-
-export interface EventComment {
-  id: string
-  author: string
-  initials: string
-  text: string
-}
-
-export const demoComments: EventComment[] = [
-  {
-    id: 'c1',
-    author: 'Lívia Costa',
-    initials: 'LC',
-    text: 'Jazz ao vivo no Ibirapuera é uma combinação que eu adoro. Salvei para planejar a sexta com os amigos.',
-  },
-  {
-    id: 'c2',
-    author: 'Rafael Martins',
-    initials: 'RM',
-    text: 'Gostei da proposta! Quero conhecer mais sobre os artistas e a programação antes de decidir.',
-  },
-]
-
-export interface RouteOption {
-  id: 'carro' | 'onibus' | 'ape'
-  label: string
-  time: string
-  detail: string
-  tag: string
-}
-
-export const demoRoutes: RouteOption[] = [
-  { id: 'carro', label: 'Carro', time: '12 min', detail: '6,4 km', tag: 'Mais rápido' },
-  { id: 'onibus', label: 'Ônibus', time: '24 min', detail: '2 trocas', tag: 'Econômico' },
-  { id: 'ape', label: 'A pé', time: '34 min', detail: '2,8 km', tag: 'Ativo' },
-]
-
-export const demoWeather = {
-  condition: 'Poucas nuvens',
-  temperature: '22°C',
-  feelsLike: '20°C',
-  humidity: '58%',
-  wind: '12 km/h',
 }

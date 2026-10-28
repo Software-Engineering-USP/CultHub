@@ -1,4 +1,4 @@
-import type { CultEvent } from '../../data/events'
+import type { CultEvent } from '@/types'
 import { categories } from '../../lib/categories'
 import Eyebrow from '../ui/Eyebrow'
 

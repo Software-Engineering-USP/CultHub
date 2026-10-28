@@ -1,5 +1,5 @@
-import type { CultEvent } from '../../data/events'
-import { demoWeather } from '../../data/events'
+import type { CultEvent } from '@/types'
+import { demoWeather } from '@/data/weather'
 import DemoNote from '../ui/DemoNote'
 import { SunIcon } from '../ui/Icons'
 import Surface from '../ui/Surface'

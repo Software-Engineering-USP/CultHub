@@ -1,4 +1,4 @@
-import { demoWeather } from '../../data/events'
+import { demoWeather } from '@/data/weather'
 import { cn } from '../../lib/cn'
 
 interface WeatherStatsProps {

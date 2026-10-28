@@ -1,4 +1,4 @@
-import type { EventComment } from '../../data/events'
+import type { EventComment } from '@/types'
 import Avatar from '../ui/Avatar'
 import TextButton from '../ui/TextButton'
 

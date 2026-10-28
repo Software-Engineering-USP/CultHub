@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { currentUser } from '../../data/events'
+import { currentUser } from '@/data/user'
 import { categories, categoryOrder } from '../../lib/categories'
 import { avatarClass } from '../../lib/classes'
 import CategoryDot from '../ui/CategoryDot'

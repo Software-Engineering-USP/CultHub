@@ -4,7 +4,7 @@ import CategoryDot from '../components/ui/CategoryDot'
 import DemoNote from '../components/ui/DemoNote'
 import Eyebrow from '../components/ui/Eyebrow'
 import SectionHeading from '../components/ui/SectionHeading'
-import { events } from '../data/events'
+import { events } from '@/data/events'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { categories, categoryOrder } from '../lib/categories'
 
