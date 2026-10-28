@@ -1,8 +1,8 @@
 import type { CultEvent } from '@/types'
 import { demoWeather } from '@/data/weather'
-import DemoNote from '../ui/DemoNote'
-import { SunIcon } from '../ui/Icons'
-import Surface from '../ui/Surface'
+import DemoNote from '../common/DemoNote'
+import { SunIcon } from '../common/Icons'
+import Surface from '../common/Surface'
 import WeatherStats from './WeatherStats'
 
 /** Faixa de clima no rodapé das páginas de origem e rota. */

@@ -2,8 +2,8 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { currentUser } from '@/data/user'
 import { categories, categoryOrder } from '../../lib/categories'
 import { avatarClass } from '../../lib/classes'
-import CategoryDot from '../ui/CategoryDot'
-import { BrandMark, FiltersIcon, SearchIcon } from '../ui/Icons'
+import CategoryDot from '../common/CategoryDot'
+import { BrandMark, FiltersIcon, SearchIcon } from '../common/Icons'
 
 export default function Header() {
   const { pathname } = useLocation()

@@ -1,6 +1,6 @@
 import type { CultEvent } from '@/types'
 import { categories } from '../../lib/categories'
-import Eyebrow from '../ui/Eyebrow'
+import Eyebrow from '../common/Eyebrow'
 
 /** Resumo do evento no topo das páginas de origem e rota. */
 export default function EventStrip({ event }: { event: CultEvent }) {

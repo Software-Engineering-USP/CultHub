@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom'
 import type { CultEvent } from '@/types'
 import { categories } from '../../lib/categories'
 import { cn } from '../../lib/cn'
-import CategoryBadge from '../ui/CategoryBadge'
-import { CalendarIcon, PinIcon } from '../ui/Icons'
+import CategoryBadge from '../common/CategoryBadge'
+import { CalendarIcon, PinIcon } from '../common/Icons'
 
 interface EventCardProps {
   event: CultEvent
