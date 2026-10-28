@@ -58,6 +58,21 @@ def _eventos():
             OpenApiTypes.DATE,
             description="Eventos que começam até esta data (AAAA-MM-DD).",
         ),
+        OpenApiParameter(
+            "lat",
+            float,
+            description="Latitude do ponto de busca (com lng e raio).",
+        ),
+        OpenApiParameter(
+            "lng",
+            float,
+            description="Longitude do ponto de busca (com lat e raio).",
+        ),
+        OpenApiParameter(
+            "raio",
+            float,
+            description="Raio da busca em km (com lat e lng).",
+        ),
     ]
 )
 class EventoListView(ListAPIView):

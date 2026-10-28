@@ -1,7 +1,16 @@
-from datetime import date
+from datetime import datetime
+from math import isfinite
 
-from django.db.models import Q
-from django.db.models.functions import Coalesce
+from django.db.models import FloatField, Q, Value
+from django.db.models.functions import (
+    ACos,
+    Cast,
+    Coalesce,
+    Cos,
+    Least,
+    Radians,
+    Sin,
+)
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -59,7 +68,7 @@ def _preco(queryset, valor):
 
 def _data(parametro, valor):
     try:
-        return date.fromisoformat(valor)
+        return datetime.strptime(valor, "%Y-%m-%d").date()
     except ValueError:
         raise ValidationError(
             {parametro: ["Data inválida. Use o formato AAAA-MM-DD."]}
@@ -82,6 +91,58 @@ def _periodo(queryset, params):
     return queryset
 
 
+RAIO_DA_TERRA_KM = 6371.0
+
+
+def _numero(parametro, valor, minimo=None, maximo=None):
+    try:
+        numero = float(valor)
+    except ValueError:
+        numero = None
+    if numero is None or not isfinite(numero):
+        raise ValidationError({parametro: ["Informe um número."]})
+    if minimo is not None and numero < minimo:
+        raise ValidationError({parametro: [f"Mínimo: {minimo:g}."]})
+    if maximo is not None and numero > maximo:
+        raise ValidationError({parametro: [f"Máximo: {maximo:g}."]})
+    return numero
+
+
+def _distancia(queryset, params):
+    nomes = ("lat", "lng", "raio")
+    presentes = [n for n in nomes if n in params]
+    if not presentes:
+        return queryset
+    faltando = [n for n in nomes if n not in params]
+    if faltando:
+        mensagem = "Informe lat, lng e raio juntos."
+        mensagem += f" Faltando: {', '.join(faltando)}."
+        raise ValidationError({"non_field_errors": [mensagem]})
+    lat = _numero("lat", params["lat"], -90, 90)
+    lng = _numero("lng", params["lng"], -180, 180)
+    raio = _numero("raio", params["raio"])
+    if raio <= 0:
+        raise ValidationError({"raio": ["O raio deve ser maior que zero."]})
+
+    latitude = Cast("local__latitude", FloatField())
+    longitude = Cast("local__longitude", FloatField())
+    # Haversine (lei esférica dos cossenos); Least evita NaN no ACos
+    # quando o ponto coincide e o arredondamento passa de 1.
+    cosseno = Cos(Radians(Value(lat))) * Cos(Radians(latitude)) * Cos(
+        Radians(longitude) - Radians(Value(lng))
+    ) + Sin(Radians(Value(lat))) * Sin(Radians(latitude))
+    return (
+        queryset.filter(
+            local__latitude__isnull=False, local__longitude__isnull=False
+        )
+        .annotate(
+            distancia_km=RAIO_DA_TERRA_KM
+            * ACos(Least(cosseno, Value(1.0)), output_field=FloatField())
+        )
+        .filter(distancia_km__lte=raio)
+    )
+
+
 def aplicar_filtros(queryset, params):
     """Aplica os filtros da querystring (combinados com E)."""
     if "q" in params:
@@ -91,4 +152,5 @@ def aplicar_filtros(queryset, params):
     if "preco" in params:
         queryset = _preco(queryset, params["preco"])
     queryset = _periodo(queryset, params)
+    queryset = _distancia(queryset, params)
     return queryset

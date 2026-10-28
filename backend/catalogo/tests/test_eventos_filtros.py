@@ -1,4 +1,6 @@
 from datetime import timedelta
+from decimal import Decimal
+from typing import ClassVar
 
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -151,3 +153,90 @@ class FiltroPeriodoTest(APITestCase):
         )
         self.assertEqual(resposta.status_code, 400)
         self.assertIn("ate", resposta.json())
+
+    def test_data_em_formato_basico_400(self):
+        resposta = self.client.get("/api/eventos/", {"de": "20261001"})
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("de", resposta.json())
+
+    def test_data_em_formato_semana_400(self):
+        resposta = self.client.get("/api/eventos/", {"ate": "2026-W01-1"})
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("ate", resposta.json())
+
+
+class FiltroDistanciaTest(APITestCase):
+    # Av. Paulista (-23.561414, -46.655881); MASP a ~0.2 km;
+    # Ibirapuera a ~2.5 km; Rio a ~360 km.
+    PAULISTA: ClassVar = {"lat": "-23.561414", "lng": "-46.655881"}
+
+    def evento_em(self, titulo, latitude, longitude):
+        local = Local.objects.create(
+            nome=titulo,
+            cidade="Cidade",
+            estado="XX",
+            latitude=Decimal(latitude) if latitude else None,
+            longitude=Decimal(longitude) if longitude else None,
+        )
+        return criar_evento(titulo=titulo, local=local)
+
+    def criar_locais(self):
+        self.evento_em("Paulista", "-23.561414", "-46.655881")
+        self.evento_em("MASP", "-23.561684", "-46.655981")
+        self.evento_em("Ibirapuera", "-23.587416", "-46.657634")
+        self.evento_em("Rio", "-22.9068", "-43.1729")
+
+    def buscar(self, **params):
+        return self.client.get("/api/eventos/", params)
+
+    def test_dentro_do_raio(self):
+        self.criar_locais()
+        resposta = self.buscar(raio="5", **self.PAULISTA)
+        self.assertEqual(resposta.status_code, 200)
+        titulos = sorted(e["titulo"] for e in resposta.json()["results"])
+        self.assertEqual(titulos, ["Ibirapuera", "MASP", "Paulista"])
+
+    def test_distancia_km_na_resposta(self):
+        self.criar_locais()
+        resultados = self.buscar(raio="5", **self.PAULISTA).json()["results"]
+        ibira = next(e for e in resultados if e["titulo"] == "Ibirapuera")
+        self.assertAlmostEqual(ibira["distancia_km"], 2.5, delta=0.5)
+
+    def test_ponto_coincidente(self):
+        self.evento_em("Paulista", "-23.561414", "-46.655881")
+        resultados = self.buscar(raio="1", **self.PAULISTA).json()["results"]
+        self.assertEqual(len(resultados), 1)
+        self.assertEqual(resultados[0]["distancia_km"], 0.0)
+
+    def test_sem_coordenada_fica_de_fora(self):
+        self.evento_em("Sem coordenada", None, None)
+        self.evento_em("Paulista", "-23.561414", "-46.655881")
+        resultados = self.buscar(raio="5", **self.PAULISTA).json()["results"]
+        self.assertEqual([e["titulo"] for e in resultados], ["Paulista"])
+
+    def test_faltando_parametro_400(self):
+        resposta = self.buscar(**self.PAULISTA)
+        self.assertEqual(resposta.status_code, 400)
+        corpo = resposta.json()
+        self.assertIn("non_field_errors", corpo)
+        self.assertIn("raio", corpo["non_field_errors"][0])
+
+    def test_valores_invalidos_400(self):
+        casos = [
+            ("lat", "abc"),
+            ("lat", "95"),
+            ("lng", "181"),
+            ("raio", "-1"),
+            ("raio", "0"),
+        ]
+        for parametro, valor in casos:
+            with self.subTest(parametro=parametro, valor=valor):
+                params = {**self.PAULISTA, "raio": "5", parametro: valor}
+                resposta = self.buscar(**params)
+                self.assertEqual(resposta.status_code, 400)
+                self.assertIn(parametro, resposta.json())
+
+    def test_sem_filtro_distancia_km_null(self):
+        self.evento_em("Paulista", "-23.561414", "-46.655881")
+        resultados = self.buscar().json()["results"]
+        self.assertIsNone(resultados[0]["distancia_km"])
