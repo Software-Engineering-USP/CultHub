@@ -1,5 +1,6 @@
 from django.db.models import F
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
@@ -46,6 +47,16 @@ def _eventos():
             str,
             enum=["gratuito", "pago"],
             description="Somente gratuitos ou somente pagos.",
+        ),
+        OpenApiParameter(
+            "de",
+            OpenApiTypes.DATE,
+            description="Eventos que terminam desde esta data (AAAA-MM-DD).",
+        ),
+        OpenApiParameter(
+            "ate",
+            OpenApiTypes.DATE,
+            description="Eventos que começam até esta data (AAAA-MM-DD).",
         ),
     ]
 )

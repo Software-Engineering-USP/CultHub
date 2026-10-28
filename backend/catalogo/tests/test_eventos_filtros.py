@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from catalogo.models import Local, Provedor
@@ -84,3 +87,67 @@ class FiltrosBuscaTest(APITestCase):
             self.titulos(q="jazz", categorias="music", preco="gratuito"),
             ["Jazz Free"],
         )
+
+
+class FiltroPeriodoTest(APITestCase):
+    def setUp(self):
+        self.hoje = timezone.localdate()
+
+    def dia(self, n):
+        return self.hoje + timedelta(days=n)
+
+    def titulos(self, **params):
+        resposta = self.client.get("/api/eventos/", params)
+        self.assertEqual(resposta.status_code, 200)
+        return sorted(e["titulo"] for e in resposta.json()["results"])
+
+    def criar_tres(self):
+        criar_evento(titulo="A", data_inicio=self.dia(2))
+        criar_evento(titulo="B", data_inicio=self.dia(10))
+        criar_evento(titulo="C", data_inicio=self.dia(20))
+
+    def test_dentro_do_intervalo(self):
+        self.criar_tres()
+        self.assertEqual(
+            self.titulos(
+                de=self.dia(5).isoformat(), ate=self.dia(15).isoformat()
+            ),
+            ["B"],
+        )
+
+    def test_so_de(self):
+        self.criar_tres()
+        self.assertEqual(self.titulos(de=self.dia(5).isoformat()), ["B", "C"])
+
+    def test_so_ate(self):
+        self.criar_tres()
+        self.assertEqual(
+            self.titulos(ate=self.dia(10).isoformat()), ["A", "B"]
+        )
+
+    def test_evento_de_varios_dias_que_cruza_o_intervalo(self):
+        criar_evento(
+            titulo="Festival",
+            data_inicio=self.dia(1),
+            data_fim=self.dia(8),
+        )
+        criar_evento(titulo="Fora", data_inicio=self.dia(2))
+        self.assertEqual(
+            self.titulos(
+                de=self.dia(6).isoformat(), ate=self.dia(9).isoformat()
+            ),
+            ["Festival"],
+        )
+
+    def test_data_invalida_400(self):
+        resposta = self.client.get("/api/eventos/", {"de": "2026-13-01"})
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("de", resposta.json())
+
+    def test_de_depois_de_ate_400(self):
+        resposta = self.client.get(
+            "/api/eventos/",
+            {"de": self.dia(5).isoformat(), "ate": self.dia(2).isoformat()},
+        )
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("ate", resposta.json())

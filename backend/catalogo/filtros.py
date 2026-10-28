@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.db.models import Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -55,6 +57,31 @@ def _preco(queryset, valor):
     raise ValidationError({"preco": ["Use 'gratuito' ou 'pago'."]})
 
 
+def _data(parametro, valor):
+    try:
+        return date.fromisoformat(valor)
+    except ValueError:
+        raise ValidationError(
+            {parametro: ["Data inválida. Use o formato AAAA-MM-DD."]}
+        )
+
+
+def _periodo(queryset, params):
+    de = _data("de", params["de"]) if "de" in params else None
+    ate = _data("ate", params["ate"]) if "ate" in params else None
+    if de and ate and de > ate:
+        raise ValidationError(
+            {"ate": ["A data final não pode ser anterior à inicial."]}
+        )
+    if ate:
+        queryset = queryset.filter(data_inicio__lte=ate)
+    if de:
+        queryset = queryset.annotate(
+            fim_do_evento=Coalesce("data_fim", "data_inicio")
+        ).filter(fim_do_evento__gte=de)
+    return queryset
+
+
 def aplicar_filtros(queryset, params):
     """Aplica os filtros da querystring (combinados com E)."""
     if "q" in params:
@@ -63,4 +90,5 @@ def aplicar_filtros(queryset, params):
         queryset = _categorias(queryset, params["categorias"])
     if "preco" in params:
         queryset = _preco(queryset, params["preco"])
+    queryset = _periodo(queryset, params)
     return queryset
