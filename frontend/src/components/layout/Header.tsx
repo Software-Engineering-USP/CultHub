@@ -11,7 +11,7 @@ export default function Header() {
   const onSignIn = pathname === '/entrar'
 
   return (
-    <header className="relative z-[5] mt-8 flex min-h-20 items-center gap-8 rounded-[44px] border border-line/60 bg-surface py-[14px] pl-[30px] pr-6 shadow-soft max-lg:gap-[22px] max-md:flex-wrap max-md:gap-5 max-md:rounded-[30px] max-md:px-[22px] max-md:py-4 max-sm:mt-[18px] max-sm:gap-4 max-sm:rounded-[26px] max-sm:px-[17px] max-sm:py-[15px]">
+    <header className="relative z-5 mt-8 flex min-h-20 items-center gap-8 rounded-[44px] border border-line/60 bg-surface py-[14px] pl-[30px] pr-6 shadow-soft max-lg:gap-[22px] max-md:flex-wrap max-md:gap-5 max-md:rounded-[30px] max-md:px-[22px] max-md:py-4 max-sm:mt-[18px] max-sm:gap-4 max-sm:rounded-[26px] max-sm:px-[17px] max-sm:py-[15px]">
       <Link
         to="/"
         aria-label="CultHub São Paulo, início"

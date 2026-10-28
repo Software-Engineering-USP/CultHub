@@ -38,13 +38,13 @@ export default function EventDetail() {
         items={[{ label: 'Explorar', to: '/' }, { label: category.label }, { label: shortName }]}
       />
 
-      <div className="relative mb-8 overflow-hidden rounded-[32px] bg-[#2b2522] after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:top-[55%] after:bg-gradient-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-[22px]">
+      <div className="relative mb-8 overflow-hidden rounded-[32px] bg-[#2b2522] after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:top-[55%] after:bg-linear-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-[22px]">
         <img
           src={event.image}
           alt={event.imageAlt}
           className="block h-[400px] w-full object-cover object-[center_47%] max-md:h-[330px] max-sm:h-[235px]"
         />
-        <CategoryBadge size="lg" className="absolute bottom-[25px] left-[30px] z-[1] max-sm:bottom-4 max-sm:left-4">
+        <CategoryBadge size="lg" className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4">
           {category.label} • {shortName}
         </CategoryBadge>
       </div>

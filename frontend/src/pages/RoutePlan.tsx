@@ -111,7 +111,7 @@ export default function RoutePlan() {
 
           <div className="mb-[23px] flex items-center justify-between gap-[14px] border-t border-[#e5d5bc] pt-[19px]">
             <div>
-              <strong className="block text-[29px] leading-[1.2] tracking-[-.05em] text-maroon">
+              <strong className="block text-[29px] leading-[1.2] tracking-tighter text-maroon">
                 {selected.time}
               </strong>
               <small className="text-[10px]">{selected.detail} • de carro</small>

@@ -76,13 +76,13 @@ export default function EventCard({ event, icons = false, compact = false, prior
           )}
         </div>
 
-        <div className="mt-5 flex items-center justify-between gap-[10px] border-t border-maroon/[.12] pt-4 text-[16px] font-[750] text-maroon">
+        <div className="mt-5 flex items-center justify-between gap-[10px] border-t border-maroon/12 pt-4 text-[16px] font-[750] text-maroon">
           <span>{event.price}</span>
           {href ? (
             <Link
               to={href}
               aria-label={`Ver detalhes do ${shortName}`}
-              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-maroon/[.22] text-[19px] no-underline"
+              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-maroon/22 text-[19px] no-underline"
             >
               ↗
             </Link>

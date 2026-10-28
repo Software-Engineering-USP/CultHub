@@ -135,7 +135,7 @@ export default function Account() {
                 Preferências culturais
               </h2>
             </div>
-            <p className="-mt-[10px] mb-5 text-[12px] text-muted">
+            <p className="mt-[-10px] mb-5 text-[12px] text-muted">
               Categorias que você gosta de acompanhar. {selectedLabels} selecionadas.
             </p>
 

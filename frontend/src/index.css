@@ -1,6 +1,57 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-sm: 601px;
+  --breakpoint-md: 901px;
+  --breakpoint-lg: 1151px;
+
+  --color-page: #f5efe3;
+  --color-surface: #fffdf9;
+  --color-maroon: #761918;
+  --color-ink: #2e4262;
+  --color-muted: #5e6979;
+  --color-accent: #ff9f3e;
+  --color-line: #e4dccf;
+
+  --color-cat-music: #ffedce;
+  --color-cat-theater: #d8eee3;
+  --color-cat-art: #d8e1ed;
+  --color-cat-sport: #ecd9d9;
+  --color-cat-festival: #f7e7cc;
+
+  --color-dot-music: #a85316;
+  --color-dot-festival: #be7628;
+  --color-dot-theater: #438268;
+  --color-dot-sport: #9e4e57;
+  --color-dot-art: #587ba4;
+
+  --font-sans:
+    Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --shadow-soft: 0 8px 28px rgb(70 43 22 / 5%);
+  --shadow-card: 0 5px 16px rgb(81 48 22 / 4%);
+  --shadow-popover: 0 15px 40px rgb(46 30 15 / 14%);
+  --shadow-badge: 0 2px 8px rgb(0 0 0 / 8%);
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e4dccf;
+  }
+}
 
 @layer base {
   html {
@@ -39,7 +90,7 @@
   }
 
   :focus-visible {
-    outline: 3px solid theme('colors.maroon');
+    outline: 3px solid var(--color-maroon);
     outline-offset: 4px;
   }
 
@@ -52,7 +103,7 @@
   h1,
   h2,
   h3 {
-    @apply leading-[1.25] tracking-[-.035em] text-maroon;
+    @apply leading-tight tracking-[-.035em] text-maroon;
   }
 
   h1 {
