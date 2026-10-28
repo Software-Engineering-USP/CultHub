@@ -7,9 +7,7 @@ export default function NotFound({ message }: { message?: string }) {
       <h1 id="nao-encontrado" className="text-[30px]">
         Página não encontrada
       </h1>
-      <p className="mt-3 text-muted">
-        {message ?? 'O endereço acessado não existe nesta demonstração.'}
-      </p>
+      <p className="mt-3 text-muted">{message ?? 'O endereço acessado não existe nesta demonstração.'}</p>
       <ButtonLink to="/" className="mt-6">
         Voltar para explorar
       </ButtonLink>

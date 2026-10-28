@@ -78,8 +78,7 @@ export const events: CultEvent[] = [
     id: 'derby-paulista',
     title: 'Derby Paulista: COR x PAL',
     category: 'sport',
-    description:
-      'O clássico mais disputado da cidade em uma tarde decisiva repleta de emoção no campeonato.',
+    description: 'O clássico mais disputado da cidade em uma tarde decisiva repleta de emoção no campeonato.',
     venue: 'Neo Química Arena',
     schedule: 'Domingo, 16:00',
     price: 'A partir de R$ 90',
@@ -128,8 +127,7 @@ export const events: CultEvent[] = [
     id: 'street-food-truck-fair',
     title: 'Street Food & Truck Fair',
     category: 'festival',
-    description:
-      'Mais de 40 food trucks servindo o melhor da culinária de rua mundial com DJs ao vivo.',
+    description: 'Mais de 40 food trucks servindo o melhor da culinária de rua mundial com DJs ao vivo.',
     venue: 'Praça Charles Miller',
     schedule: 'Sexta, 18:00',
     price: 'Gratuito',

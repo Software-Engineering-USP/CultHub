@@ -7,7 +7,7 @@ export default function EventStrip({ event }: { event: CultEvent }) {
   return (
     <section
       aria-label="Resumo do evento"
-      className="mb-6 flex items-center gap-5 rounded-[23px] border border-line bg-surface py-4 pl-4 pr-[22px] max-sm:flex-wrap max-sm:gap-[13px] max-sm:p-[14px]"
+      className="mb-6 flex items-center gap-5 rounded-[23px] border border-line bg-surface py-4 pr-[22px] pl-4 max-sm:flex-wrap max-sm:gap-[13px] max-sm:p-[14px]"
     >
       <img
         src={event.image}
@@ -20,7 +20,7 @@ export default function EventStrip({ event }: { event: CultEvent }) {
         <Eyebrow className="text-[9px] text-[#945026] max-sm:text-[8px]">
           {categories[event.category].label} • {event.shortTitle ?? event.title}
         </Eyebrow>
-        <h2 className="mb-[5px] mt-[3px] text-[20px] max-sm:text-[16px]">{event.title}</h2>
+        <h2 className="mt-[3px] mb-[5px] text-[20px] max-sm:text-[16px]">{event.title}</h2>
         <p className="text-[11px] text-muted">
           {event.schedule} • {event.venue}
         </p>

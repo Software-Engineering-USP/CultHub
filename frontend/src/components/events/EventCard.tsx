@@ -15,7 +15,12 @@ interface EventCardProps {
   priority?: boolean
 }
 
-export default function EventCard({ event, icons = false, compact = false, priority = false }: EventCardProps) {
+export default function EventCard({
+  event,
+  icons = false,
+  compact = false,
+  priority = false,
+}: EventCardProps) {
   const category = categories[event.category]
   const href = event.details ? `/eventos/${event.id}` : null
   const shortName = event.shortTitle ?? event.title
@@ -41,7 +46,9 @@ export default function EventCard({ event, icons = false, compact = false, prior
         ) : (
           image
         )}
-        <CategoryBadge className="absolute left-[14px] top-[14px] shadow-badge">{category.label}</CategoryBadge>
+        <CategoryBadge className="absolute top-[14px] left-[14px] shadow-badge">
+          {category.label}
+        </CategoryBadge>
       </div>
 
       <div className={compact ? 'p-5' : 'p-[22px] max-lg:p-[19px] max-sm:p-[22px]'}>
@@ -54,7 +61,9 @@ export default function EventCard({ event, icons = false, compact = false, prior
             event.title
           )}
         </h3>
-        <p className="mb-[18px] min-h-[63px] text-[13px] leading-[1.65] max-sm:min-h-0">{event.description}</p>
+        <p className="mb-[18px] min-h-[63px] text-[13px] leading-[1.65] max-sm:min-h-0">
+          {event.description}
+        </p>
 
         <div className="grid gap-[7px] text-[12px]">
           {icons ? (

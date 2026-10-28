@@ -116,11 +116,11 @@ export default function Origin() {
                       type="radio"
                       value={route.id}
                       defaultChecked={route.id === 'carro'}
-                      className="peer absolute left-[10px] top-3 mt-[2px] h-[13px] w-[13px] accent-maroon"
+                      className="peer absolute top-3 left-[10px] mt-[2px] h-[13px] w-[13px] accent-maroon"
                     />
                     <label
                       htmlFor={route.id}
-                      className={`block rounded-[10px] border border-line bg-surface py-[10px] pl-7 pr-2 text-center text-[10px] max-md:text-[12px] max-sm:text-[10px] peer-checked:border-[#c1884f] peer-checked:bg-[#ffe4bd] peer-checked:font-bold peer-checked:text-maroon ${peerFocusRing}`}
+                      className={`block rounded-[10px] border border-line bg-surface py-[10px] pr-2 pl-7 text-center text-[10px] peer-checked:border-[#c1884f] peer-checked:bg-[#ffe4bd] peer-checked:font-bold peer-checked:text-maroon max-md:text-[12px] max-sm:text-[10px] ${peerFocusRing}`}
                     >
                       {route.label}
                     </label>
@@ -129,7 +129,7 @@ export default function Origin() {
               </div>
             </fieldset>
 
-            <DemoNote id="transporte-aviso" size="xs" className="mb-[14px] mt-[10px]">
+            <DemoNote id="transporte-aviso" size="xs" className="mt-[10px] mb-[14px]">
               A escolha é apenas visual e não altera o mapa.
             </DemoNote>
 
@@ -139,8 +139,8 @@ export default function Origin() {
             <DemoNote id="planejamento-aviso" size="xs" className="mt-[10px]">
               Defina a partida para habilitar o planejamento.
               <br />
-              Nesta versão estática, o planejamento permanece desativado mesmo após preencher o campo.
-              Nenhum endereço é enviado.
+              Nesta versão estática, o planejamento permanece desativado mesmo após preencher o campo. Nenhum
+              endereço é enviado.
             </DemoNote>
           </form>
 

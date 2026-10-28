@@ -15,7 +15,14 @@ export function BrandMark({ className }: IconProps) {
 
 export function SearchIcon({ className }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+      className={className}
+    >
       <circle cx="10.5" cy="10.5" r="6.5" />
       <path d="m16 16 5 5" />
     </svg>
@@ -24,7 +31,14 @@ export function SearchIcon({ className }: IconProps) {
 
 export function FiltersIcon({ className }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+      className={className}
+    >
       <path d="M4 7h16M4 17h16" />
       <circle cx="9" cy="7" r="2.5" fill="#fffdf9" />
       <circle cx="15" cy="17" r="2.5" fill="#fffdf9" />
@@ -34,7 +48,14 @@ export function FiltersIcon({ className }: IconProps) {
 
 export function PinIcon({ className = 'h-[18px] w-4 shrink-0' }: IconProps) {
   return (
-    <svg viewBox="0 0 20 22" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" className={className}>
+    <svg
+      viewBox="0 0 20 22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+      className={className}
+    >
       <path d="M10 20S3 12 3 8a7 7 0 0 1 14 0c0 4-7 12-7 12Z" />
       <circle cx="10" cy="8" r="2" />
     </svg>
@@ -43,7 +64,14 @@ export function PinIcon({ className = 'h-[18px] w-4 shrink-0' }: IconProps) {
 
 export function CalendarIcon({ className = 'h-[18px] w-4 shrink-0' }: IconProps) {
   return (
-    <svg viewBox="0 0 20 22" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" className={className}>
+    <svg
+      viewBox="0 0 20 22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+      className={className}
+    >
       <rect x="2" y="4" width="16" height="15" rx="2" />
       <path d="M6 1v6M14 1v6M2 10h16" />
     </svg>
@@ -52,7 +80,14 @@ export function CalendarIcon({ className = 'h-[18px] w-4 shrink-0' }: IconProps)
 
 export function LocateIcon({ className }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+      className={className}
+    >
       <circle cx="12" cy="12" r="7" />
       <circle cx="12" cy="12" r="2.5" />
       <path d="M12 1v4m0 14v4M1 12h4m14 0h4" />
