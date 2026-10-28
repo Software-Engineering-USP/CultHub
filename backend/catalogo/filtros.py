@@ -1,12 +1,14 @@
+import unicodedata
 from datetime import datetime
 from math import isfinite
 
-from django.db.models import FloatField, Q, Value
+from django.db.models import CharField, F, FloatField, Func, Q, Value
 from django.db.models.functions import (
     ACos,
     Cast,
     Coalesce,
     Cos,
+    Greatest,
     Least,
     Radians,
     Sin,
@@ -30,14 +32,31 @@ def visiveis(queryset, agora):
     )
 
 
+def normalizar_texto(texto):
+    """Minúsculas (casefold) e sem acentos, para busca sem caixa."""
+    decomposto = unicodedata.normalize("NFKD", texto.casefold())
+    return "".join(c for c in decomposto if not unicodedata.combining(c))
+
+
+class Normalizar(Func):
+    """Chama a função SQL `normalizar` (registrada em `apps.py`)."""
+
+    function = "normalizar"
+    output_field = CharField()
+
+
 def _busca(queryset, texto):
-    texto = texto.strip()
+    texto = normalizar_texto(texto.strip())
     if not texto:
         return queryset
-    return queryset.filter(
-        Q(titulo__icontains=texto)
-        | Q(descricao__icontains=texto)
-        | Q(local__nome__icontains=texto)
+    return queryset.annotate(
+        titulo_norm=Normalizar(F("titulo")),
+        descricao_norm=Normalizar(F("descricao")),
+        local_nome_norm=Normalizar(F("local__nome")),
+    ).filter(
+        Q(titulo_norm__contains=texto)
+        | Q(descricao_norm__contains=texto)
+        | Q(local_nome_norm__contains=texto)
     )
 
 
@@ -126,8 +145,8 @@ def _distancia(queryset, params):
 
     latitude = Cast("local__latitude", FloatField())
     longitude = Cast("local__longitude", FloatField())
-    # Haversine (lei esférica dos cossenos); Least evita NaN no ACos
-    # quando o ponto coincide e o arredondamento passa de 1.
+    # Haversine (lei esférica dos cossenos); Least/Greatest mantêm o
+    # argumento do ACos em [-1, 1] (o arredondamento pode ultrapassar).
     cosseno = Cos(Radians(Value(lat))) * Cos(Radians(latitude)) * Cos(
         Radians(longitude) - Radians(Value(lng))
     ) + Sin(Radians(Value(lat))) * Sin(Radians(latitude))
@@ -137,14 +156,21 @@ def _distancia(queryset, params):
         )
         .annotate(
             distancia_km=RAIO_DA_TERRA_KM
-            * ACos(Least(cosseno, Value(1.0)), output_field=FloatField())
+            * ACos(
+                Greatest(Least(cosseno, Value(1.0)), Value(-1.0)),
+                output_field=FloatField(),
+            )
         )
         .filter(distancia_km__lte=raio)
     )
 
 
 def aplicar_filtros(queryset, params):
-    """Aplica os filtros da querystring (combinados com E)."""
+    """Aplica os filtros da querystring (combinados com E).
+
+    Parâmetro vazio (ou só espaços) equivale a ausente.
+    """
+    params = {k: v for k, v in params.items() if v.strip()}
     if "q" in params:
         queryset = _busca(queryset, params["q"])
     if "categorias" in params:

@@ -1,5 +1,6 @@
 from datetime import UTC, date, datetime, time
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
@@ -65,3 +66,31 @@ class UnicidadeExternaTest(TestCase):
                 titulo=titulo, data_inicio=date(2026, 11, 20)
             )
         self.assertEqual(Evento.objects.count(), 2)
+
+
+class EventoCleanTest(TestCase):
+    def evento(self, **campos):
+        campos.setdefault("titulo", "X")
+        campos.setdefault("data_inicio", date(2026, 11, 1))
+        return Evento(**campos)
+
+    def erros(self, evento):
+        with self.assertRaises(ValidationError) as ctx:
+            evento.full_clean()
+        return ctx.exception.message_dict
+
+    def test_valido(self):
+        self.evento(
+            data_fim=date(2026, 11, 2), hora_fim=time(10, 0)
+        ).full_clean()
+
+    def test_fuso_invalido(self):
+        self.assertIn("fuso", self.erros(self.evento(fuso="Marte/Olimpo")))
+
+    def test_hora_fim_sem_data_fim(self):
+        erros = self.erros(self.evento(hora_fim=time(10, 0)))
+        self.assertIn("data_fim", erros)
+
+    def test_data_fim_antes_do_inicio(self):
+        erros = self.erros(self.evento(data_fim=date(2026, 10, 31)))
+        self.assertIn("data_fim", erros)

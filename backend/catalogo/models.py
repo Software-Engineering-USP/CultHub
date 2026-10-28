@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -120,6 +121,26 @@ class Evento(models.Model):
 
     def __str__(self):
         return self.titulo
+
+    def clean(self):
+        super().clean()
+        erros = {}
+        try:
+            ZoneInfo(self.fuso)
+        except (ZoneInfoNotFoundError, ValueError, TypeError):
+            erros["fuso"] = "Fuso horário inválido."
+        if self.data_fim is None and self.hora_fim is not None:
+            erros["data_fim"] = "Informe a data de fim junto com a hora."
+        elif (
+            self.data_fim is not None
+            and self.data_inicio is not None
+            and self.data_fim < self.data_inicio
+        ):
+            erros["data_fim"] = (
+                "A data de fim não pode ser anterior ao início."
+            )
+        if erros:
+            raise ValidationError(erros)
 
     def _momento(self, dia, hora):
         if dia is None or hora is None:

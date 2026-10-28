@@ -16,8 +16,8 @@ class CategoriaSerializer(serializers.ModelSerializer):
 
 
 class LocalSerializer(serializers.ModelSerializer):
-    latitude = serializers.FloatField()
-    longitude = serializers.FloatField()
+    latitude = serializers.FloatField(allow_null=True)
+    longitude = serializers.FloatField(allow_null=True)
 
     class Meta:
         model = Local
@@ -32,8 +32,8 @@ class LocalSerializer(serializers.ModelSerializer):
 
 
 class FaixaPrecoSerializer(serializers.ModelSerializer):
-    minimo = serializers.FloatField()
-    maximo = serializers.FloatField()
+    minimo = serializers.FloatField(allow_null=True)
+    maximo = serializers.FloatField(allow_null=True)
 
     class Meta:
         model = FaixaPreco
@@ -59,7 +59,7 @@ class EventoSerializer(serializers.ModelSerializer):
     categorias = serializers.SlugRelatedField(
         many=True, read_only=True, slug_field="codigo"
     )
-    local = LocalSerializer(read_only=True)
+    local = LocalSerializer(read_only=True, allow_null=True)
     faixas_preco = FaixaPrecoSerializer(many=True, read_only=True)
     imagens = serializers.SerializerMethodField()
     distancia_km = serializers.SerializerMethodField()
@@ -90,7 +90,11 @@ class EventoSerializer(serializers.ModelSerializer):
 
     def get_imagens(self, obj) -> list[dict]:
         # `all()` usa o prefetch; ordena em Python para não refazer a query.
-        imagens = sorted(obj.imagens.all(), key=_chave_imagem)
+        imagens = list(obj.imagens.all())
+        # `fallback` só entra se não houver outra imagem.
+        if any(not i.fallback for i in imagens):
+            imagens = [i for i in imagens if not i.fallback]
+        imagens.sort(key=_chave_imagem)
         return ImagemSerializer(imagens, many=True).data
 
     def get_distancia_km(self, obj) -> float | None:

@@ -170,7 +170,23 @@ class EventoListagemTest(APITestCase):
         ]
         self.assertEqual(
             [i["url"].rsplit("/", 1)[1] for i in imagens],
-            ["grande", "pequena", "nulo", "fb"],
+            ["grande", "pequena", "nulo"],
+        )
+
+    def test_imagens_so_fallback_mantem_fallback(self):
+        evento = criar_evento()
+        for url, largura in [("fb1", 100), ("fb2", 500)]:
+            ImagemEvento.objects.create(
+                evento=evento,
+                url=f"https://x.test/{url}",
+                largura=largura,
+                fallback=True,
+            )
+        imagens = self.client.get("/api/eventos/").json()["results"][0][
+            "imagens"
+        ]
+        self.assertEqual(
+            [i["url"].rsplit("/", 1)[1] for i in imagens], ["fb2", "fb1"]
         )
 
     def test_schema_tem_eventos(self):

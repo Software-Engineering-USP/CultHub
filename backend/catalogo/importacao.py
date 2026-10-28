@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, time
 from decimal import Decimal
+from zoneinfo import ZoneInfoNotFoundError
 
 from django.db import transaction
 
@@ -28,6 +29,7 @@ class ResumoImportacao:
     removidos: int = 0
     ignorados: int = 0
     sem_categoria: list[str] = field(default_factory=list)
+    com_erro: list[str] = field(default_factory=list)
 
 
 def _venue(dados):
@@ -137,7 +139,16 @@ def importar(eventos, agora):
         if eh_evento_de_teste(dados) or cancelado == "cancelled":
             resumo.ignorados += 1
             continue
-        evento, criado, tem_categoria = _salvar_evento(dados, agora)
+        try:
+            with transaction.atomic():
+                evento, criado, tem_categoria = _salvar_evento(dados, agora)
+        except (KeyError, ValueError, TypeError, ZoneInfoNotFoundError):
+            # Evento malformado: não derruba a importação inteira.
+            resumo.ignorados += 1
+            resumo.com_erro.append(
+                f"{dados.get('id', '?')}: {dados.get('name', '?')}"
+            )
+            continue
         vistos.add(evento.id_externo)
         if criado:
             resumo.criados += 1

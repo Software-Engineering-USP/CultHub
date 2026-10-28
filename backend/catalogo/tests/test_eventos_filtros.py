@@ -36,6 +36,30 @@ class FiltrosBuscaTest(APITestCase):
         criar_evento(titulo="B")
         self.assertEqual(self.titulos(q="municipal"), ["A"])
 
+    def test_q_sem_caixa_e_sem_acento(self):
+        criar_evento(titulo="Festival em SÃO PAULO")
+        criar_evento(titulo="EXPOSIÇÃO de arte")
+        criar_evento(titulo="Outro")
+        self.assertEqual(
+            self.titulos(q="são paulo"), ["Festival em SÃO PAULO"]
+        )
+        self.assertEqual(
+            self.titulos(q="SÃO PAULO"), ["Festival em SÃO PAULO"]
+        )
+        self.assertEqual(self.titulos(q="exposicao"), ["EXPOSIÇÃO de arte"])
+
+    def test_q_sem_caixa_na_descricao_e_no_local(self):
+        local = Local.objects.create(nome="TEATRO ÁGUA", estado="SP")
+        criar_evento(titulo="A", descricao="SHOW DE SAMBÃO")
+        criar_evento(titulo="B", local=local)
+        self.assertEqual(self.titulos(q="sambao"), ["A"])
+        self.assertEqual(self.titulos(q="agua"), ["B"])
+
+    def test_q_com_curinga_do_like_e_literal(self):
+        criar_evento(titulo="100% bom")
+        criar_evento(titulo="Outro")
+        self.assertEqual(self.titulos(q="%"), ["100% bom"])
+
     def test_q_em_branco_sem_filtro(self):
         criar_evento(titulo="A")
         criar_evento(titulo="B")
@@ -79,6 +103,11 @@ class FiltrosBuscaTest(APITestCase):
         resposta = self.buscar(preco="caro")
         self.assertEqual(resposta.status_code, 400)
         self.assertIn("preco", resposta.json())
+
+    def test_preco_vazio_sem_filtro(self):
+        criar_evento(titulo="A", gratuito=True)
+        criar_evento(titulo="B")
+        self.assertEqual(self.titulos(preco=""), ["A", "B"])
 
     def test_filtros_combinados_com_e(self):
         criar_evento(titulo="Jazz Free", categorias=["music"], gratuito=True)
@@ -140,6 +169,10 @@ class FiltroPeriodoTest(APITestCase):
             ),
             ["Festival"],
         )
+
+    def test_de_e_ate_vazios_sem_filtro(self):
+        resposta = self.client.get("/api/eventos/", {"de": "", "ate": ""})
+        self.assertEqual(resposta.status_code, 200)
 
     def test_data_invalida_400(self):
         resposta = self.client.get("/api/eventos/", {"de": "2026-13-01"})
@@ -220,6 +253,17 @@ class FiltroDistanciaTest(APITestCase):
         corpo = resposta.json()
         self.assertIn("non_field_errors", corpo)
         self.assertIn("raio", corpo["non_field_errors"][0])
+
+    def test_trio_vazio_sem_filtro(self):
+        self.criar_locais()
+        resposta = self.buscar(lat="", lng="", raio="")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(len(resposta.json()["results"]), 4)
+
+    def test_parcialmente_vazio_400(self):
+        resposta = self.buscar(lat="-23.5", lng="", raio="")
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("non_field_errors", resposta.json())
 
     def test_valores_invalidos_400(self):
         casos = [

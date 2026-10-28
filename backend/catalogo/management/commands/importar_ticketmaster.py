@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from catalogo.importacao import importar
+from catalogo.models import Evento, Provedor
 from catalogo.ticketmaster import ErroTicketmaster, buscar_todos
 
 
@@ -23,6 +24,16 @@ class Command(BaseCommand):
             eventos = buscar_todos(inicio)
         except ErroTicketmaster as erro:
             raise CommandError(str(erro)) from None
+        if (
+            not eventos
+            and Evento.objects.filter(
+                provedor=Provedor.TICKETMASTER, removido_em__isnull=True
+            ).exists()
+        ):
+            raise CommandError(
+                "O Ticketmaster não retornou nenhum evento; nada foi "
+                "alterado para não remover o catálogo inteiro."
+            )
         resumo = importar(eventos, timezone.now())
         self.stdout.write(f"criados: {resumo.criados}")
         self.stdout.write(f"atualizados: {resumo.atualizados}")
@@ -31,3 +42,7 @@ class Command(BaseCommand):
         self.stdout.write(f"sem categoria: {len(resumo.sem_categoria)}")
         for titulo in resumo.sem_categoria:
             self.stdout.write(f"  - {titulo}")
+        if resumo.com_erro:
+            self.stdout.write(f"com erro: {len(resumo.com_erro)}")
+            for item in resumo.com_erro:
+                self.stdout.write(f"  - {item}")

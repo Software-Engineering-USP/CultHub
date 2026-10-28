@@ -159,6 +159,57 @@ class ImportarTest(TestCase):
         importar([bts], AGORA)
         self.assertIsNone(tm(titulo="BTS WORLD TOUR ARIRANG").local)
 
+    def test_evento_sem_data_local_e_ignorado_e_resto_importa(self):
+        eventos = copy.deepcopy(eventos_da_fixture())
+        ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        del ruim["dates"]["start"]["localDate"]
+        resumo = importar(eventos, AGORA)
+        self.assertEqual(resumo.criados, 8)
+        self.assertEqual(resumo.ignorados, 3)
+        self.assertEqual(len(resumo.com_erro), 1)
+        self.assertIn("BTS WORLD TOUR ARIRANG", resumo.com_erro[0])
+        self.assertIn(ruim["id"], resumo.com_erro[0])
+        self.assertFalse(
+            Evento.objects.filter(titulo="BTS WORLD TOUR ARIRANG").exists()
+        )
+
+    def test_evento_com_erro_que_existia_e_removido(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = copy.deepcopy(eventos_da_fixture())
+        ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        del ruim["dates"]["start"]["localDate"]
+        importar(eventos, DEPOIS)
+        self.assertEqual(
+            tm(titulo="BTS WORLD TOUR ARIRANG").removido_em, DEPOIS
+        )
+
+    def test_erro_nao_deixa_gravacao_parcial(self):
+        eventos = copy.deepcopy(eventos_da_fixture())
+        ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        ruim["images"] = [{"ratio": "16_9"}]
+        importar(eventos, AGORA)
+        self.assertFalse(
+            Evento.objects.filter(titulo="BTS WORLD TOUR ARIRANG").exists()
+        )
+
+    def test_fuso_desconhecido_e_ignorado(self):
+        eventos = copy.deepcopy(eventos_da_fixture())
+        ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        ruim["dates"]["timezone"] = "Marte/Olimpo"
+        resumo = importar(eventos, AGORA)
+        self.assertEqual(len(resumo.com_erro), 1)
+        self.assertEqual(resumo.criados, 8)
+
+    def test_venue_sem_location_importa_sem_coordenadas(self):
+        eventos = copy.deepcopy(eventos_da_fixture())
+        bts = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        del bts["_embedded"]["venues"][0]["location"]
+        resumo = importar([bts], AGORA)
+        self.assertEqual(resumo.criados, 1)
+        local = tm(titulo="BTS WORLD TOUR ARIRANG").local
+        self.assertIsNone(local.latitude)
+        self.assertIsNone(local.longitude)
+
 
 def _pagina(numero, total_paginas, eventos):
     return {
@@ -204,6 +255,33 @@ class ComandoTest(TestCase):
         self.assertEqual(Evento.objects.count(), 1)
         existente.refresh_from_db()
         self.assertIsNone(existente.removido_em)
+
+    @patch("catalogo.ticketmaster.time.sleep")
+    def test_zero_eventos_nao_remove_nada(self, _sleep):
+        existente = Evento.objects.create(
+            provedor=Provedor.TICKETMASTER,
+            id_externo="velho",
+            titulo="Velho",
+            data_inicio=AGORA.date(),
+        )
+        with (
+            patch(
+                "catalogo.ticketmaster.buscar_pagina",
+                return_value=_pagina(0, 1, []),
+            ),
+            self.assertRaisesMessage(CommandError, "nenhum evento"),
+        ):
+            call_command("importar_ticketmaster", stdout=StringIO())
+        existente.refresh_from_db()
+        self.assertIsNone(existente.removido_em)
+
+    @patch("catalogo.ticketmaster.time.sleep")
+    def test_zero_eventos_sem_ativos_nao_falha(self, _sleep):
+        with patch(
+            "catalogo.ticketmaster.buscar_pagina",
+            return_value=_pagina(0, 1, []),
+        ):
+            call_command("importar_ticketmaster", stdout=StringIO())
 
     @patch("catalogo.ticketmaster.time.sleep")
     def test_sucesso_imprime_resumo(self, _sleep):
