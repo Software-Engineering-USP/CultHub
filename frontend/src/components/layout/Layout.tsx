@@ -15,7 +15,7 @@ export default function Layout() {
     <>
       <a
         href="#conteudo"
-        className="fixed left-3 top-2 z-[100] -translate-y-[160%] rounded-[10px] bg-maroon px-[18px] py-[10px] text-white focus:translate-y-0"
+        className="fixed left-3 top-2 z-100 translate-y-[-160%] rounded-[10px] bg-maroon px-[18px] py-[10px] text-white focus:translate-y-0"
       >
         Pular para o conteúdo
       </a>

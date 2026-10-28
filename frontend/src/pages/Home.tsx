@@ -76,7 +76,7 @@ export default function Home() {
           tabIndex={0}
           role="region"
           aria-label={`${featured.length} experiências em destaque, role horizontalmente para explorar`}
-          className="grid auto-cols-[350px] grid-flow-col snap-x snap-proximity gap-5 overflow-x-auto px-[2px] pb-4 [scrollbar-color:#c2a789_transparent] [scrollbar-width:thin] max-sm:auto-cols-[min(310px,85vw)] max-sm:gap-[15px] [&>*]:snap-start"
+          className="grid auto-cols-[350px] grid-flow-col snap-x snap-proximity gap-5 overflow-x-auto px-[2px] pb-4 [scrollbar-color:#c2a789_transparent] scrollbar-thin max-sm:auto-cols-[min(310px,85vw)] max-sm:gap-[15px] *:snap-start"
         >
           {featured.map((event, index) => (
             <EventCard key={event.id} event={event} priority={index === 0} />
