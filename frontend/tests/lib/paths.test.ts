@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { paths } from './paths'
+import { paths } from '@/lib/paths'
 
 describe('paths', () => {
   it('monta os links das páginas de evento', () => {

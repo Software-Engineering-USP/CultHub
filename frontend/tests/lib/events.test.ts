@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { events, findEvent } from '@/data/events'
-import { eventPath, shortName } from './events'
+import { eventPath, shortName } from '@/lib/events'
 
 const jazz = findEvent('sp-jazz-blues-festival')!
 const semDetalhes = findEvent('derby-paulista')!

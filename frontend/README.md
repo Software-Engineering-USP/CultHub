@@ -34,14 +34,15 @@ src/
 ├── pages/           uma por rota
 ├── data/            dados de exemplo, separados por assunto (vão virar chamadas à API)
 ├── types/           tipos compartilhados (CultEvent, User, CategoryId...)
-├── hooks/           useDocumentTitle, useEvent
+├── hooks/           leitura de dados (useEvents, useCurrentUser, useComments...) e useDocumentTitle
 ├── lib/             rotas (paths), cn() e outros helpers
-├── services/        api.ts: chamadas ao backend (por enquanto só aparecem no console)
-└── test/            configuração dos testes e o helper renderWithRouter
+└── services/        api.ts: chamadas ao backend (por enquanto só aparecem no console)
+
+tests/               testes, com as mesmas pastas do src/ (+ setup.ts e o helper render.tsx)
 ```
 
-Nos imports, use `@/` (que aponta para `src/`). O `./` fica só para arquivos da mesma pasta. A ordem dos
-imports o Prettier resolve sozinho.
+Nos imports, use `@/` (que aponta para `src/`) e `@tests/` (para `tests/`). O `./` fica só para arquivos
+da mesma pasta. A ordem dos imports o Prettier resolve sozinho.
 
 ## Rotas
 
@@ -82,6 +83,6 @@ O layout é pensado primeiro para desktop, então use `max-lg:` (até 1150px), `
 
 ## Testes
 
-Usamos Vitest + Testing Library. Cada teste fica ao lado do arquivo que ele testa (`paths.ts` →
-`paths.test.ts`). Se o componente tiver links ou depender da rota, renderize com `renderWithRouter`
-(`@/test/render`).
+Usamos Vitest + Testing Library. Os testes ficam em `tests/`, na mesma pasta que o arquivo testado teria no
+`src/` (`src/lib/paths.ts` → `tests/lib/paths.test.ts`). Se o componente tiver links ou depender da rota,
+renderize com `renderWithRouter` (`@tests/render`).
