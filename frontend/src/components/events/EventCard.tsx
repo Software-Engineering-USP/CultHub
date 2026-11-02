@@ -4,6 +4,7 @@ import { categories } from '../../lib/categories'
 import { cn } from '@/lib/utils'
 import CategoryBadge from '../common/CategoryBadge'
 import { CalendarIcon, PinIcon } from '../common/Icons'
+import { eventPath } from '@/lib/events'
 
 interface EventCardProps {
   event: CultEvent
@@ -22,7 +23,7 @@ export default function EventCard({
   priority = false,
 }: EventCardProps) {
   const category = categories[event.category]
-  const href = event.details ? `/eventos/${event.id}` : null
+  const href = eventPath(event)
   const shortName = event.shortTitle ?? event.title
 
   const image = (

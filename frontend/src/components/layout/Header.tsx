@@ -4,16 +4,17 @@ import { categories, categoryOrder } from '../../lib/categories'
 import { avatarClass } from '../../lib/classes'
 import CategoryDot from '../common/CategoryDot'
 import { BrandMark, FiltersIcon, SearchIcon } from '../common/Icons'
+import { paths } from '@/lib/paths'
 
 export default function Header() {
   const { pathname } = useLocation()
-  const onAccount = pathname === '/conta'
-  const onSignIn = pathname === '/entrar'
+  const onAccount = pathname === paths.account
+  const onSignIn = pathname === paths.signIn
 
   return (
     <header className="relative z-5 mt-8 flex min-h-20 items-center gap-8 rounded-[44px] border border-line/60 bg-surface py-[14px] pr-6 pl-[30px] shadow-soft max-lg:gap-[22px] max-md:flex-wrap max-md:gap-5 max-md:rounded-[30px] max-md:px-[22px] max-md:py-4 max-sm:mt-[18px] max-sm:gap-4 max-sm:rounded-[26px] max-sm:px-[17px] max-sm:py-[15px]">
       <Link
-        to="/"
+        to={paths.home}
         aria-label="CultHub São Paulo, início"
         className="inline-flex shrink-0 items-center gap-[9px] text-maroon no-underline"
       >
@@ -74,12 +75,12 @@ export default function Header() {
         </details>
 
         {onSignIn ? (
-          <NavLink to="/entrar" className="font-bold text-maroon no-underline">
+          <NavLink to={paths.signIn} className="font-bold text-maroon no-underline">
             Entrar
           </NavLink>
         ) : (
           <NavLink
-            to="/conta"
+            to={paths.account}
             aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de exemplo de ${currentUser.name}`}
             className={avatarClass('md')}
           >

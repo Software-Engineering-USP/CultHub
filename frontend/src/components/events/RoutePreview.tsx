@@ -4,6 +4,7 @@ import { ButtonLink } from '../common/Button'
 import DemoNote from '../common/DemoNote'
 import Eyebrow from '../common/Eyebrow'
 import Surface from '../common/Surface'
+import { paths } from '@/lib/paths'
 
 /** Resumo de rotas na página do evento. */
 export default function RoutePreview({ event }: { event: CultEvent }) {
@@ -37,7 +38,7 @@ export default function RoutePreview({ event }: { event: CultEvent }) {
         ))}
       </div>
 
-      <ButtonLink to={`/eventos/${event.id}/rota`} block aria-label="Ver rota completa de exemplo">
+      <ButtonLink to={paths.eventRoute(event.id)} block aria-label="Ver rota completa de exemplo">
         Ver rota completa <span aria-hidden="true">→</span>
       </ButtonLink>
       <DemoNote size="sm" className="mt-2">

@@ -14,6 +14,7 @@ import { demoRoutes } from '@/data/routes'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEvent } from '../hooks/useEvent'
 import { cn } from '@/lib/utils'
+import { paths } from '@/lib/paths'
 
 const dotBase =
   "relative pl-[22px] before:absolute before:left-0 before:top-2 before:h-2 before:w-2 before:rounded-full before:border-2 before:border-maroon before:content-['']"
@@ -26,7 +27,6 @@ export default function RoutePlan() {
     return <NotFound message="Não encontramos o evento para exibir a rota." />
   }
 
-  const base = `/eventos/${event.id}`
   const selected = demoRoutes[0]
   const itinerary = [
     { title: 'Parta da origem fictícia', detail: 'Ponto indicado no mapa.' },
@@ -36,11 +36,11 @@ export default function RoutePlan() {
 
   return (
     <>
-      <BackLink to={base}>← Voltar para o evento</BackLink>
+      <BackLink to={paths.event(event.id)}>← Voltar para o evento</BackLink>
       <Breadcrumbs
         items={[
-          { label: 'Explorar', to: '/' },
-          { label: event.shortTitle ?? event.title, to: base },
+          { label: 'Explorar', to: paths.home },
+          { label: event.shortTitle ?? event.title, to: paths.event(event.id) },
           { label: 'Como chegar' },
         ]}
       />
@@ -75,7 +75,10 @@ export default function RoutePlan() {
 
           <div className="mb-[22px] grid gap-4">
             <div className={dotBase}>
-              <Link to={`${base}/origem`} className="float-right text-[10px] text-maroon underline">
+              <Link
+                to={paths.eventOrigin(event.id)}
+                className="float-right text-[10px] text-maroon underline"
+              >
                 Alterar
               </Link>
               <small className="block text-[10px] text-muted-foreground">Partida</small>
@@ -149,7 +152,8 @@ export default function RoutePlan() {
 
           <DemoNote size="xs" className="mt-[18px] border-t border-line pt-[15px]">
             Origem, distâncias e tempos são fictícios. Não há consulta de trânsito, cálculo de percurso ou
-            compartilhamento de localização. <Link to={`${base}/origem`}>Voltar à definição de origem</Link>.
+            compartilhamento de localização.{' '}
+            <Link to={paths.eventOrigin(event.id)}>Voltar à definição de origem</Link>.
           </DemoNote>
         </Surface>
 

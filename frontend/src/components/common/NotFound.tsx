@@ -1,5 +1,6 @@
 import { ButtonLink } from './Button'
 import Surface from './Surface'
+import { paths } from '@/lib/paths'
 
 export default function NotFound({ message }: { message?: string }) {
   return (
@@ -10,7 +11,7 @@ export default function NotFound({ message }: { message?: string }) {
       <p className="mt-3 text-muted-foreground">
         {message ?? 'O endereço acessado não existe nesta demonstração.'}
       </p>
-      <ButtonLink to="/" className="mt-6">
+      <ButtonLink to={paths.home} className="mt-6">
         Voltar para explorar
       </ButtonLink>
     </Surface>

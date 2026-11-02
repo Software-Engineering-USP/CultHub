@@ -18,6 +18,7 @@ import { categories } from '../lib/categories'
 import type { CategoryId } from '@/types'
 import { peerFocusRing } from '../lib/classes'
 import { preventSubmit } from '../lib/forms'
+import { paths } from '@/lib/paths'
 
 // Ordem das categorias na tela de preferências
 const preferenceOrder: CategoryId[] = ['music', 'theater', 'art', 'festival', 'sport']
@@ -47,7 +48,7 @@ export default function Account() {
         title="Minha conta"
         description="Seu jeito de viver a cultura de São Paulo."
       >
-        <ButtonLink to="/" variant="secondary">
+        <ButtonLink to={paths.home} variant="secondary">
           ← Voltar ao mapa
         </ButtonLink>
       </SectionHeading>
@@ -85,7 +86,7 @@ export default function Account() {
               Meus comentários
             </a>
             <Link
-              to="/entrar"
+              to={paths.signIn}
               className={`${menuLink} mt-3 rounded-none border-t border-line pt-5 pb-[11px] text-maroon max-md:m-0 max-md:rounded-[10px] max-md:border-0 max-md:py-[11px]`}
             >
               Sair da conta <small>(demonstração)</small>
@@ -220,7 +221,7 @@ export default function Account() {
             {myComment && commentEvent && (
               <article className="border-b border-line py-[22px]">
                 <Link
-                  to={`/eventos/${commentEvent.id}`}
+                  to={paths.event(commentEvent.id)}
                   className="mb-[10px] block text-[13px] font-bold text-maroon underline"
                 >
                   {commentEvent.title} ↗

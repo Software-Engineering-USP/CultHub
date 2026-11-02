@@ -7,17 +7,18 @@ import NotFoundPage from './pages/NotFoundPage'
 import Origin from './pages/Origin'
 import RoutePlan from './pages/RoutePlan'
 import SignIn from './pages/SignIn'
+import { routes } from '@/lib/paths'
 
 export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="eventos/:id" element={<EventDetail />} />
-        <Route path="eventos/:id/origem" element={<Origin />} />
-        <Route path="eventos/:id/rota" element={<RoutePlan />} />
-        <Route path="entrar" element={<SignIn />} />
-        <Route path="conta" element={<Account />} />
+        <Route path={routes.event} element={<EventDetail />} />
+        <Route path={routes.eventOrigin} element={<Origin />} />
+        <Route path={routes.eventRoute} element={<RoutePlan />} />
+        <Route path={routes.signIn} element={<SignIn />} />
+        <Route path={routes.account} element={<Account />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

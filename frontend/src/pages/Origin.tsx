@@ -17,6 +17,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEvent } from '../hooks/useEvent'
 import { peerFocusRing } from '../lib/classes'
 import { preventSubmit } from '../lib/forms'
+import { paths } from '@/lib/paths'
 
 export default function Origin() {
   const event = useEvent()
@@ -26,15 +27,13 @@ export default function Origin() {
     return <NotFound message="Não encontramos o evento para planejar a visita." />
   }
 
-  const base = `/eventos/${event.id}`
-
   return (
     <>
-      <BackLink to={base}>← Voltar para o evento</BackLink>
+      <BackLink to={paths.event(event.id)}>← Voltar para o evento</BackLink>
       <Breadcrumbs
         items={[
-          { label: 'Explorar', to: '/' },
-          { label: event.shortTitle ?? event.title, to: base },
+          { label: 'Explorar', to: paths.home },
+          { label: event.shortTitle ?? event.title, to: paths.event(event.id) },
           { label: 'Como chegar' },
         ]}
       />
@@ -144,7 +143,7 @@ export default function Origin() {
             </DemoNote>
           </form>
 
-          <TextLink to={`${base}/rota`} className="mt-4 block text-center">
+          <TextLink to={paths.eventRoute(event.id)} className="mt-4 block text-center">
             Ver rota de exemplo →
           </TextLink>
 

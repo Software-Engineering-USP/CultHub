@@ -10,6 +10,7 @@ import TextLink from '../components/common/TextLink'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { checkboxClass } from '../lib/classes'
 import { preventSubmit } from '../lib/forms'
+import { paths } from '@/lib/paths'
 
 const panelClass = 'p-7 max-lg:p-[22px]'
 
@@ -18,7 +19,7 @@ export default function SignIn() {
 
   return (
     <>
-      <BackLink to="/">← Continuar como visitante</BackLink>
+      <BackLink to={paths.home}>← Continuar como visitante</BackLink>
 
       <div className="mt-3 mb-[30px] max-sm:mt-1">
         <h1 className="max-w-[850px] max-md:text-[32px] max-sm:text-[30px]">
@@ -110,7 +111,7 @@ export default function SignIn() {
             </DemoNote>
           </form>
 
-          <TextLink to="/conta" className="mt-[22px] inline-block">
+          <TextLink to={paths.account} className="mt-[22px] inline-block">
             Ver perfil de exemplo →
           </TextLink>
           <DemoNote size="sm" className="mt-[14px] mb-6">
@@ -188,7 +189,7 @@ export default function SignIn() {
           <strong>Entre apenas quando quiser salvar ou comentar.</strong> Nesta demonstração, esses recursos
           estão desativados.
         </p>
-        <TextLink to="/">Voltar para explorar →</TextLink>
+        <TextLink to={paths.home}>Voltar para explorar →</TextLink>
       </Surface>
     </>
   )

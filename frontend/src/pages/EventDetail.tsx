@@ -20,6 +20,7 @@ import { useEvent } from '../hooks/useEvent'
 import { categories } from '../lib/categories'
 import { inputClass } from '../lib/classes'
 import { preventSubmit } from '../lib/forms'
+import { paths } from '@/lib/paths'
 
 export default function EventDetail() {
   const event = useEvent()
@@ -34,9 +35,9 @@ export default function EventDetail() {
 
   return (
     <>
-      <BackLink to="/">← Voltar para explorar</BackLink>
+      <BackLink to={paths.home}>← Voltar para explorar</BackLink>
       <Breadcrumbs
-        items={[{ label: 'Explorar', to: '/' }, { label: category.label }, { label: shortName }]}
+        items={[{ label: 'Explorar', to: paths.home }, { label: category.label }, { label: shortName }]}
       />
 
       <div className="relative mb-8 overflow-hidden rounded-[32px] bg-[#2b2522] after:pointer-events-none after:absolute after:inset-x-0 after:top-[55%] after:bottom-0 after:bg-linear-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-[22px]">
@@ -101,7 +102,7 @@ export default function EventDetail() {
                   O local aparece no mapa ilustrativo do CultHub. Consulte os canais oficiais do espaço para
                   endereço de acesso, acessibilidade e orientações de chegada.
                 </p>
-                <TextLink to={`/eventos/${event.id}/origem`}>Ver local no mapa →</TextLink>
+                <TextLink to={paths.eventOrigin(event.id)}>Ver local no mapa →</TextLink>
               </div>
             </Surface>
           </div>
@@ -128,7 +129,7 @@ export default function EventDetail() {
               </p>
             </div>
 
-            <ButtonLink to={`/eventos/${event.id}/origem`} block>
+            <ButtonLink to={paths.eventOrigin(event.id)} block>
               Planejar minha visita <span aria-hidden="true">→</span>
             </ButtonLink>
             <DemoNote className="mt-4">
