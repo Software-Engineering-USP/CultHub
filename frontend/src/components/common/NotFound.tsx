@@ -1,6 +1,6 @@
+import { paths } from '@/lib/paths'
 import { ButtonLink } from './Button'
 import Surface from './Surface'
-import { paths } from '@/lib/paths'
 
 export default function NotFound({ message }: { message?: string }) {
   return (

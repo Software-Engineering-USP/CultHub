@@ -1,6 +1,6 @@
-import type { ReactElement } from 'react'
 import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactElement } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 
 /** Renderiza dentro de um router em memória, na rota indicada. */

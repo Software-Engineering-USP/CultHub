@@ -1,6 +1,6 @@
+import Avatar from '@/components/common/Avatar'
+import TextButton from '@/components/common/TextButton'
 import type { EventComment } from '@/types'
-import Avatar from '../common/Avatar'
-import TextButton from '../common/TextButton'
 
 export default function CommentItem({ comment }: { comment: EventComment }) {
   return (

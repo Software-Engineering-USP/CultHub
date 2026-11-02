@@ -1,5 +1,5 @@
-import type { CultEvent } from '@/types'
 import { paths } from '@/lib/paths'
+import type { CultEvent } from '@/types'
 
 /** Link da página de detalhes, ou null quando o evento não tem uma. */
 export function eventPath(event: CultEvent): string | null {

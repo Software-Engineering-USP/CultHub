@@ -1,10 +1,10 @@
-import type { CultEvent } from '@/types'
+import { ButtonLink } from '@/components/common/Button'
+import DemoNote from '@/components/common/DemoNote'
+import Eyebrow from '@/components/common/Eyebrow'
+import Surface from '@/components/common/Surface'
 import { demoRoutes } from '@/data/routes'
-import { ButtonLink } from '../common/Button'
-import DemoNote from '../common/DemoNote'
-import Eyebrow from '../common/Eyebrow'
-import Surface from '../common/Surface'
 import { paths } from '@/lib/paths'
+import type { CultEvent } from '@/types'
 
 /** Resumo de rotas na página do evento. */
 export default function RoutePreview({ event }: { event: CultEvent }) {

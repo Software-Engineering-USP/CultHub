@@ -1,8 +1,8 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
 import type { LinkProps } from 'react-router-dom'
-import { buttonClass } from '../../lib/classes'
-import type { ButtonVariant } from '../../lib/classes'
+import { buttonClass } from '@/lib/classes'
+import type { ButtonVariant } from '@/lib/classes'
 import { cn } from '@/lib/utils'
 
 interface StyleProps {

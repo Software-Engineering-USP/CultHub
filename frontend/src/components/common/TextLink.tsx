@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { LinkProps } from 'react-router-dom'
-import { textLinkClass } from '../../lib/classes'
+import { textLinkClass } from '@/lib/classes'
 import { cn } from '@/lib/utils'
 
 /** Link de texto em bordô (".text-link" do CSS original). */

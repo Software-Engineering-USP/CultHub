@@ -1,9 +1,9 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
+import CategoryDot from '@/components/common/CategoryDot'
+import { BrandMark, FiltersIcon, SearchIcon } from '@/components/common/Icons'
 import { currentUser } from '@/data/user'
-import { categories, categoryOrder } from '../../lib/categories'
-import { avatarClass } from '../../lib/classes'
-import CategoryDot from '../common/CategoryDot'
-import { BrandMark, FiltersIcon, SearchIcon } from '../common/Icons'
+import { categories, categoryOrder } from '@/lib/categories'
+import { avatarClass } from '@/lib/classes'
 import { paths } from '@/lib/paths'
 
 export default function Header() {

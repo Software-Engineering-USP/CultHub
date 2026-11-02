@@ -1,9 +1,9 @@
-import type { CultEvent } from '@/types'
+import DemoNote from '@/components/common/DemoNote'
+import Eyebrow from '@/components/common/Eyebrow'
+import { SunIcon } from '@/components/common/Icons'
+import Surface from '@/components/common/Surface'
 import { demoWeather } from '@/data/weather'
-import DemoNote from '../common/DemoNote'
-import Eyebrow from '../common/Eyebrow'
-import { SunIcon } from '../common/Icons'
-import Surface from '../common/Surface'
+import type { CultEvent } from '@/types'
 import WeatherStats from './WeatherStats'
 
 /** Clima do evento (página de detalhes). */

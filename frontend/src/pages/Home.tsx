@@ -1,12 +1,12 @@
-import EventCard from '../components/events/EventCard'
-import { Button } from '../components/common/Button'
-import CategoryDot from '../components/common/CategoryDot'
-import DemoNote from '../components/common/DemoNote'
-import Eyebrow from '../components/common/Eyebrow'
-import SectionHeading from '../components/common/SectionHeading'
+import { Button } from '@/components/common/Button'
+import CategoryDot from '@/components/common/CategoryDot'
+import DemoNote from '@/components/common/DemoNote'
+import Eyebrow from '@/components/common/Eyebrow'
+import SectionHeading from '@/components/common/SectionHeading'
+import EventCard from '@/components/events/EventCard'
 import { events } from '@/data/events'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { categories, categoryOrder } from '../lib/categories'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { categories, categoryOrder } from '@/lib/categories'
 
 export default function Home() {
   useDocumentTitle('CultHub | Explore São Paulo')

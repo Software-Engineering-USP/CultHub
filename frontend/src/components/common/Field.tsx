@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from 'react'
-import { inputClass } from '../../lib/classes'
+import { inputClass } from '@/lib/classes'
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   id: string

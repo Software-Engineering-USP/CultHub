@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
+import { routes } from '@/lib/paths'
 import Layout from './components/layout/Layout'
 import Account from './pages/Account'
 import EventDetail from './pages/EventDetail'
@@ -7,7 +8,6 @@ import NotFoundPage from './pages/NotFoundPage'
 import Origin from './pages/Origin'
 import RoutePlan from './pages/RoutePlan'
 import SignIn from './pages/SignIn'
-import { routes } from '@/lib/paths'
 
 export default function App() {
   return (
