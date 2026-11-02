@@ -15,7 +15,7 @@ import { findEvent } from '@/data/events'
 import type { CultEvent } from '@/types'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { categories } from '../lib/categories'
-import type { CategoryId } from '../lib/categories'
+import type { CategoryId } from '@/types'
 import { peerFocusRing } from '../lib/classes'
 import { preventSubmit } from '../lib/forms'
 

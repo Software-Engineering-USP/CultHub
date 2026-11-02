@@ -1,4 +1,4 @@
-import type { CategoryId } from '@/lib/categories'
+export type CategoryId = 'music' | 'festival' | 'theater' | 'sport' | 'art'
 
 export interface EventDetails {
   about: string[]

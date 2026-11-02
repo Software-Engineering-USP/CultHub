@@ -1,4 +1,4 @@
-export type CategoryId = 'music' | 'festival' | 'theater' | 'sport' | 'art'
+import type { CategoryId } from '@/types'
 
 interface CategoryStyle {
   label: string

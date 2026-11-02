@@ -1,5 +1,5 @@
 import { categories } from '../../lib/categories'
-import type { CategoryId } from '../../lib/categories'
+import type { CategoryId } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface CategoryDotProps {
