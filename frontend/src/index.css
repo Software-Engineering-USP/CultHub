@@ -1,32 +1,56 @@
 @import 'tailwindcss';
 
+/*
+  Tokens do CultHub.
+  - @theme: paleta da marca (maroon, ink, cat-*, dot-*...).
+  - @theme inline: tokens semânticos do shadcn/ui (background, primary, muted-foreground, border...).
+
+  No código, prefira os semânticos; use a paleta só para o que é do CultHub (text-maroon, bg-cat-music).
+  Layout desktop-first: max-lg: (≤1150px), max-md: (≤900px), max-sm: (≤600px).
+
+  TODO: trocar page/surface/line por background/card/border e remover da paleta.
+*/
 @theme {
   --breakpoint-*: initial;
   --breakpoint-sm: 601px;
   --breakpoint-md: 901px;
   --breakpoint-lg: 1151px;
 
+  --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Escala tipográfica: mantém o line-height do design (1.6 no texto, 1.25 nos títulos). */
+  --text-xs--line-height: 1.6;
+  --text-sm--line-height: 1.6;
+  --text-base--line-height: 1.6;
+  --text-lg--line-height: 1.5;
+  --text-xl--line-height: 1.25;
+  --text-2xl--line-height: 1.25;
+  --text-3xl--line-height: 1.25;
+  --text-4xl--line-height: 1.2;
+  --text-5xl--line-height: 1.15;
+
+  /* Paleta da marca */
   --color-page: #f5efe3;
   --color-surface: #fffdf9;
   --color-maroon: #761918;
   --color-ink: #2e4262;
-  --color-muted: #5e6979;
-  --color-accent: #ff9f3e;
+  --color-slate: #5e6979;
+  --color-orange: #ff9f3e;
   --color-line: #e4dccf;
 
+  /* Fundo dos cards de evento, por categoria */
   --color-cat-music: #ffedce;
   --color-cat-theater: #d8eee3;
   --color-cat-art: #d8e1ed;
   --color-cat-sport: #ecd9d9;
   --color-cat-festival: #f7e7cc;
 
+  /* Bolinha de cada categoria (legenda e filtros) */
   --color-dot-music: #a85316;
   --color-dot-festival: #be7628;
   --color-dot-theater: #438268;
   --color-dot-sport: #9e4e57;
   --color-dot-art: #587ba4;
-
-  --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   --shadow-soft: 0 8px 28px rgb(70 43 22 / 5%);
   --shadow-card: 0 5px 16px rgb(81 48 22 / 4%);
@@ -34,25 +58,25 @@
   --shadow-badge: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
+/* Tokens semânticos (nomes do shadcn/ui) apontando para a paleta */
+@theme inline {
+  --color-background: var(--color-page);
+  --color-foreground: var(--color-ink);
+  --color-primary: var(--color-orange);
+  --color-muted-foreground: var(--color-slate);
+  --color-border: var(--color-line);
+  --color-ring: var(--color-maroon);
+}
 
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: #e4dccf;
+    border-color: var(--color-border);
   }
-}
 
-@layer base {
   html {
     scroll-behavior: smooth;
     scroll-padding-top: 24px;
@@ -65,7 +89,7 @@
   }
 
   body {
-    @apply bg-page font-sans text-[14px] leading-[1.6] text-ink;
+    @apply bg-background font-sans text-sm text-foreground;
   }
 
   a {
@@ -78,7 +102,7 @@
     max-width: 100%;
   }
 
-  button,
+  button:not(:disabled),
   summary,
   label[for] {
     cursor: pointer;
@@ -89,45 +113,34 @@
   }
 
   :focus-visible {
-    outline: 3px solid var(--color-maroon);
+    outline: 3px solid var(--color-ring);
     outline-offset: 4px;
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: #6a7280;
-    opacity: 1;
+    @apply text-muted-foreground opacity-100;
   }
 
   h1,
   h2,
   h3 {
-    @apply leading-tight tracking-[-.035em] text-maroon;
+    @apply leading-tight font-bold tracking-tight text-maroon;
   }
 
   h1 {
-    @apply text-[36px] font-[750];
+    @apply text-4xl max-sm:text-3xl;
   }
 
   h2 {
-    @apply text-[28px] font-[750];
+    @apply text-3xl max-sm:text-2xl;
   }
 
   h3 {
-    @apply text-[19px] font-bold;
+    @apply text-xl;
   }
 
   small {
-    font-size: 12px;
-  }
-
-  @media (max-width: 600px) {
-    h1 {
-      font-size: 29px;
-    }
-
-    h2 {
-      font-size: 24px;
-    }
+    @apply text-xs;
   }
 }

@@ -17,7 +17,7 @@ export default function WeatherStrip({ event }: { event: CultEvent }) {
       <SunIcon className="h-[38px] w-[38px] shrink-0 max-sm:h-[30px] max-sm:w-[30px]" />
       <div>
         <h2 className="text-[16px] max-sm:text-[13px]">Clima no horário do evento</h2>
-        <p className="mt-1 text-[10px] text-muted">
+        <p className="mt-1 text-[10px] text-muted-foreground">
           {event.schedule} • {demoWeather.condition}
         </p>
       </div>

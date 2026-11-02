@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { textButtonClass } from '../../lib/classes'
-import { cn } from '../../lib/cn'
+import { cn } from '@/lib/utils'
 
 export default function TextButton({
   className,

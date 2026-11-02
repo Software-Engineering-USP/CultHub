@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { CultEvent } from '@/types'
 import { categories } from '../../lib/categories'
-import { cn } from '../../lib/cn'
+import { cn } from '@/lib/utils'
 import CategoryBadge from '../common/CategoryBadge'
 import { CalendarIcon, PinIcon } from '../common/Icons'
 

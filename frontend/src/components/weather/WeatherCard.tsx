@@ -14,7 +14,7 @@ export default function WeatherCard({ event }: { event: CultEvent }) {
         <h3 id="clima-titulo" className="text-[17px]">
           Clima no horário do evento
         </h3>
-        <Eyebrow className="text-[10px] text-muted">EXEMPLO</Eyebrow>
+        <Eyebrow className="text-[10px] text-muted-foreground">EXEMPLO</Eyebrow>
       </div>
 
       <div className="mt-6 mb-4 flex items-center gap-[18px]">
@@ -23,7 +23,7 @@ export default function WeatherCard({ event }: { event: CultEvent }) {
           <p className="text-[46px] leading-[1.15] font-[650] tracking-[-.06em] text-ink">
             {demoWeather.temperature}
           </p>
-          <p className="text-[12px] text-muted">{event.schedule} • exemplo</p>
+          <p className="text-[12px] text-muted-foreground">{event.schedule} • exemplo</p>
         </div>
       </div>
 

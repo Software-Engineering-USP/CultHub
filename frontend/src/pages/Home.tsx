@@ -69,7 +69,7 @@ export default function Home() {
           title="Eventos em Destaque"
           description="As experiências mais recomendadas da semana"
         >
-          <Eyebrow className="text-[10px] text-muted">SEU PRÓXIMO ENCONTRO COM A CIDADE</Eyebrow>
+          <Eyebrow className="text-[10px] text-muted-foreground">SEU PRÓXIMO ENCONTRO COM A CIDADE</Eyebrow>
         </SectionHeading>
 
         <div
@@ -83,7 +83,7 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="mt-[7px] flex justify-between gap-4 text-[11px] text-muted max-sm:flex-wrap max-sm:gap-[6px] max-sm:text-[10px]">
+        <div className="mt-[7px] flex justify-between gap-4 text-[11px] text-muted-foreground max-sm:flex-wrap max-sm:gap-[6px] max-sm:text-[10px]">
           <span>{featured.length} experiências em destaque</span>
           <span>Deslize para descobrir mais →</span>
         </div>
@@ -96,7 +96,7 @@ export default function Home() {
           description={`Exibindo ${events.length} evento(s) encontrado(s)`}
         >
           <span className="rounded-xl border border-line bg-surface/65 px-4 py-[10px] text-[12px] whitespace-nowrap max-sm:text-[11px]">
-            Ordenar: <strong>Relevância</strong> <span className="text-muted">· exemplo fixo</span>
+            Ordenar: <strong>Relevância</strong> <span className="text-muted-foreground">· exemplo fixo</span>
           </span>
         </SectionHeading>
 

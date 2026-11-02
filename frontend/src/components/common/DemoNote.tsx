@@ -1,5 +1,5 @@
 import type { ElementType, HTMLAttributes } from 'react'
-import { cn } from '../../lib/cn'
+import { cn } from '@/lib/utils'
 
 const sizes = {
   xs: 'text-[10px]',
@@ -17,7 +17,11 @@ interface DemoNoteProps extends HTMLAttributes<HTMLElement> {
 export default function DemoNote({ as: Tag = 'p', size = 'base', className, ...rest }: DemoNoteProps) {
   return (
     <Tag
-      className={cn('leading-[1.65] text-muted [&_a]:text-maroon [&_a]:underline', sizes[size], className)}
+      className={cn(
+        'leading-[1.65] text-muted-foreground [&_a]:text-maroon [&_a]:underline',
+        sizes[size],
+        className,
+      )}
       {...rest}
     />
   )

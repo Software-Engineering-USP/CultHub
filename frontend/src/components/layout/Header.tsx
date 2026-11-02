@@ -67,7 +67,7 @@ export default function Header() {
                 </li>
               ))}
             </ul>
-            <small className="block text-muted">
+            <small className="block text-muted-foreground">
               Exibição demonstrativa. As categorias e a busca não alteram os resultados.
             </small>
           </div>

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cn } from '../../lib/cn'
+import { cn } from '@/lib/utils'
 
 interface SectionHeadingProps {
   id?: string
@@ -35,7 +35,7 @@ export default function SectionHeading({
         <Heading id={id} className={titleClassName}>
           {title}
         </Heading>
-        {description && <p className="mt-2 text-muted max-sm:text-[12px]">{description}</p>}
+        {description && <p className="mt-2 text-muted-foreground max-sm:text-[12px]">{description}</p>}
       </div>
       {children}
     </div>

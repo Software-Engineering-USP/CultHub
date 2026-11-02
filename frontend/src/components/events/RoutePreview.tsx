@@ -13,7 +13,7 @@ export default function RoutePreview({ event }: { event: CultEvent }) {
         <h3 id="rota-titulo" className="text-[17px]">
           Planejar rota
         </h3>
-        <Eyebrow className="text-[10px] text-muted">{event.details?.startTime} · EXEMPLO</Eyebrow>
+        <Eyebrow className="text-[10px] text-muted-foreground">{event.details?.startTime} · EXEMPLO</Eyebrow>
       </div>
       <p className="mt-2 text-[12px]">De sua localização até o {event.venue}</p>
 
@@ -25,13 +25,13 @@ export default function RoutePreview({ event }: { event: CultEvent }) {
           >
             <div>
               <strong className="block">{route.label}</strong>
-              <span className="text-[11px] text-muted">
+              <span className="text-[11px] text-muted-foreground">
                 {route.detail} • {route.tag}
               </span>
             </div>
             <div className="text-right text-[15px] font-bold text-maroon">
               {route.time}
-              <small className="block text-[10px] font-medium text-muted">Tempo ilustrativo</small>
+              <small className="block text-[10px] font-medium text-muted-foreground">Tempo ilustrativo</small>
             </div>
           </div>
         ))}

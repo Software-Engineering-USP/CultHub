@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { cn } from '../../lib/cn'
+import { cn } from '@/lib/utils'
 
 export interface Crumb {
   label: string
@@ -9,7 +9,7 @@ export interface Crumb {
 export default function Breadcrumbs({ items }: { items: Crumb[] }) {
   return (
     <nav aria-label="Caminho da página">
-      <ol className="mb-6 flex flex-wrap items-center gap-[9px] text-[11px] text-muted">
+      <ol className="mb-6 flex flex-wrap items-center gap-[9px] text-[11px] text-muted-foreground">
         {items.map((item, index) => {
           const isLast = index === items.length - 1
           return (

@@ -1,5 +1,5 @@
 import type { ElementType, HTMLAttributes } from 'react'
-import { cn } from '../../lib/cn'
+import { cn } from '@/lib/utils'
 
 interface SurfaceProps extends HTMLAttributes<HTMLElement> {
   as?: ElementType

@@ -11,7 +11,9 @@ export default function CommentItem({ comment }: { comment: EventComment }) {
         </Avatar>
         <div>
           <strong>{comment.author}</strong>
-          <p className="text-[13px] leading-[1.8] text-muted">Perfil fictício • comentário de exemplo</p>
+          <p className="text-[13px] leading-[1.8] text-muted-foreground">
+            Perfil fictício • comentário de exemplo
+          </p>
         </div>
       </div>
       <p className="text-[13px] leading-[1.8]">{comment.text}</p>

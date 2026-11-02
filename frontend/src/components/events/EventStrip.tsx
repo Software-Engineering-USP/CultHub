@@ -21,7 +21,7 @@ export default function EventStrip({ event }: { event: CultEvent }) {
           {categories[event.category].label} • {event.shortTitle ?? event.title}
         </Eyebrow>
         <h2 className="mt-[3px] mb-[5px] text-[20px] max-sm:text-[16px]">{event.title}</h2>
-        <p className="text-[11px] text-muted">
+        <p className="text-[11px] text-muted-foreground">
           {event.schedule} • {event.venue}
         </p>
       </div>

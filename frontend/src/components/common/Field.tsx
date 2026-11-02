@@ -22,7 +22,7 @@ export default function Field({ id, label, help, ...rest }: FieldProps) {
         {...rest}
       />
       {help && (
-        <small id={helpId} className="text-[10px] text-muted">
+        <small id={helpId} className="text-[10px] text-muted-foreground">
           {help}
         </small>
       )}

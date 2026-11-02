@@ -1,5 +1,5 @@
 import { demoWeather } from '@/data/weather'
-import { cn } from '../../lib/cn'
+import { cn } from '@/lib/utils'
 
 interface WeatherStatsProps {
   variant: 'card' | 'strip'
@@ -23,7 +23,7 @@ export default function WeatherStats({ variant }: WeatherStatsProps) {
     >
       {stats.map((stat) => (
         <div key={stat.label}>
-          <dt className="text-[11px] text-muted">{stat.label}</dt>
+          <dt className="text-[11px] text-muted-foreground">{stat.label}</dt>
           <dd className="mt-1 text-[15px] font-[650]">{stat.value}</dd>
         </div>
       ))}

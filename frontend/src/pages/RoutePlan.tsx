@@ -13,7 +13,7 @@ import WeatherStrip from '../components/weather/WeatherStrip'
 import { demoRoutes } from '@/data/routes'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEvent } from '../hooks/useEvent'
-import { cn } from '../lib/cn'
+import { cn } from '@/lib/utils'
 
 const dotBase =
   "relative pl-[22px] before:absolute before:left-0 before:top-2 before:h-2 before:w-2 before:rounded-full before:border-2 before:border-maroon before:content-['']"
@@ -68,7 +68,7 @@ export default function RoutePlan() {
             <h2 id="trajeto-titulo" className="text-[21px]">
               Seu trajeto
             </h2>
-            <Eyebrow tight className="max-w-[85px] text-right text-[8px] text-muted">
+            <Eyebrow tight className="max-w-[85px] text-right text-[8px] text-muted-foreground">
               EXEMPLO ILUSTRATIVO
             </Eyebrow>
           </div>
@@ -78,11 +78,11 @@ export default function RoutePlan() {
               <Link to={`${base}/origem`} className="float-right text-[10px] text-maroon underline">
                 Alterar
               </Link>
-              <small className="block text-[10px] text-muted">Partida</small>
+              <small className="block text-[10px] text-muted-foreground">Partida</small>
               <strong className="block text-[12px]">Sua localização • exemplo</strong>
             </div>
             <div className={cn(dotBase, 'before:bg-maroon')}>
-              <small className="block text-[10px] text-muted">Destino</small>
+              <small className="block text-[10px] text-muted-foreground">Destino</small>
               <strong className="block text-[12px]">{event.venue}</strong>
             </div>
           </div>
@@ -101,7 +101,7 @@ export default function RoutePlan() {
               >
                 <strong className="block text-[10px]">{route.label}</strong>
                 <span className="mt-1 block text-[17px] font-[750] text-maroon">{route.time}</span>
-                <small className="block text-[9px] text-muted">
+                <small className="block text-[9px] text-muted-foreground">
                   {route.detail}
                   {index === 0 && ' • em destaque'}
                 </small>
@@ -133,7 +133,7 @@ export default function RoutePlan() {
                     {index + 1}
                   </span>
                   <strong className="block">{step.title}</strong>
-                  <span className="mt-1 block text-[10px] text-muted">{step.detail}</span>
+                  <span className="mt-1 block text-[10px] text-muted-foreground">{step.detail}</span>
                 </li>
               ))}
             </ol>

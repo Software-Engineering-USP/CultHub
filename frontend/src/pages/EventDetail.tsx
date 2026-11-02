@@ -111,7 +111,7 @@ export default function EventDetail() {
             <p className="mt-[22px] text-[36px] leading-[1.2] font-[750] tracking-[-.04em] text-maroon max-md:mt-[14px] max-sm:text-[32px]">
               {event.price}
             </p>
-            <p className="text-[12px] text-muted">Preço informado no exemplo</p>
+            <p className="text-[12px] text-muted-foreground">Preço informado no exemplo</p>
 
             <div className="my-6 grid gap-4 border-y border-[#e8d8bf] py-6 text-[13px] max-md:my-[18px] max-md:flex max-md:flex-wrap max-md:gap-x-8 max-md:gap-y-[18px] max-md:py-[18px]">
               <p className="flex items-start gap-2">

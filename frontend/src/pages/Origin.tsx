@@ -81,7 +81,7 @@ export default function Origin() {
             Demonstração visual: nenhuma localização é solicitada ou coletada.
           </DemoNote>
 
-          <div className="my-[17px] flex items-center gap-[10px] text-[10px] text-muted before:h-px before:flex-1 before:bg-line before:content-[''] after:h-px after:flex-1 after:bg-line after:content-['']">
+          <div className="my-[17px] flex items-center gap-[10px] text-[10px] text-muted-foreground before:h-px before:flex-1 before:bg-line before:content-[''] after:h-px after:flex-1 after:bg-line after:content-['']">
             ou informe a partida
           </div>
 
@@ -101,7 +101,7 @@ export default function Origin() {
             />
 
             <div className="my-4 rounded-xl border border-line bg-[#f6ecdd] px-[15px] py-3">
-              <small className="block text-[10px] text-muted">Destino</small>
+              <small className="block text-[10px] text-muted-foreground">Destino</small>
               <strong className="text-[12px]">{event.venue}</strong>
             </div>
 

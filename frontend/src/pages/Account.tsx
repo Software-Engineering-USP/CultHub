@@ -25,7 +25,7 @@ const preferenceOrder: CategoryId[] = ['music', 'theater', 'art', 'festival', 's
 const menuLink = 'px-3 text-[12px] font-semibold no-underline hover:bg-[#f8f0e4]'
 
 const panelHeading = 'mb-[22px] flex items-center justify-between gap-[14px] max-sm:items-start'
-const panelEyebrow = 'text-[9px] text-muted max-sm:max-w-[90px] max-sm:text-right'
+const panelEyebrow = 'text-[9px] text-muted-foreground max-sm:max-w-[90px] max-sm:text-right'
 
 export default function Account() {
   useDocumentTitle('Minha conta de exemplo | CultHub')
@@ -161,7 +161,7 @@ export default function Account() {
                 Preferências culturais
               </h2>
             </div>
-            <p className="mt-[-10px] mb-5 text-[12px] text-muted">
+            <p className="mt-[-10px] mb-5 text-[12px] text-muted-foreground">
               Categorias que você gosta de acompanhar. {selectedLabels} selecionadas.
             </p>
 
@@ -199,7 +199,7 @@ export default function Account() {
               marginClass="mb-5"
               titleClassName="text-[24px]"
             >
-              <span className="text-[12px] text-muted">Lista demonstrativa</span>
+              <span className="text-[12px] text-muted-foreground">Lista demonstrativa</span>
             </SectionHeading>
 
             <div className="grid grid-cols-2 gap-[22px] max-sm:grid-cols-[minmax(0,1fr)]">
@@ -225,7 +225,7 @@ export default function Account() {
                 >
                   {commentEvent.title} ↗
                 </Link>
-                <p className="text-[13px] leading-[1.8] text-muted">
+                <p className="text-[13px] leading-[1.8] text-muted-foreground">
                   {myComment.author} • Perfil fictício • comentário de exemplo
                 </p>
                 <p className="mt-[10px] text-[13px] leading-[1.8]">{myComment.text}</p>

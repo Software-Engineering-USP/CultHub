@@ -24,7 +24,7 @@ export default function SignIn() {
         <h1 className="max-w-[850px] max-md:text-[32px] max-sm:text-[30px]">
           Seu próximo encontro com a cultura começa aqui.
         </h1>
-        <p className="mt-3 text-muted max-sm:text-[13px]">
+        <p className="mt-3 text-muted-foreground max-sm:text-[13px]">
           Entre para salvar eventos, organizar suas preferências e participar dos comentários.
         </p>
       </div>

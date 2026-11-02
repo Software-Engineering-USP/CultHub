@@ -1,6 +1,6 @@
 import { categories } from '../../lib/categories'
 import type { CategoryId } from '../../lib/categories'
-import { cn } from '../../lib/cn'
+import { cn } from '@/lib/utils'
 
 interface CategoryDotProps {
   id: CategoryId
