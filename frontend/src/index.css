@@ -37,6 +37,7 @@
   --color-slate: #5e6979;
   --color-orange: #ff9f3e;
   --color-line: #e4dccf;
+  --color-sand-100: #f8f2e8;
 
   /* Fundo dos cards de evento, por categoria */
   --color-cat-music: #ffedce;
@@ -62,7 +63,10 @@
 @theme inline {
   --color-background: var(--color-page);
   --color-foreground: var(--color-ink);
+  --color-card: var(--color-surface);
   --color-primary: var(--color-orange);
+  --color-primary-foreground: var(--color-maroon);
+  --color-accent: var(--color-sand-100);
   --color-muted-foreground: var(--color-slate);
   --color-border: var(--color-line);
   --color-ring: var(--color-maroon);

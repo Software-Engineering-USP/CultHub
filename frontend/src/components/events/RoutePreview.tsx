@@ -1,7 +1,8 @@
-import { ButtonLink } from '@/components/common/Button'
+import { Link } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Surface from '@/components/common/Surface'
+import { Button } from '@/components/ui/button'
 import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { paths } from '@/lib/paths'
 import type { CultEvent } from '@/types'
@@ -40,9 +41,11 @@ export default function RoutePreview({ event }: { event: CultEvent }) {
         ))}
       </div>
 
-      <ButtonLink to={paths.eventRoute(event.id)} block aria-label="Ver rota completa de exemplo">
-        Ver rota completa <span aria-hidden="true">→</span>
-      </ButtonLink>
+      <Button asChild block>
+        <Link to={paths.eventRoute(event.id)} aria-label="Ver rota completa de exemplo">
+          Ver rota completa <span aria-hidden="true">→</span>
+        </Link>
+      </Button>
       <DemoNote size="sm" className="mt-2">
         Rota de exemplo, com origem fictícia. Nenhum endereço, trânsito ou tempo de viagem foi calculado.
       </DemoNote>

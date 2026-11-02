@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
-import { Button } from '@/components/common/Button'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import NotFound from '@/components/common/NotFound'
@@ -9,10 +8,12 @@ import SectionHeading from '@/components/common/SectionHeading'
 import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
 import EventStrip from '@/components/events/EventStrip'
+import { Button } from '@/components/ui/button'
 import WeatherStrip from '@/components/weather/WeatherStrip'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEvent } from '@/hooks/useEvents'
 import { useRouteOptions } from '@/hooks/useRouteOptions'
+import { logDemoAction } from '@/lib/demo'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 
@@ -143,12 +144,16 @@ export default function RoutePlan() {
             </ol>
           </div>
 
-          <Button block disabled aria-describedby="navegacao-aviso">
+          <Button
+            block
+            aria-describedby="navegacao-aviso"
+            onClick={() => logDemoAction('Abrir rota no app de mapas', { eventId: event.id })}
+          >
             Abrir no app de mapas <span aria-hidden="true">↗</span>
           </Button>
           <DemoNote id="navegacao-aviso" size="xs" className="mt-[10px]">
-            Navegação real exige um serviço externo e consentimento de localização. Este botão é apenas
-            visual; nenhuma ação é executada.
+            Navegação real exige um serviço externo e consentimento de localização. Nesta demonstração, o
+            botão só registra a ação no console.
           </DemoNote>
 
           <DemoNote size="xs" className="mt-[18px] border-t border-line pt-[15px]">

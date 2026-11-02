@@ -1,22 +1,23 @@
 import { Link } from 'react-router-dom'
 import Avatar from '@/components/common/Avatar'
-import { Button, ButtonLink } from '@/components/common/Button'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
 import SectionHeading from '@/components/common/SectionHeading'
 import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
-import TextButton from '@/components/common/TextButton'
 import EventCard from '@/components/events/EventCard'
+import { Button } from '@/components/ui/button'
 import { useUserComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEventById, useSavedEvents } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
 import { peerFocusRing } from '@/lib/classes'
+import { logDemoAction } from '@/lib/demo'
 import { preventSubmit } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
 import type { CategoryId } from '@/types'
 
 // Ordem das categorias na tela de preferências
@@ -46,9 +47,9 @@ export default function Account() {
         title="Minha conta"
         description="Seu jeito de viver a cultura de São Paulo."
       >
-        <ButtonLink to={paths.home} variant="secondary">
-          ← Voltar ao mapa
-        </ButtonLink>
+        <Button asChild variant="outline">
+          <Link to={paths.home}>← Voltar ao mapa</Link>
+        </Button>
       </SectionHeading>
 
       <div className="grid grid-cols-[276px_minmax(0,1fr)] items-start gap-7 max-md:grid-cols-[minmax(0,1fr)]">
@@ -217,18 +218,28 @@ export default function Account() {
                 </p>
                 <p className="mt-[10px] text-[13px] leading-[1.8]">{myComment.text}</p>
                 <div className="mt-[10px] flex gap-[18px]">
-                  <TextButton disabled aria-describedby="editar-aviso" className="mt-2">
+                  <Button
+                    variant="linkMuted"
+                    aria-describedby="editar-aviso"
+                    onClick={() => logDemoAction('Abrir edição do comentário', { commentId: myComment.id })}
+                    className="mt-2"
+                  >
                     Editar
-                  </TextButton>
-                  <TextButton disabled aria-describedby="editar-aviso" className="mt-2">
+                  </Button>
+                  <Button
+                    variant="linkMuted"
+                    aria-describedby="editar-aviso"
+                    onClick={() => api.comments.remove(myComment.id)}
+                    className="mt-2"
+                  >
                     Excluir
-                  </TextButton>
+                  </Button>
                 </div>
               </article>
             )}
 
             <DemoNote id="editar-aviso" className="mt-[14px]">
-              Comentário demonstrativo. Edição e exclusão estão desativadas.
+              Comentário demonstrativo. Editar e excluir só registram a ação no console.
             </DemoNote>
           </Surface>
         </div>

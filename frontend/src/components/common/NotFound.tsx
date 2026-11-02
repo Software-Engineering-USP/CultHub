@@ -1,5 +1,6 @@
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { paths } from '@/lib/paths'
-import { ButtonLink } from './Button'
 import Surface from './Surface'
 
 export default function NotFound({ message }: { message?: string }) {
@@ -11,9 +12,9 @@ export default function NotFound({ message }: { message?: string }) {
       <p className="mt-3 text-muted-foreground">
         {message ?? 'O endereço acessado não existe nesta demonstração.'}
       </p>
-      <ButtonLink to={paths.home} className="mt-6">
-        Voltar para explorar
-      </ButtonLink>
+      <Button asChild className="mt-6">
+        <Link to={paths.home}>Voltar para explorar</Link>
+      </Button>
     </Surface>
   )
 }

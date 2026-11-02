@@ -1,6 +1,6 @@
+import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
-import { Button } from '@/components/common/Button'
 import DemoNote from '@/components/common/DemoNote'
 import Field from '@/components/common/Field'
 import { LocateIcon } from '@/components/common/Icons'
@@ -9,13 +9,14 @@ import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
 import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
-import TextLink from '@/components/common/TextLink'
 import EventStrip from '@/components/events/EventStrip'
+import { Button } from '@/components/ui/button'
 import WeatherStrip from '@/components/weather/WeatherStrip'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEvent } from '@/hooks/useEvents'
 import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { peerFocusRing } from '@/lib/classes'
+import { logDemoAction } from '@/lib/demo'
 import { preventSubmit } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 
@@ -74,11 +75,15 @@ export default function Origin() {
             </p>
           </div>
 
-          <Button block disabled aria-describedby="geolocalizacao-aviso">
+          <Button
+            block
+            aria-describedby="geolocalizacao-aviso"
+            onClick={() => logDemoAction('Pedir localização do usuário')}
+          >
             ◎ Usar minha localização (demo)
           </Button>
           <DemoNote id="geolocalizacao-aviso" size="xs" className="mt-[10px]">
-            Demonstração visual: nenhuma localização é solicitada ou coletada.
+            Demonstração: o pedido só aparece no console; nenhuma localização é solicitada ou coletada.
           </DemoNote>
 
           <div className="my-[17px] flex items-center gap-[10px] text-[10px] text-muted-foreground before:h-px before:flex-1 before:bg-line before:content-[''] after:h-px after:flex-1 after:bg-line after:content-['']">
@@ -144,9 +149,9 @@ export default function Origin() {
             </DemoNote>
           </form>
 
-          <TextLink to={paths.eventRoute(event.id)} className="mt-4 block text-center">
-            Ver rota de exemplo →
-          </TextLink>
+          <Button asChild variant="link" className="mt-4 flex">
+            <Link to={paths.eventRoute(event.id)}>Ver rota de exemplo →</Link>
+          </Button>
 
           <DemoNote size="xs" className="mt-[18px] border-t border-line pt-[15px]">
             Sua localização só deverá ser usada com seu consentimento em uma versão integrada. Aqui não há

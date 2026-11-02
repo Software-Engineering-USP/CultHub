@@ -1,12 +1,13 @@
-import { Button } from '@/components/common/Button'
 import CategoryDot from '@/components/common/CategoryDot'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import SectionHeading from '@/components/common/SectionHeading'
 import EventCard from '@/components/events/EventCard'
+import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEvents } from '@/hooks/useEvents'
 import { categories, categoryOrder } from '@/lib/categories'
+import { logDemoAction } from '@/lib/demo'
 
 export default function Home() {
   useDocumentTitle('CultHub | Explore São Paulo')
@@ -24,15 +25,15 @@ export default function Home() {
         >
           <div className="max-w-[245px] text-right max-sm:max-w-none max-sm:text-left">
             <Button
-              variant="secondary"
-              disabled
+              variant="outline"
               aria-describedby="localizacao-aviso"
+              onClick={() => logDemoAction('Pedir localização do usuário')}
               className="max-sm:min-h-10 max-sm:px-[14px] max-sm:py-[9px]"
             >
               ◎ Minha Localização
             </Button>
             <DemoNote id="localizacao-aviso" className="mt-[5px]">
-              Mapa ilustrativo. Localização não disponível nesta demonstração.
+              Mapa ilustrativo. Nesta demonstração, o pedido de localização só aparece no console.
             </DemoNote>
           </div>
         </SectionHeading>

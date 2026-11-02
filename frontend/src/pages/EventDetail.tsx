@@ -1,7 +1,7 @@
+import { Link } from 'react-router-dom'
 import Avatar from '@/components/common/Avatar'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
-import { Button, ButtonLink } from '@/components/common/Button'
 import CategoryBadge from '@/components/common/CategoryBadge'
 import DemoNote from '@/components/common/DemoNote'
 import { CalendarIcon, PinIcon } from '@/components/common/Icons'
@@ -9,9 +9,9 @@ import IconTile from '@/components/common/IconTile'
 import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
-import TextLink from '@/components/common/TextLink'
 import CommentItem from '@/components/events/CommentItem'
 import RoutePreview from '@/components/events/RoutePreview'
+import { Button } from '@/components/ui/button'
 import WeatherCard from '@/components/weather/WeatherCard'
 import { useComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -19,8 +19,10 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEvent } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
 import { inputClass } from '@/lib/classes'
+import { logDemoAction } from '@/lib/demo'
 import { preventSubmit } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
 
 export default function EventDetail() {
   const event = useEvent()
@@ -67,15 +69,23 @@ export default function EventDetail() {
             </h1>
 
             <div className="mt-[22px] mb-2 flex flex-wrap gap-[10px]">
-              <Button variant="secondary" disabled aria-describedby="acoes-aviso">
+              <Button
+                variant="outline"
+                aria-describedby="acoes-aviso"
+                onClick={() => api.events.save(event.id)}
+              >
                 ♡ Salvar
               </Button>
-              <Button variant="secondary" disabled aria-describedby="acoes-aviso">
+              <Button
+                variant="outline"
+                aria-describedby="acoes-aviso"
+                onClick={() => logDemoAction('Compartilhar evento', { eventId: event.id })}
+              >
                 ↗ Compartilhar
               </Button>
             </div>
             <DemoNote id="acoes-aviso">
-              Demonstração visual: salvar e compartilhar não estão disponíveis.
+              Demonstração: salvar e compartilhar só registram a ação no console.
             </DemoNote>
 
             <div className="mt-[30px]">
@@ -104,7 +114,9 @@ export default function EventDetail() {
                   O local aparece no mapa ilustrativo do CultHub. Consulte os canais oficiais do espaço para
                   endereço de acesso, acessibilidade e orientações de chegada.
                 </p>
-                <TextLink to={paths.eventOrigin(event.id)}>Ver local no mapa →</TextLink>
+                <Button asChild variant="link">
+                  <Link to={paths.eventOrigin(event.id)}>Ver local no mapa →</Link>
+                </Button>
               </div>
             </Surface>
           </div>
@@ -131,9 +143,11 @@ export default function EventDetail() {
               </p>
             </div>
 
-            <ButtonLink to={paths.eventOrigin(event.id)} block>
-              Planejar minha visita <span aria-hidden="true">→</span>
-            </ButtonLink>
+            <Button asChild block>
+              <Link to={paths.eventOrigin(event.id)}>
+                Planejar minha visita <span aria-hidden="true">→</span>
+              </Link>
+            </Button>
             <DemoNote className="mt-4">
               Conteúdo demonstrativo. Não há venda de ingressos aqui. Confirme programação e valores nos
               canais oficiais antes da visita.
@@ -202,7 +216,8 @@ export default function EventDetail() {
               <CommentItem key={comment.id} comment={comment} />
             ))}
             <DemoNote className="mt-5">
-              Comentários ilustrativos. Respostas e publicação estão desativadas.
+              Comentários ilustrativos. Responder só registra a ação no console; publicar ainda está
+              desativado.
             </DemoNote>
           </Surface>
         </section>

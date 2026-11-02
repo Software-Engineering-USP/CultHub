@@ -1,16 +1,16 @@
+import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
-import { Button } from '@/components/common/Button'
 import CategoryDot from '@/components/common/CategoryDot'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
 import Surface from '@/components/common/Surface'
-import TextButton from '@/components/common/TextButton'
-import TextLink from '@/components/common/TextLink'
+import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { checkboxClass } from '@/lib/classes'
 import { preventSubmit } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
 
 const panelClass = 'p-7 max-lg:p-[22px]'
 
@@ -96,9 +96,18 @@ export default function SignIn() {
                 <input id="lembrar" type="checkbox" className={checkboxClass} />
                 Lembrar de mim
               </label>
-              <TextButton disabled aria-describedby="login-aviso">
+              <Button
+                variant="linkMuted"
+                aria-describedby="login-aviso"
+                onClick={(event) => {
+                  const email = event.currentTarget.form?.elements.namedItem(
+                    'login-email',
+                  ) as HTMLInputElement | null
+                  api.auth.forgotPassword(email?.value ?? '')
+                }}
+              >
                 Esqueci minha senha
-              </TextButton>
+              </Button>
             </div>
 
             <Button type="submit" block disabled>
@@ -106,14 +115,14 @@ export default function SignIn() {
             </Button>
 
             <DemoNote id="login-aviso" className="mt-[14px]">
-              Formulário de demonstração, sem envio ou autenticação. Não use credenciais reais. Recuperação de
-              senha indisponível.
+              Formulário de demonstração, sem envio ou autenticação. Não use credenciais reais. "Esqueci minha
+              senha" só registra o pedido no console.
             </DemoNote>
           </form>
 
-          <TextLink to={paths.account} className="mt-[22px] inline-block">
-            Ver perfil de exemplo →
-          </TextLink>
+          <Button asChild variant="link" className="mt-[22px]">
+            <Link to={paths.account}>Ver perfil de exemplo →</Link>
+          </Button>
           <DemoNote size="sm" className="mt-[14px] mb-6">
             Conheça a conta fictícia de Lívia Costa, sem precisar fazer login.
           </DemoNote>
@@ -189,7 +198,9 @@ export default function SignIn() {
           <strong>Entre apenas quando quiser salvar ou comentar.</strong> Nesta demonstração, esses recursos
           estão desativados.
         </p>
-        <TextLink to={paths.home}>Voltar para explorar →</TextLink>
+        <Button asChild variant="link">
+          <Link to={paths.home}>Voltar para explorar →</Link>
+        </Button>
       </Surface>
     </>
   )

@@ -1,5 +1,6 @@
 import Avatar from '@/components/common/Avatar'
-import TextButton from '@/components/common/TextButton'
+import { Button } from '@/components/ui/button'
+import { logDemoAction } from '@/lib/demo'
 import type { EventComment } from '@/types'
 
 export default function CommentItem({ comment }: { comment: EventComment }) {
@@ -17,13 +18,14 @@ export default function CommentItem({ comment }: { comment: EventComment }) {
         </div>
       </div>
       <p className="text-[13px] leading-[1.8]">{comment.text}</p>
-      <TextButton
-        disabled
-        aria-label={`Responder a ${comment.author} (indisponível na demonstração)`}
+      <Button
+        variant="linkMuted"
+        aria-label={`Responder a ${comment.author}`}
+        onClick={() => logDemoAction('Abrir resposta ao comentário', { commentId: comment.id })}
         className="mt-2"
       >
         Responder
-      </TextButton>
+      </Button>
     </article>
   )
 }
