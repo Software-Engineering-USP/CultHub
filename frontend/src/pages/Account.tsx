@@ -9,15 +9,15 @@ import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
 import TextButton from '@/components/common/TextButton'
 import EventCard from '@/components/events/EventCard'
-import { demoComments } from '@/data/comments'
-import { findEvent } from '@/data/events'
-import { currentUser } from '@/data/user'
+import { useUserComments } from '@/hooks/useComments'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useEventById, useSavedEvents } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
 import { peerFocusRing } from '@/lib/classes'
 import { preventSubmit } from '@/lib/forms'
 import { paths } from '@/lib/paths'
-import type { CategoryId, CultEvent } from '@/types'
+import type { CategoryId } from '@/types'
 
 // Ordem das categorias na tela de preferências
 const preferenceOrder: CategoryId[] = ['music', 'theater', 'art', 'festival', 'sport']
@@ -30,14 +30,13 @@ const panelEyebrow = 'text-[9px] text-muted-foreground max-sm:max-w-[90px] max-s
 export default function Account() {
   useDocumentTitle('Minha conta de exemplo | CultHub')
 
-  const savedEvents = currentUser.savedEventIds
-    .map((id) => findEvent(id))
-    .filter((event): event is CultEvent => event !== undefined)
+  const user = useCurrentUser()
+  const savedEvents = useSavedEvents()
 
-  const myComment = demoComments.find((comment) => comment.author === currentUser.name)
-  const commentEvent = findEvent('sp-jazz-blues-festival')
+  const [myComment] = useUserComments()
+  const commentEvent = useEventById(myComment?.eventId)
 
-  const selectedLabels = currentUser.preferences.map((id) => categories[id].label).join(' e ')
+  const selectedLabels = user.preferences.map((id) => categories[id].label).join(' e ')
 
   return (
     <>
@@ -60,10 +59,10 @@ export default function Account() {
           className="px-[22px] py-7 text-center max-md:text-left max-sm:p-[22px] max-sm:text-center"
         >
           <Avatar size="lg" aria-hidden="true">
-            {currentUser.initials}
+            {user.initials}
           </Avatar>
-          <h2 className="mb-[6px] text-[21px]">{currentUser.name}</h2>
-          <p className="text-[11px]">Perfil fictício • {currentUser.city}</p>
+          <h2 className="mb-[6px] text-[21px]">{user.name}</h2>
+          <p className="text-[11px]">Perfil fictício • {user.city}</p>
           <StatusBadge tone="green" size="sm" className="mt-4 max-md:mt-[10px]">
             ● Conta conectada (exemplo)
           </StatusBadge>
@@ -117,28 +116,16 @@ export default function Account() {
                   id="nome"
                   label="Nome completo"
                   type="text"
-                  defaultValue={currentUser.name}
+                  defaultValue={user.name}
                   autoComplete="off"
                 />
-                <Field
-                  id="email"
-                  label="E-mail"
-                  type="email"
-                  defaultValue={currentUser.email}
-                  autoComplete="off"
-                />
-                <Field
-                  id="cidade"
-                  label="Cidade"
-                  type="text"
-                  defaultValue={currentUser.city}
-                  autoComplete="off"
-                />
+                <Field id="email" label="E-mail" type="email" defaultValue={user.email} autoComplete="off" />
+                <Field id="cidade" label="Cidade" type="text" defaultValue={user.city} autoComplete="off" />
                 <Field
                   id="bairro"
                   label="Bairro"
                   type="text"
-                  defaultValue={currentUser.district}
+                  defaultValue={user.district}
                   autoComplete="off"
                 />
               </div>
@@ -172,7 +159,7 @@ export default function Account() {
                   <input
                     id={`pref-${id}`}
                     type="checkbox"
-                    defaultChecked={currentUser.preferences.includes(id)}
+                    defaultChecked={user.preferences.includes(id)}
                     className="peer absolute top-3 left-[15px] mt-[2px] h-4 w-4 accent-maroon"
                   />
                   <label

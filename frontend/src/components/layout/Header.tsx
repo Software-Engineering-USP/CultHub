@@ -1,13 +1,14 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import CategoryDot from '@/components/common/CategoryDot'
 import { BrandMark, FiltersIcon, SearchIcon } from '@/components/common/Icons'
-import { currentUser } from '@/data/user'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { categories, categoryOrder } from '@/lib/categories'
 import { avatarClass } from '@/lib/classes'
 import { paths } from '@/lib/paths'
 
 export default function Header() {
   const { pathname } = useLocation()
+  const user = useCurrentUser()
   const onAccount = pathname === paths.account
   const onSignIn = pathname === paths.signIn
 
@@ -81,10 +82,10 @@ export default function Header() {
         ) : (
           <NavLink
             to={paths.account}
-            aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de exemplo de ${currentUser.name}`}
+            aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de exemplo de ${user.name}`}
             className={avatarClass('md')}
           >
-            {currentUser.initials}
+            {user.initials}
           </NavLink>
         )}
       </nav>

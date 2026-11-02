@@ -24,6 +24,7 @@ export interface CultEvent {
 }
 
 export interface User {
+  id: string
   name: string
   initials: string
   email: string
@@ -35,6 +36,8 @@ export interface User {
 
 export interface EventComment {
   id: string
+  eventId: string
+  authorId: string
   author: string
   initials: string
   text: string

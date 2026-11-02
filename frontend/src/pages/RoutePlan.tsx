@@ -10,9 +10,9 @@ import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
 import EventStrip from '@/components/events/EventStrip'
 import WeatherStrip from '@/components/weather/WeatherStrip'
-import { demoRoutes } from '@/data/routes'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEvent } from '@/hooks/useEvent'
+import { useEvent } from '@/hooks/useEvents'
+import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 
@@ -21,13 +21,14 @@ const dotBase =
 
 export default function RoutePlan() {
   const event = useEvent()
+  const routeOptions = useRouteOptions(event?.id)
   useDocumentTitle('Rota de exemplo | CultHub')
 
   if (!event?.details) {
     return <NotFound message="Não encontramos o evento para exibir a rota." />
   }
 
-  const selected = demoRoutes[0]
+  const selected = routeOptions[0]
   const itinerary = [
     { title: 'Parta da origem fictícia', detail: 'Ponto indicado no mapa.' },
     { title: 'Siga o trajeto destacado', detail: 'Percurso ilustrativo, sem vias confirmadas.' },
@@ -94,7 +95,7 @@ export default function RoutePlan() {
             aria-label="Comparação ilustrativa de transportes, sem seleção interativa"
             className="mb-[22px] grid grid-cols-3 gap-2"
           >
-            {demoRoutes.map((route, index) => (
+            {routeOptions.map((route, index) => (
               <li
                 key={route.id}
                 className={cn(

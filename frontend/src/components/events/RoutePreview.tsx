@@ -2,12 +2,14 @@ import { ButtonLink } from '@/components/common/Button'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Surface from '@/components/common/Surface'
-import { demoRoutes } from '@/data/routes'
+import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { paths } from '@/lib/paths'
 import type { CultEvent } from '@/types'
 
 /** Resumo de rotas na página do evento. */
 export default function RoutePreview({ event }: { event: CultEvent }) {
+  const routeOptions = useRouteOptions(event.id)
+
   return (
     <Surface as="section" aria-labelledby="rota-titulo" bg="bg-[#fbe9cf]">
       <div className="flex items-center justify-between gap-[14px]">
@@ -19,7 +21,7 @@ export default function RoutePreview({ event }: { event: CultEvent }) {
       <p className="mt-2 text-[12px]">De sua localização até o {event.venue}</p>
 
       <div className="my-5 grid gap-[10px]">
-        {demoRoutes.map((route) => (
+        {routeOptions.map((route) => (
           <div
             key={route.id}
             className="flex items-center justify-between gap-3 rounded-[13px] border border-line bg-surface px-[15px] py-[13px] text-[12px]"

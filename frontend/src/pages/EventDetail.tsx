@@ -13,10 +13,10 @@ import TextLink from '@/components/common/TextLink'
 import CommentItem from '@/components/events/CommentItem'
 import RoutePreview from '@/components/events/RoutePreview'
 import WeatherCard from '@/components/weather/WeatherCard'
-import { demoComments } from '@/data/comments'
-import { currentUser } from '@/data/user'
+import { useComments } from '@/hooks/useComments'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEvent } from '@/hooks/useEvent'
+import { useEvent } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
 import { inputClass } from '@/lib/classes'
 import { preventSubmit } from '@/lib/forms'
@@ -24,6 +24,8 @@ import { paths } from '@/lib/paths'
 
 export default function EventDetail() {
   const event = useEvent()
+  const user = useCurrentUser()
+  const comments = useComments(event?.id)
   useDocumentTitle(event ? `${event.title} | CultHub` : 'Evento não encontrado | CultHub')
 
   if (!event?.details) {
@@ -155,7 +157,7 @@ export default function EventDetail() {
           <SectionHeading
             id="comentarios-titulo"
             title="Comentários"
-            description={`${demoComments.length} comentários de exemplo • Compartilhe o seu olhar sobre a experiência.`}
+            description={`${comments.length} comentários de exemplo • Compartilhe o seu olhar sobre a experiência.`}
           />
 
           <Surface
@@ -167,10 +169,10 @@ export default function EventDetail() {
           >
             <div className="mb-[18px] flex items-center gap-3 text-[12px]">
               <Avatar size="sm" aria-hidden="true">
-                {currentUser.initials}
+                {user.initials}
               </Avatar>
               <p>
-                Comentando como <strong>{currentUser.name}</strong> • perfil fictício
+                Comentando como <strong>{user.name}</strong> • perfil fictício
               </p>
             </div>
 
@@ -196,7 +198,7 @@ export default function EventDetail() {
           </Surface>
 
           <Surface>
-            {demoComments.map((comment) => (
+            {comments.map((comment) => (
               <CommentItem key={comment.id} comment={comment} />
             ))}
             <DemoNote className="mt-5">

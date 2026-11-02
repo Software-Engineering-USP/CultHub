@@ -2,12 +2,15 @@ import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import { SunIcon } from '@/components/common/Icons'
 import Surface from '@/components/common/Surface'
-import { demoWeather } from '@/data/weather'
+import { useWeather } from '@/hooks/useWeather'
 import type { CultEvent } from '@/types'
 import WeatherStats from './WeatherStats'
 
 /** Clima do evento (página de detalhes). */
 export default function WeatherCard({ event }: { event: CultEvent }) {
+  const weather = useWeather(event.id)
+  if (!weather) return null
+
   return (
     <Surface as="section" aria-labelledby="clima-titulo">
       <div className="flex items-center justify-between gap-[14px]">
@@ -21,7 +24,7 @@ export default function WeatherCard({ event }: { event: CultEvent }) {
         <SunIcon />
         <div>
           <p className="text-[46px] leading-[1.15] font-[650] tracking-[-.06em] text-ink">
-            {demoWeather.temperature}
+            {weather.temperature}
           </p>
           <p className="text-[12px] text-muted-foreground">{event.schedule} • exemplo</p>
         </div>
@@ -29,7 +32,7 @@ export default function WeatherCard({ event }: { event: CultEvent }) {
 
       <p>Noite agradável com poucas nuvens e sensação confortável para o trajeto até o {event.venue}.</p>
 
-      <WeatherStats variant="card" />
+      <WeatherStats weather={weather} variant="card" />
 
       <DemoNote>Dados fictícios para ilustrar o layout. Não é uma previsão atual ou em tempo real.</DemoNote>
     </Surface>

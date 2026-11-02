@@ -1,15 +1,16 @@
-import { demoWeather } from '@/data/weather'
 import { cn } from '@/lib/utils'
+import type { Weather } from '@/types'
 
 interface WeatherStatsProps {
+  weather: Weather
   variant: 'card' | 'strip'
 }
 
-export default function WeatherStats({ variant }: WeatherStatsProps) {
+export default function WeatherStats({ weather, variant }: WeatherStatsProps) {
   const stats = [
-    { label: 'Sensação', value: demoWeather.feelsLike },
-    { label: 'Umidade', value: demoWeather.humidity },
-    { label: 'Vento', value: demoWeather.wind },
+    { label: 'Sensação', value: weather.feelsLike },
+    { label: 'Umidade', value: weather.humidity },
+    { label: 'Vento', value: weather.wind },
   ]
 
   return (

@@ -12,15 +12,16 @@ import Surface from '@/components/common/Surface'
 import TextLink from '@/components/common/TextLink'
 import EventStrip from '@/components/events/EventStrip'
 import WeatherStrip from '@/components/weather/WeatherStrip'
-import { demoRoutes } from '@/data/routes'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEvent } from '@/hooks/useEvent'
+import { useEvent } from '@/hooks/useEvents'
+import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { peerFocusRing } from '@/lib/classes'
 import { preventSubmit } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 
 export default function Origin() {
   const event = useEvent()
+  const routeOptions = useRouteOptions(event?.id)
   useDocumentTitle('Defina sua origem | CultHub')
 
   if (!event?.details) {
@@ -107,7 +108,7 @@ export default function Origin() {
             <fieldset aria-describedby="transporte-aviso" className="mb-[18px] min-w-0">
               <legend className="mb-[9px] text-[11px] font-[650]">Como você quer ir?</legend>
               <div className="grid grid-cols-3 gap-[7px]">
-                {demoRoutes.map((route) => (
+                {routeOptions.map((route) => (
                   <div key={route.id} className="relative">
                     <input
                       id={route.id}

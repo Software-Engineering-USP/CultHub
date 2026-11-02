@@ -4,12 +4,13 @@ import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import SectionHeading from '@/components/common/SectionHeading'
 import EventCard from '@/components/events/EventCard'
-import { events } from '@/data/events'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useEvents } from '@/hooks/useEvents'
 import { categories, categoryOrder } from '@/lib/categories'
 
 export default function Home() {
   useDocumentTitle('CultHub | Explore São Paulo')
+  const events = useEvents()
   const featured = events.filter((event) => event.featured)
 
   return (
