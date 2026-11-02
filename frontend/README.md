@@ -36,6 +36,7 @@ src/
 ├── types/           tipos compartilhados (CultEvent, User, CategoryId...)
 ├── hooks/           useDocumentTitle, useEvent
 ├── lib/             rotas (paths), cn() e outros helpers
+├── services/        api.ts: chamadas ao backend (por enquanto só aparecem no console)
 └── test/            configuração dos testes e o helper renderWithRouter
 ```
 
