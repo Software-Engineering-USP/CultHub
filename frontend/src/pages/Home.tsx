@@ -1,15 +1,16 @@
-import EventCard from '../components/events/EventCard'
-import { Button } from '../components/ui/Button'
-import CategoryDot from '../components/ui/CategoryDot'
-import DemoNote from '../components/ui/DemoNote'
-import Eyebrow from '../components/ui/Eyebrow'
-import SectionHeading from '../components/ui/SectionHeading'
-import { events } from '../data/events'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { categories, categoryOrder } from '../lib/categories'
+import { Button } from '@/components/common/Button'
+import CategoryDot from '@/components/common/CategoryDot'
+import DemoNote from '@/components/common/DemoNote'
+import Eyebrow from '@/components/common/Eyebrow'
+import SectionHeading from '@/components/common/SectionHeading'
+import EventCard from '@/components/events/EventCard'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useEvents } from '@/hooks/useEvents'
+import { categories, categoryOrder } from '@/lib/categories'
 
 export default function Home() {
   useDocumentTitle('CultHub | Explore São Paulo')
+  const events = useEvents()
   const featured = events.filter((event) => event.featured)
 
   return (
@@ -69,21 +70,21 @@ export default function Home() {
           title="Eventos em Destaque"
           description="As experiências mais recomendadas da semana"
         >
-          <Eyebrow className="text-[10px] text-muted">SEU PRÓXIMO ENCONTRO COM A CIDADE</Eyebrow>
+          <Eyebrow className="text-[10px] text-muted-foreground">SEU PRÓXIMO ENCONTRO COM A CIDADE</Eyebrow>
         </SectionHeading>
 
         <div
           tabIndex={0}
           role="region"
           aria-label={`${featured.length} experiências em destaque, role horizontalmente para explorar`}
-          className="grid auto-cols-[350px] grid-flow-col snap-x snap-proximity gap-5 overflow-x-auto px-[2px] pb-4 [scrollbar-color:#c2a789_transparent] [scrollbar-width:thin] max-sm:auto-cols-[min(310px,85vw)] max-sm:gap-[15px] [&>*]:snap-start"
+          className="grid snap-x snap-proximity scrollbar-thin [scrollbar-color:#c2a789_transparent] auto-cols-[350px] grid-flow-col gap-5 overflow-x-auto px-[2px] pb-4 *:snap-start max-sm:auto-cols-[min(310px,85vw)] max-sm:gap-[15px]"
         >
           {featured.map((event, index) => (
             <EventCard key={event.id} event={event} priority={index === 0} />
           ))}
         </div>
 
-        <div className="mt-[7px] flex justify-between gap-4 text-[11px] text-muted max-sm:flex-wrap max-sm:gap-[6px] max-sm:text-[10px]">
+        <div className="mt-[7px] flex justify-between gap-4 text-[11px] text-muted-foreground max-sm:flex-wrap max-sm:gap-[6px] max-sm:text-[10px]">
           <span>{featured.length} experiências em destaque</span>
           <span>Deslize para descobrir mais →</span>
         </div>
@@ -95,8 +96,8 @@ export default function Home() {
           title="Todos os Eventos Encontrados"
           description={`Exibindo ${events.length} evento(s) encontrado(s)`}
         >
-          <span className="whitespace-nowrap rounded-xl border border-line bg-surface/65 px-4 py-[10px] text-[12px] max-sm:text-[11px]">
-            Ordenar: <strong>Relevância</strong> <span className="text-muted">· exemplo fixo</span>
+          <span className="rounded-xl border border-line bg-surface/65 px-4 py-[10px] text-[12px] whitespace-nowrap max-sm:text-[11px]">
+            Ordenar: <strong>Relevância</strong> <span className="text-muted-foreground">· exemplo fixo</span>
           </span>
         </SectionHeading>
 
@@ -107,8 +108,8 @@ export default function Home() {
         </div>
 
         <DemoNote className="mt-5">
-          Busca, filtros e ordenação são demonstrativos. Apenas o Jazz &amp; Blues Festival possui uma
-          página de detalhes neste exemplo.
+          Busca, filtros e ordenação são demonstrativos. Apenas o Jazz &amp; Blues Festival possui uma página
+          de detalhes neste exemplo.
         </DemoNote>
       </section>
     </div>

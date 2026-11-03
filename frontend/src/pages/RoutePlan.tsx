@@ -1,33 +1,34 @@
 import { Link } from 'react-router-dom'
-import EventStrip from '../components/events/EventStrip'
-import BackLink from '../components/ui/BackLink'
-import Breadcrumbs from '../components/ui/Breadcrumbs'
-import { Button } from '../components/ui/Button'
-import DemoNote from '../components/ui/DemoNote'
-import Eyebrow from '../components/ui/Eyebrow'
-import NotFound from '../components/ui/NotFound'
-import SectionHeading from '../components/ui/SectionHeading'
-import StatusBadge from '../components/ui/StatusBadge'
-import Surface from '../components/ui/Surface'
-import WeatherStrip from '../components/weather/WeatherStrip'
-import { demoRoutes } from '../data/events'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { useEvent } from '../hooks/useEvent'
-import { cn } from '../lib/cn'
+import BackLink from '@/components/common/BackLink'
+import Breadcrumbs from '@/components/common/Breadcrumbs'
+import { Button } from '@/components/common/Button'
+import DemoNote from '@/components/common/DemoNote'
+import Eyebrow from '@/components/common/Eyebrow'
+import NotFound from '@/components/common/NotFound'
+import SectionHeading from '@/components/common/SectionHeading'
+import StatusBadge from '@/components/common/StatusBadge'
+import Surface from '@/components/common/Surface'
+import EventStrip from '@/components/events/EventStrip'
+import WeatherStrip from '@/components/weather/WeatherStrip'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useEvent } from '@/hooks/useEvents'
+import { useRouteOptions } from '@/hooks/useRouteOptions'
+import { paths } from '@/lib/paths'
+import { cn } from '@/lib/utils'
 
 const dotBase =
   "relative pl-[22px] before:absolute before:left-0 before:top-2 before:h-2 before:w-2 before:rounded-full before:border-2 before:border-maroon before:content-['']"
 
 export default function RoutePlan() {
   const event = useEvent()
+  const routeOptions = useRouteOptions(event?.id)
   useDocumentTitle('Rota de exemplo | CultHub')
 
   if (!event?.details) {
     return <NotFound message="Não encontramos o evento para exibir a rota." />
   }
 
-  const base = `/eventos/${event.id}`
-  const selected = demoRoutes[0]
+  const selected = routeOptions[0]
   const itinerary = [
     { title: 'Parta da origem fictícia', detail: 'Ponto indicado no mapa.' },
     { title: 'Siga o trajeto destacado', detail: 'Percurso ilustrativo, sem vias confirmadas.' },
@@ -36,11 +37,11 @@ export default function RoutePlan() {
 
   return (
     <>
-      <BackLink to={base}>← Voltar para o evento</BackLink>
+      <BackLink to={paths.event(event.id)}>← Voltar para o evento</BackLink>
       <Breadcrumbs
         items={[
-          { label: 'Explorar', to: '/' },
-          { label: event.shortTitle ?? event.title, to: base },
+          { label: 'Explorar', to: paths.home },
+          { label: event.shortTitle ?? event.title, to: paths.event(event.id) },
           { label: 'Como chegar' },
         ]}
       />
@@ -68,21 +69,24 @@ export default function RoutePlan() {
             <h2 id="trajeto-titulo" className="text-[21px]">
               Seu trajeto
             </h2>
-            <Eyebrow tight className="max-w-[85px] text-right text-[8px] text-muted">
+            <Eyebrow tight className="max-w-[85px] text-right text-[8px] text-muted-foreground">
               EXEMPLO ILUSTRATIVO
             </Eyebrow>
           </div>
 
           <div className="mb-[22px] grid gap-4">
             <div className={dotBase}>
-              <Link to={`${base}/origem`} className="float-right text-[10px] text-maroon underline">
+              <Link
+                to={paths.eventOrigin(event.id)}
+                className="float-right text-[10px] text-maroon underline"
+              >
                 Alterar
               </Link>
-              <small className="block text-[10px] text-muted">Partida</small>
+              <small className="block text-[10px] text-muted-foreground">Partida</small>
               <strong className="block text-[12px]">Sua localização • exemplo</strong>
             </div>
             <div className={cn(dotBase, 'before:bg-maroon')}>
-              <small className="block text-[10px] text-muted">Destino</small>
+              <small className="block text-[10px] text-muted-foreground">Destino</small>
               <strong className="block text-[12px]">{event.venue}</strong>
             </div>
           </div>
@@ -91,7 +95,7 @@ export default function RoutePlan() {
             aria-label="Comparação ilustrativa de transportes, sem seleção interativa"
             className="mb-[22px] grid grid-cols-3 gap-2"
           >
-            {demoRoutes.map((route, index) => (
+            {routeOptions.map((route, index) => (
               <li
                 key={route.id}
                 className={cn(
@@ -101,7 +105,7 @@ export default function RoutePlan() {
               >
                 <strong className="block text-[10px]">{route.label}</strong>
                 <span className="mt-1 block text-[17px] font-[750] text-maroon">{route.time}</span>
-                <small className="block text-[9px] text-muted">
+                <small className="block text-[9px] text-muted-foreground">
                   {route.detail}
                   {index === 0 && ' • em destaque'}
                 </small>
@@ -111,7 +115,7 @@ export default function RoutePlan() {
 
           <div className="mb-[23px] flex items-center justify-between gap-[14px] border-t border-[#e5d5bc] pt-[19px]">
             <div>
-              <strong className="block text-[29px] leading-[1.2] tracking-[-.05em] text-maroon">
+              <strong className="block text-[29px] leading-[1.2] tracking-tighter text-maroon">
                 {selected.time}
               </strong>
               <small className="text-[10px]">{selected.detail} • de carro</small>
@@ -123,17 +127,17 @@ export default function RoutePlan() {
 
           <div>
             <h3 className="text-[13px]">Itinerário demonstrativo</h3>
-            <ol className="mb-[22px] mt-4">
+            <ol className="mt-4 mb-[22px]">
               {itinerary.map((step, index) => (
                 <li key={step.title} className="relative pb-[19px] pl-8 text-[11px] last:pb-0">
                   <span
                     aria-hidden="true"
-                    className="absolute left-0 top-px grid h-[22px] w-[22px] place-items-center rounded-full bg-[#ede0c9] text-[10px] font-bold text-maroon"
+                    className="absolute top-px left-0 grid h-[22px] w-[22px] place-items-center rounded-full bg-[#ede0c9] text-[10px] font-bold text-maroon"
                   >
                     {index + 1}
                   </span>
                   <strong className="block">{step.title}</strong>
-                  <span className="mt-1 block text-[10px] text-muted">{step.detail}</span>
+                  <span className="mt-1 block text-[10px] text-muted-foreground">{step.detail}</span>
                 </li>
               ))}
             </ol>
@@ -149,7 +153,8 @@ export default function RoutePlan() {
 
           <DemoNote size="xs" className="mt-[18px] border-t border-line pt-[15px]">
             Origem, distâncias e tempos são fictícios. Não há consulta de trânsito, cálculo de percurso ou
-            compartilhamento de localização. <Link to={`${base}/origem`}>Voltar à definição de origem</Link>.
+            compartilhamento de localização.{' '}
+            <Link to={paths.eventOrigin(event.id)}>Voltar à definição de origem</Link>.
           </DemoNote>
         </Surface>
 
@@ -162,8 +167,8 @@ export default function RoutePlan() {
             alt="Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real."
           />
           <DemoNote as="figcaption" className="mt-[10px]">
-            Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em
-            um serviço de mapas atualizado.
+            Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um
+            serviço de mapas atualizado.
           </DemoNote>
         </figure>
       </div>

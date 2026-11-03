@@ -1,43 +1,46 @@
-import type { CultEvent } from '../../data/events'
-import { demoRoutes } from '../../data/events'
-import { ButtonLink } from '../ui/Button'
-import DemoNote from '../ui/DemoNote'
-import Eyebrow from '../ui/Eyebrow'
-import Surface from '../ui/Surface'
+import { ButtonLink } from '@/components/common/Button'
+import DemoNote from '@/components/common/DemoNote'
+import Eyebrow from '@/components/common/Eyebrow'
+import Surface from '@/components/common/Surface'
+import { useRouteOptions } from '@/hooks/useRouteOptions'
+import { paths } from '@/lib/paths'
+import type { CultEvent } from '@/types'
 
 /** Resumo de rotas na página do evento. */
 export default function RoutePreview({ event }: { event: CultEvent }) {
+  const routeOptions = useRouteOptions(event.id)
+
   return (
     <Surface as="section" aria-labelledby="rota-titulo" bg="bg-[#fbe9cf]">
       <div className="flex items-center justify-between gap-[14px]">
         <h3 id="rota-titulo" className="text-[17px]">
           Planejar rota
         </h3>
-        <Eyebrow className="text-[10px] text-muted">{event.details?.startTime} · EXEMPLO</Eyebrow>
+        <Eyebrow className="text-[10px] text-muted-foreground">{event.details?.startTime} · EXEMPLO</Eyebrow>
       </div>
       <p className="mt-2 text-[12px]">De sua localização até o {event.venue}</p>
 
       <div className="my-5 grid gap-[10px]">
-        {demoRoutes.map((route) => (
+        {routeOptions.map((route) => (
           <div
             key={route.id}
             className="flex items-center justify-between gap-3 rounded-[13px] border border-line bg-surface px-[15px] py-[13px] text-[12px]"
           >
             <div>
               <strong className="block">{route.label}</strong>
-              <span className="text-[11px] text-muted">
+              <span className="text-[11px] text-muted-foreground">
                 {route.detail} • {route.tag}
               </span>
             </div>
             <div className="text-right text-[15px] font-bold text-maroon">
               {route.time}
-              <small className="block text-[10px] font-medium text-muted">Tempo ilustrativo</small>
+              <small className="block text-[10px] font-medium text-muted-foreground">Tempo ilustrativo</small>
             </div>
           </div>
         ))}
       </div>
 
-      <ButtonLink to={`/eventos/${event.id}/rota`} block aria-label="Ver rota completa de exemplo">
+      <ButtonLink to={paths.eventRoute(event.id)} block aria-label="Ver rota completa de exemplo">
         Ver rota completa <span aria-hidden="true">→</span>
       </ButtonLink>
       <DemoNote size="sm" className="mt-2">

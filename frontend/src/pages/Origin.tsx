@@ -1,40 +1,40 @@
-import EventStrip from '../components/events/EventStrip'
-import BackLink from '../components/ui/BackLink'
-import Breadcrumbs from '../components/ui/Breadcrumbs'
-import { Button } from '../components/ui/Button'
-import DemoNote from '../components/ui/DemoNote'
-import Field from '../components/ui/Field'
-import IconTile from '../components/ui/IconTile'
-import { LocateIcon } from '../components/ui/Icons'
-import NotFound from '../components/ui/NotFound'
-import SectionHeading from '../components/ui/SectionHeading'
-import StatusBadge from '../components/ui/StatusBadge'
-import Surface from '../components/ui/Surface'
-import TextLink from '../components/ui/TextLink'
-import WeatherStrip from '../components/weather/WeatherStrip'
-import { demoRoutes } from '../data/events'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { useEvent } from '../hooks/useEvent'
-import { peerFocusRing } from '../lib/classes'
-import { preventSubmit } from '../lib/forms'
+import BackLink from '@/components/common/BackLink'
+import Breadcrumbs from '@/components/common/Breadcrumbs'
+import { Button } from '@/components/common/Button'
+import DemoNote from '@/components/common/DemoNote'
+import Field from '@/components/common/Field'
+import { LocateIcon } from '@/components/common/Icons'
+import IconTile from '@/components/common/IconTile'
+import NotFound from '@/components/common/NotFound'
+import SectionHeading from '@/components/common/SectionHeading'
+import StatusBadge from '@/components/common/StatusBadge'
+import Surface from '@/components/common/Surface'
+import TextLink from '@/components/common/TextLink'
+import EventStrip from '@/components/events/EventStrip'
+import WeatherStrip from '@/components/weather/WeatherStrip'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useEvent } from '@/hooks/useEvents'
+import { useRouteOptions } from '@/hooks/useRouteOptions'
+import { peerFocusRing } from '@/lib/classes'
+import { preventSubmit } from '@/lib/forms'
+import { paths } from '@/lib/paths'
 
 export default function Origin() {
   const event = useEvent()
+  const routeOptions = useRouteOptions(event?.id)
   useDocumentTitle('Defina sua origem | CultHub')
 
   if (!event?.details) {
     return <NotFound message="Não encontramos o evento para planejar a visita." />
   }
 
-  const base = `/eventos/${event.id}`
-
   return (
     <>
-      <BackLink to={base}>← Voltar para o evento</BackLink>
+      <BackLink to={paths.event(event.id)}>← Voltar para o evento</BackLink>
       <Breadcrumbs
         items={[
-          { label: 'Explorar', to: '/' },
-          { label: event.shortTitle ?? event.title, to: base },
+          { label: 'Explorar', to: paths.home },
+          { label: event.shortTitle ?? event.title, to: paths.event(event.id) },
           { label: 'Como chegar' },
         ]}
       />
@@ -81,7 +81,7 @@ export default function Origin() {
             Demonstração visual: nenhuma localização é solicitada ou coletada.
           </DemoNote>
 
-          <div className="my-[17px] flex items-center gap-[10px] text-[10px] text-muted before:h-px before:flex-1 before:bg-line before:content-[''] after:h-px after:flex-1 after:bg-line after:content-['']">
+          <div className="my-[17px] flex items-center gap-[10px] text-[10px] text-muted-foreground before:h-px before:flex-1 before:bg-line before:content-[''] after:h-px after:flex-1 after:bg-line after:content-['']">
             ou informe a partida
           </div>
 
@@ -101,14 +101,14 @@ export default function Origin() {
             />
 
             <div className="my-4 rounded-xl border border-line bg-[#f6ecdd] px-[15px] py-3">
-              <small className="block text-[10px] text-muted">Destino</small>
+              <small className="block text-[10px] text-muted-foreground">Destino</small>
               <strong className="text-[12px]">{event.venue}</strong>
             </div>
 
             <fieldset aria-describedby="transporte-aviso" className="mb-[18px] min-w-0">
               <legend className="mb-[9px] text-[11px] font-[650]">Como você quer ir?</legend>
               <div className="grid grid-cols-3 gap-[7px]">
-                {demoRoutes.map((route) => (
+                {routeOptions.map((route) => (
                   <div key={route.id} className="relative">
                     <input
                       id={route.id}
@@ -116,11 +116,11 @@ export default function Origin() {
                       type="radio"
                       value={route.id}
                       defaultChecked={route.id === 'carro'}
-                      className="peer absolute left-[10px] top-3 mt-[2px] h-[13px] w-[13px] accent-maroon"
+                      className="peer absolute top-3 left-[10px] mt-[2px] h-[13px] w-[13px] accent-maroon"
                     />
                     <label
                       htmlFor={route.id}
-                      className={`block rounded-[10px] border border-line bg-surface py-[10px] pl-7 pr-2 text-center text-[10px] max-md:text-[12px] max-sm:text-[10px] peer-checked:border-[#c1884f] peer-checked:bg-[#ffe4bd] peer-checked:font-bold peer-checked:text-maroon ${peerFocusRing}`}
+                      className={`block rounded-[10px] border border-line bg-surface py-[10px] pr-2 pl-7 text-center text-[10px] peer-checked:border-[#c1884f] peer-checked:bg-[#ffe4bd] peer-checked:font-bold peer-checked:text-maroon max-md:text-[12px] max-sm:text-[10px] ${peerFocusRing}`}
                     >
                       {route.label}
                     </label>
@@ -129,7 +129,7 @@ export default function Origin() {
               </div>
             </fieldset>
 
-            <DemoNote id="transporte-aviso" size="xs" className="mb-[14px] mt-[10px]">
+            <DemoNote id="transporte-aviso" size="xs" className="mt-[10px] mb-[14px]">
               A escolha é apenas visual e não altera o mapa.
             </DemoNote>
 
@@ -139,12 +139,12 @@ export default function Origin() {
             <DemoNote id="planejamento-aviso" size="xs" className="mt-[10px]">
               Defina a partida para habilitar o planejamento.
               <br />
-              Nesta versão estática, o planejamento permanece desativado mesmo após preencher o campo.
-              Nenhum endereço é enviado.
+              Nesta versão estática, o planejamento permanece desativado mesmo após preencher o campo. Nenhum
+              endereço é enviado.
             </DemoNote>
           </form>
 
-          <TextLink to={`${base}/rota`} className="mt-4 block text-center">
+          <TextLink to={paths.eventRoute(event.id)} className="mt-4 block text-center">
             Ver rota de exemplo →
           </TextLink>
 

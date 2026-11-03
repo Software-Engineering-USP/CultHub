@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
+import { routes } from '@/lib/paths'
 import Layout from './components/layout/Layout'
 import Account from './pages/Account'
 import EventDetail from './pages/EventDetail'
@@ -13,11 +14,11 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="eventos/:id" element={<EventDetail />} />
-        <Route path="eventos/:id/origem" element={<Origin />} />
-        <Route path="eventos/:id/rota" element={<RoutePlan />} />
-        <Route path="entrar" element={<SignIn />} />
-        <Route path="conta" element={<Account />} />
+        <Route path={routes.event} element={<EventDetail />} />
+        <Route path={routes.eventOrigin} element={<Origin />} />
+        <Route path={routes.eventRoute} element={<RoutePlan />} />
+        <Route path={routes.signIn} element={<SignIn />} />
+        <Route path={routes.account} element={<Account />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

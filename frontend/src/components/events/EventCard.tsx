@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
-import type { CultEvent } from '../../data/events'
-import { categories } from '../../lib/categories'
-import { cn } from '../../lib/cn'
-import CategoryBadge from '../ui/CategoryBadge'
-import { CalendarIcon, PinIcon } from '../ui/Icons'
+import CategoryBadge from '@/components/common/CategoryBadge'
+import { CalendarIcon, PinIcon } from '@/components/common/Icons'
+import { categories } from '@/lib/categories'
+import { eventPath } from '@/lib/events'
+import { cn } from '@/lib/utils'
+import type { CultEvent } from '@/types'
 
 interface EventCardProps {
   event: CultEvent
@@ -15,9 +16,14 @@ interface EventCardProps {
   priority?: boolean
 }
 
-export default function EventCard({ event, icons = false, compact = false, priority = false }: EventCardProps) {
+export default function EventCard({
+  event,
+  icons = false,
+  compact = false,
+  priority = false,
+}: EventCardProps) {
   const category = categories[event.category]
-  const href = event.details ? `/eventos/${event.id}` : null
+  const href = eventPath(event)
   const shortName = event.shortTitle ?? event.title
 
   const image = (
@@ -41,7 +47,9 @@ export default function EventCard({ event, icons = false, compact = false, prior
         ) : (
           image
         )}
-        <CategoryBadge className="absolute left-[14px] top-[14px] shadow-badge">{category.label}</CategoryBadge>
+        <CategoryBadge className="absolute top-[14px] left-[14px] shadow-badge">
+          {category.label}
+        </CategoryBadge>
       </div>
 
       <div className={compact ? 'p-5' : 'p-[22px] max-lg:p-[19px] max-sm:p-[22px]'}>
@@ -54,7 +62,9 @@ export default function EventCard({ event, icons = false, compact = false, prior
             event.title
           )}
         </h3>
-        <p className="mb-[18px] min-h-[63px] text-[13px] leading-[1.65] max-sm:min-h-0">{event.description}</p>
+        <p className="mb-[18px] min-h-[63px] text-[13px] leading-[1.65] max-sm:min-h-0">
+          {event.description}
+        </p>
 
         <div className="grid gap-[7px] text-[12px]">
           {icons ? (
@@ -76,13 +86,13 @@ export default function EventCard({ event, icons = false, compact = false, prior
           )}
         </div>
 
-        <div className="mt-5 flex items-center justify-between gap-[10px] border-t border-maroon/[.12] pt-4 text-[16px] font-[750] text-maroon">
+        <div className="mt-5 flex items-center justify-between gap-[10px] border-t border-maroon/12 pt-4 text-[16px] font-[750] text-maroon">
           <span>{event.price}</span>
           {href ? (
             <Link
               to={href}
               aria-label={`Ver detalhes do ${shortName}`}
-              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-maroon/[.22] text-[19px] no-underline"
+              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-maroon/22 text-[19px] no-underline"
             >
               ↗
             </Link>

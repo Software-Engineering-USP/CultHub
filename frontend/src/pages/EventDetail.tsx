@@ -1,27 +1,31 @@
-import CommentItem from '../components/events/CommentItem'
-import RoutePreview from '../components/events/RoutePreview'
-import { Button, ButtonLink } from '../components/ui/Button'
-import BackLink from '../components/ui/BackLink'
-import Breadcrumbs from '../components/ui/Breadcrumbs'
-import CategoryBadge from '../components/ui/CategoryBadge'
-import DemoNote from '../components/ui/DemoNote'
-import Avatar from '../components/ui/Avatar'
-import IconTile from '../components/ui/IconTile'
-import { CalendarIcon, PinIcon } from '../components/ui/Icons'
-import NotFound from '../components/ui/NotFound'
-import SectionHeading from '../components/ui/SectionHeading'
-import TextLink from '../components/ui/TextLink'
-import Surface from '../components/ui/Surface'
-import WeatherCard from '../components/weather/WeatherCard'
-import { currentUser, demoComments } from '../data/events'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { useEvent } from '../hooks/useEvent'
-import { categories } from '../lib/categories'
-import { inputClass } from '../lib/classes'
-import { preventSubmit } from '../lib/forms'
+import Avatar from '@/components/common/Avatar'
+import BackLink from '@/components/common/BackLink'
+import Breadcrumbs from '@/components/common/Breadcrumbs'
+import { Button, ButtonLink } from '@/components/common/Button'
+import CategoryBadge from '@/components/common/CategoryBadge'
+import DemoNote from '@/components/common/DemoNote'
+import { CalendarIcon, PinIcon } from '@/components/common/Icons'
+import IconTile from '@/components/common/IconTile'
+import NotFound from '@/components/common/NotFound'
+import SectionHeading from '@/components/common/SectionHeading'
+import Surface from '@/components/common/Surface'
+import TextLink from '@/components/common/TextLink'
+import CommentItem from '@/components/events/CommentItem'
+import RoutePreview from '@/components/events/RoutePreview'
+import WeatherCard from '@/components/weather/WeatherCard'
+import { useComments } from '@/hooks/useComments'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useEvent } from '@/hooks/useEvents'
+import { categories } from '@/lib/categories'
+import { inputClass } from '@/lib/classes'
+import { preventSubmit } from '@/lib/forms'
+import { paths } from '@/lib/paths'
 
 export default function EventDetail() {
   const event = useEvent()
+  const user = useCurrentUser()
+  const comments = useComments(event?.id)
   useDocumentTitle(event ? `${event.title} | CultHub` : 'Evento não encontrado | CultHub')
 
   if (!event?.details) {
@@ -33,18 +37,21 @@ export default function EventDetail() {
 
   return (
     <>
-      <BackLink to="/">← Voltar para explorar</BackLink>
+      <BackLink to={paths.home}>← Voltar para explorar</BackLink>
       <Breadcrumbs
-        items={[{ label: 'Explorar', to: '/' }, { label: category.label }, { label: shortName }]}
+        items={[{ label: 'Explorar', to: paths.home }, { label: category.label }, { label: shortName }]}
       />
 
-      <div className="relative mb-8 overflow-hidden rounded-[32px] bg-[#2b2522] after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:top-[55%] after:bg-gradient-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-[22px]">
+      <div className="relative mb-8 overflow-hidden rounded-[32px] bg-[#2b2522] after:pointer-events-none after:absolute after:inset-x-0 after:top-[55%] after:bottom-0 after:bg-linear-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-[22px]">
         <img
           src={event.image}
           alt={event.imageAlt}
           className="block h-[400px] w-full object-cover object-[center_47%] max-md:h-[330px] max-sm:h-[235px]"
         />
-        <CategoryBadge size="lg" className="absolute bottom-[25px] left-[30px] z-[1] max-sm:bottom-4 max-sm:left-4">
+        <CategoryBadge
+          size="lg"
+          className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4"
+        >
           {category.label} • {shortName}
         </CategoryBadge>
       </div>
@@ -59,7 +66,7 @@ export default function EventDetail() {
               {event.title}
             </h1>
 
-            <div className="mb-2 mt-[22px] flex flex-wrap gap-[10px]">
+            <div className="mt-[22px] mb-2 flex flex-wrap gap-[10px]">
               <Button variant="secondary" disabled aria-describedby="acoes-aviso">
                 ♡ Salvar
               </Button>
@@ -93,21 +100,21 @@ export default function EventDetail() {
                   Onde acontece
                 </h2>
                 <strong className="mt-[10px] block">{event.venue}</strong>
-                <p className="mb-[13px] mt-[9px] text-[13px]">
-                  O local aparece no mapa ilustrativo do CultHub. Consulte os canais oficiais do espaço
-                  para endereço de acesso, acessibilidade e orientações de chegada.
+                <p className="mt-[9px] mb-[13px] text-[13px]">
+                  O local aparece no mapa ilustrativo do CultHub. Consulte os canais oficiais do espaço para
+                  endereço de acesso, acessibilidade e orientações de chegada.
                 </p>
-                <TextLink to={`/eventos/${event.id}/origem`}>Ver local no mapa →</TextLink>
+                <TextLink to={paths.eventOrigin(event.id)}>Ver local no mapa →</TextLink>
               </div>
             </Surface>
           </div>
 
           <Surface as="aside" aria-label="Preço e planejamento da visita" bg="bg-[#fff0d9]">
             <CategoryBadge>{category.label}</CategoryBadge>
-            <p className="mt-[22px] text-[36px] font-[750] leading-[1.2] tracking-[-.04em] text-maroon max-md:mt-[14px] max-sm:text-[32px]">
+            <p className="mt-[22px] text-[36px] leading-[1.2] font-[750] tracking-[-.04em] text-maroon max-md:mt-[14px] max-sm:text-[32px]">
               {event.price}
             </p>
-            <p className="text-[12px] text-muted">Preço informado no exemplo</p>
+            <p className="text-[12px] text-muted-foreground">Preço informado no exemplo</p>
 
             <div className="my-6 grid gap-4 border-y border-[#e8d8bf] py-6 text-[13px] max-md:my-[18px] max-md:flex max-md:flex-wrap max-md:gap-x-8 max-md:gap-y-[18px] max-md:py-[18px]">
               <p className="flex items-start gap-2">
@@ -124,7 +131,7 @@ export default function EventDetail() {
               </p>
             </div>
 
-            <ButtonLink to={`/eventos/${event.id}/origem`} block>
+            <ButtonLink to={paths.eventOrigin(event.id)} block>
               Planejar minha visita <span aria-hidden="true">→</span>
             </ButtonLink>
             <DemoNote className="mt-4">
@@ -150,7 +157,7 @@ export default function EventDetail() {
           <SectionHeading
             id="comentarios-titulo"
             title="Comentários"
-            description={`${demoComments.length} comentários de exemplo • Compartilhe o seu olhar sobre a experiência.`}
+            description={`${comments.length} comentários de exemplo • Compartilhe o seu olhar sobre a experiência.`}
           />
 
           <Surface
@@ -162,10 +169,10 @@ export default function EventDetail() {
           >
             <div className="mb-[18px] flex items-center gap-3 text-[12px]">
               <Avatar size="sm" aria-hidden="true">
-                {currentUser.initials}
+                {user.initials}
               </Avatar>
               <p>
-                Comentando como <strong>{currentUser.name}</strong> • perfil fictício
+                Comentando como <strong>{user.name}</strong> • perfil fictício
               </p>
             </div>
 
@@ -191,7 +198,7 @@ export default function EventDetail() {
           </Surface>
 
           <Surface>
-            {demoComments.map((comment) => (
+            {comments.map((comment) => (
               <CommentItem key={comment.id} comment={comment} />
             ))}
             <DemoNote className="mt-5">

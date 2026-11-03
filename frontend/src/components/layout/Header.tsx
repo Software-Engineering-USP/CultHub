@@ -1,28 +1,30 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { currentUser } from '../../data/events'
-import { categories, categoryOrder } from '../../lib/categories'
-import { avatarClass } from '../../lib/classes'
-import CategoryDot from '../ui/CategoryDot'
-import { BrandMark, FiltersIcon, SearchIcon } from '../ui/Icons'
+import CategoryDot from '@/components/common/CategoryDot'
+import { BrandMark, FiltersIcon, SearchIcon } from '@/components/common/Icons'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { categories, categoryOrder } from '@/lib/categories'
+import { avatarClass } from '@/lib/classes'
+import { paths } from '@/lib/paths'
 
 export default function Header() {
   const { pathname } = useLocation()
-  const onAccount = pathname === '/conta'
-  const onSignIn = pathname === '/entrar'
+  const user = useCurrentUser()
+  const onAccount = pathname === paths.account
+  const onSignIn = pathname === paths.signIn
 
   return (
-    <header className="relative z-[5] mt-8 flex min-h-20 items-center gap-8 rounded-[44px] border border-line/60 bg-surface py-[14px] pl-[30px] pr-6 shadow-soft max-lg:gap-[22px] max-md:flex-wrap max-md:gap-5 max-md:rounded-[30px] max-md:px-[22px] max-md:py-4 max-sm:mt-[18px] max-sm:gap-4 max-sm:rounded-[26px] max-sm:px-[17px] max-sm:py-[15px]">
+    <header className="relative z-5 mt-8 flex min-h-20 items-center gap-8 rounded-[44px] border border-line/60 bg-surface py-[14px] pr-6 pl-[30px] shadow-soft max-lg:gap-[22px] max-md:flex-wrap max-md:gap-5 max-md:rounded-[30px] max-md:px-[22px] max-md:py-4 max-sm:mt-[18px] max-sm:gap-4 max-sm:rounded-[26px] max-sm:px-[17px] max-sm:py-[15px]">
       <Link
-        to="/"
+        to={paths.home}
         aria-label="CultHub São Paulo, início"
         className="inline-flex shrink-0 items-center gap-[9px] text-maroon no-underline"
       >
         <BrandMark className="h-9 w-[30px] max-sm:w-[26px]" />
         <span>
-          <span className="block text-[26px] font-extrabold leading-[1.1] tracking-[-.055em] max-sm:text-[24px]">
+          <span className="block text-[26px] leading-[1.1] font-extrabold tracking-[-.055em] max-sm:text-[24px]">
             CultHub
           </span>
-          <span className="mt-[3px] block text-[9px] font-bold leading-[1.2] tracking-[.24em] max-sm:text-[8px]">
+          <span className="mt-[3px] block text-[9px] leading-[1.2] font-bold tracking-[.24em] max-sm:text-[8px]">
             SÃO PAULO
           </span>
         </span>
@@ -48,13 +50,16 @@ export default function Header() {
         </span>
       </div>
 
-      <nav aria-label="Navegação principal" className="flex shrink-0 items-center gap-[22px] max-md:ml-auto max-sm:gap-[14px]">
+      <nav
+        aria-label="Navegação principal"
+        className="flex shrink-0 items-center gap-[22px] max-md:ml-auto max-sm:gap-[14px]"
+      >
         <details className="relative max-sm:static">
           <summary className="flex min-h-11 list-none items-center gap-[9px] text-[13px] font-[650] max-sm:gap-[5px] max-sm:text-[11px] [&::-webkit-details-marker]:hidden">
             <FiltersIcon className="h-[18px] w-[18px] max-sm:w-4" />
             Filtros
           </summary>
-          <div className="absolute right-0 top-[calc(100%+14px)] w-[280px] rounded-[20px] border border-line bg-surface p-[22px] shadow-popover max-sm:right-3 max-sm:top-[calc(100%+8px)] max-sm:w-[min(280px,calc(100vw-72px))]">
+          <div className="absolute top-[calc(100%+14px)] right-0 w-[280px] rounded-[20px] border border-line bg-surface p-[22px] shadow-popover max-sm:top-[calc(100%+8px)] max-sm:right-3 max-sm:w-[min(280px,calc(100vw-72px))]">
             <strong className="mb-3 block text-maroon">Categorias culturais</strong>
             <ul className="mb-4 grid grid-cols-2 gap-3">
               {categoryOrder.map((id) => (
@@ -64,23 +69,23 @@ export default function Header() {
                 </li>
               ))}
             </ul>
-            <small className="block text-muted">
+            <small className="block text-muted-foreground">
               Exibição demonstrativa. As categorias e a busca não alteram os resultados.
             </small>
           </div>
         </details>
 
         {onSignIn ? (
-          <NavLink to="/entrar" className="font-bold text-maroon no-underline">
+          <NavLink to={paths.signIn} className="font-bold text-maroon no-underline">
             Entrar
           </NavLink>
         ) : (
           <NavLink
-            to="/conta"
-            aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de exemplo de ${currentUser.name}`}
+            to={paths.account}
+            aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de exemplo de ${user.name}`}
             className={avatarClass('md')}
           >
-            {currentUser.initials}
+            {user.initials}
           </NavLink>
         )}
       </nav>

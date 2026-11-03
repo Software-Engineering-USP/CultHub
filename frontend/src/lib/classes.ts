@@ -1,7 +1,6 @@
 // Strings de classe Tailwind reutilizadas em vários componentes.
 
-export const inputClass =
-  'rounded-[11px] border border-line bg-[#fffefa] px-[14px] py-3 text-[12px] text-ink'
+export const inputClass = 'rounded-[11px] border border-line bg-[#fffefa] px-[14px] py-3 text-[12px] text-ink'
 
 export const checkboxClass = 'mt-[2px] h-4 w-4 shrink-0 accent-maroon'
 
@@ -20,7 +19,7 @@ const buttonBase =
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    'border-transparent bg-accent text-maroon [&:not(:disabled):hover]:bg-[#ffb361] disabled:border-[#e6c39c] disabled:bg-[#f7d3ac] disabled:text-[#6c3c25]',
+    'border-transparent bg-primary text-maroon [&:not(:disabled):hover]:bg-[#ffb361] disabled:border-[#e6c39c] disabled:bg-[#f7d3ac] disabled:text-[#6c3c25]',
   secondary:
     'border-line bg-surface text-ink [&:not(:disabled):hover]:bg-[#f8f2e8] disabled:bg-[#f3efe7] disabled:text-[#667080]',
 }

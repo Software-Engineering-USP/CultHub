@@ -1,12 +1,15 @@
-import type { CultEvent } from '../../data/events'
-import { demoWeather } from '../../data/events'
-import DemoNote from '../ui/DemoNote'
-import { SunIcon } from '../ui/Icons'
-import Surface from '../ui/Surface'
+import DemoNote from '@/components/common/DemoNote'
+import { SunIcon } from '@/components/common/Icons'
+import Surface from '@/components/common/Surface'
+import { useWeather } from '@/hooks/useWeather'
+import type { CultEvent } from '@/types'
 import WeatherStats from './WeatherStats'
 
 /** Faixa de clima no rodapé das páginas de origem e rota. */
 export default function WeatherStrip({ event }: { event: CultEvent }) {
+  const weather = useWeather(event.id)
+  if (!weather) return null
+
   return (
     <Surface
       as="aside"
@@ -17,14 +20,14 @@ export default function WeatherStrip({ event }: { event: CultEvent }) {
       <SunIcon className="h-[38px] w-[38px] shrink-0 max-sm:h-[30px] max-sm:w-[30px]" />
       <div>
         <h2 className="text-[16px] max-sm:text-[13px]">Clima no horário do evento</h2>
-        <p className="mt-1 text-[10px] text-muted">
-          {event.schedule} • {demoWeather.condition}
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          {event.schedule} • {weather.condition}
         </p>
       </div>
-      <span className="mx-auto text-[32px] font-[650] leading-[1.15] tracking-[-.06em] text-ink max-md:ml-auto max-md:mr-0 max-sm:text-[28px]">
-        {demoWeather.temperature}
+      <span className="mx-auto text-[32px] leading-[1.15] font-[650] tracking-[-.06em] text-ink max-md:mr-0 max-md:ml-auto max-sm:text-[28px]">
+        {weather.temperature}
       </span>
-      <WeatherStats variant="strip" />
+      <WeatherStats weather={weather} variant="strip" />
       <DemoNote size="xs" className="mt-1 max-w-[145px] max-md:max-w-[200px] max-sm:max-w-none">
         Exemplo ilustrativo • não é previsão em tempo real.
       </DemoNote>
