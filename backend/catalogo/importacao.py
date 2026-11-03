@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import date, time
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
 from .mapeamento import categorias_do_evento, genero_do_evento
@@ -148,6 +149,7 @@ def importar(eventos, agora):
             AttributeError,
             ArithmeticError,
             IntegrityError,
+            ValidationError,
         ):
             # Dado ruim em um evento não derruba a importação inteira. Falha
             # do próprio banco (ex.: OperationalError) continua interrompendo.

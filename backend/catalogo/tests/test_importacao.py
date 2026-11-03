@@ -248,6 +248,13 @@ class ImportarTest(TestCase):
             "imagem sem url": lambda e: e.update(images=[{"url": None}]),
             "dates nulo": lambda e: e.update(dates=None),
             "dates.start nulo": lambda e: e["dates"].update(start=None),
+            "latitude NaN": lambda e: venue(e)["location"].update(
+                latitude="NaN"
+            ),
+            "longitude infinita": lambda e: venue(e)["location"].update(
+                longitude="Infinity"
+            ),
+            "preço NaN": lambda e: e.update(priceRanges=[{"min": "NaN"}]),
         }
         for nome, alterar in casos.items():
             with self.subTest(caso=nome):
@@ -337,6 +344,46 @@ class ComandoTest(TestCase):
         self.assertEqual(Evento.objects.count(), 1)
         existente.refresh_from_db()
         self.assertIsNone(existente.removido_em)
+
+    @patch("catalogo.ticketmaster.time.sleep")
+    def test_pagina_seguinte_vazia_nao_grava_nem_remove(self, _sleep):
+        existente = Evento.objects.create(
+            provedor=Provedor.TICKETMASTER,
+            id_externo="velho",
+            titulo="Velho",
+            data_inicio=AGORA.date(),
+        )
+        eventos = eventos_da_fixture()
+        primeira = _pagina(0, 2, eventos[:2])
+        primeira["page"]["totalElements"] = len(eventos)
+
+        def falso(pagina, inicio):
+            return primeira if pagina == 0 else {}
+
+        with (
+            patch("catalogo.ticketmaster.buscar_pagina", side_effect=falso),
+            self.assertRaises(CommandError),
+        ):
+            call_command("importar_ticketmaster", stdout=StringIO())
+        self.assertEqual(Evento.objects.count(), 1)
+        existente.refresh_from_db()
+        self.assertIsNone(existente.removido_em)
+
+    def test_busca_desde_o_comeco_do_dia_em_sp(self):
+        # 22:00 de 28/10 em SP, já 29/10 em UTC.
+        agora = datetime(2026, 10, 29, 1, 0, tzinfo=UTC)
+        with (
+            patch("django.utils.timezone.now", return_value=agora),
+            patch(
+                "catalogo.ticketmaster.buscar_pagina",
+                return_value=_pagina(0, 1, []),
+            ) as buscar,
+        ):
+            call_command("importar_ticketmaster", stdout=StringIO())
+        self.assertEqual(
+            buscar.call_args.args[1],
+            datetime(2026, 10, 28, 3, 0, tzinfo=UTC),
+        )
 
     @patch("catalogo.ticketmaster.time.sleep")
     def test_zero_eventos_nao_remove_nada(self, _sleep):

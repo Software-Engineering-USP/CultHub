@@ -41,6 +41,35 @@ class EventoInicioFimTest(TestCase):
         )
         self.assertIsNone(e.fim)
 
+    def test_save_update_fields_recalcula_inicio_e_fim(self):
+        e = Evento.objects.create(
+            titulo="Show",
+            data_inicio=date(2026, 11, 20),
+            hora_inicio=time(21, 0),
+            data_fim=date(2026, 11, 21),
+            hora_fim=time(2, 0),
+        )
+        e.hora_inicio = time(22, 0)
+        e.hora_fim = time(3, 0)
+        e.save(update_fields=["hora_inicio", "hora_fim"])
+        e.refresh_from_db()
+        self.assertEqual(e.inicio, datetime(2026, 11, 21, 1, 0, tzinfo=UTC))
+        self.assertEqual(e.fim, datetime(2026, 11, 21, 6, 0, tzinfo=UTC))
+
+    def test_save_update_fields_de_outro_campo_nao_grava_o_momento(self):
+        e = Evento.objects.create(
+            titulo="Show",
+            data_inicio=date(2026, 11, 20),
+            hora_inicio=time(21, 0),
+        )
+        e.hora_inicio = time(22, 0)
+        e.titulo = "Novo"
+        e.save(update_fields=["titulo"])
+        e.refresh_from_db()
+        self.assertEqual(e.titulo, "Novo")
+        self.assertEqual(e.hora_inicio, time(21, 0))
+        self.assertEqual(e.inicio, datetime(2026, 11, 21, 0, 0, tzinfo=UTC))
+
     def test_provedor_padrao_manual(self):
         local = Local.objects.create(nome="Teatro")
         e = Evento.objects.create(
@@ -59,6 +88,28 @@ class UnicidadeExternaTest(TestCase):
             Local.objects.create(
                 nome="B", provedor=Provedor.TICKETMASTER, id_externo="v1"
             )
+
+    def test_evento_com_mesmo_id_externo_e_provedor_falha(self):
+        campos = {
+            "provedor": Provedor.TICKETMASTER,
+            "id_externo": "e1",
+            "data_inicio": date(2026, 11, 20),
+        }
+        Evento.objects.create(titulo="A", **campos)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Evento.objects.create(titulo="B", **campos)
+
+    def test_mesmo_id_externo_em_provedores_diferentes_e_permitido(self):
+        for provedor in (Provedor.TICKETMASTER, Provedor.MANUAL):
+            Local.objects.create(nome="L", provedor=provedor, id_externo="x")
+            Evento.objects.create(
+                titulo="E",
+                provedor=provedor,
+                id_externo="x",
+                data_inicio=date(2026, 11, 20),
+            )
+        self.assertEqual(Local.objects.count(), 2)
+        self.assertEqual(Evento.objects.count(), 2)
 
     def test_manuais_com_id_externo_vazio_nao_conflitam(self):
         for titulo in ("A", "B"):

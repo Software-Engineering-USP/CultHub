@@ -93,6 +93,31 @@ class EventoListagemTest(APITestCase):
         )
         self.assertEqual(self.titulos(), ["Em andamento"])
 
+    def test_fim_mais_tarde_hoje_mantem(self):
+        agora = datetime(2026, 11, 20, 15, 0, tzinfo=SP)
+        criar_evento(
+            titulo="Termina hoje",
+            data_inicio=date(2026, 11, 20),
+            hora_inicio=time(10, 0),
+            data_fim=date(2026, 11, 20),
+            hora_fim=time(20, 0),
+        )
+        with patch("django.utils.timezone.now", return_value=agora):
+            self.assertEqual(self.titulos(), ["Termina hoje"])
+
+    def test_numero_de_consultas_nao_cresce_com_os_eventos(self):
+        for numero in range(3):
+            evento = criar_evento(
+                titulo=f"E{numero}", categorias=["music", "art"]
+            )
+            FaixaPreco.objects.create(evento=evento, minimo=10, maximo=20)
+            ImagemEvento.objects.create(
+                evento=evento, url="https://x.test/a.jpg"
+            )
+        # contagem, eventos e os prefetch de categorias, imagens e preços.
+        with self.assertNumQueries(5):
+            self.assertEqual(len(self.titulos()), 3)
+
     def test_fim_passado_esconde(self):
         antes = timezone.now().astimezone(SP) - timedelta(hours=1)
         criar_evento(
@@ -189,6 +214,28 @@ class EventoListagemTest(APITestCase):
             [i["url"].rsplit("/", 1)[1] for i in imagens], ["fb2", "fb1"]
         )
 
-    def test_schema_tem_eventos(self):
-        resposta = self.client.get("/api/schema/")
-        self.assertIn("/api/eventos/", resposta.content.decode())
+    def test_schema_documenta_a_listagem_e_o_detalhe(self):
+        schema = self.client.get("/api/schema/?format=json").json()
+        lista = schema["paths"]["/api/eventos/"]["get"]
+        self.assertEqual(
+            {p["name"] for p in lista["parameters"]},
+            {
+                "q",
+                "categorias",
+                "preco",
+                "de",
+                "ate",
+                "lat",
+                "lng",
+                "raio",
+                "page",
+                "tamanho",
+            },
+        )
+        componentes = schema["components"]["schemas"]
+        self.assertIn("distancia_km", componentes["Evento"]["properties"])
+        detalhe = componentes["EventoDetalhe"]["properties"]
+        self.assertLessEqual(
+            {"avisos", "situacao", "removido", "distancia_km"}, set(detalhe)
+        )
+        self.assertIn("/api/eventos/{id}/", schema["paths"])

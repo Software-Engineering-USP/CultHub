@@ -56,6 +56,7 @@ def buscar_todos(inicio, buscar=None, pausa=0.25):
         buscar = buscar_pagina
     eventos = []
     pagina = 0
+    esperados = 0
     while True:
         dados = buscar(pagina, inicio)
         info = dados.get("page", {})
@@ -63,8 +64,14 @@ def buscar_todos(inicio, buscar=None, pausa=0.25):
             raise ErroTicketmaster(
                 "mais de 1000 eventos; a importação precisa fatiar por datas"
             )
+        esperados = max(esperados, info.get("totalElements", 0))
         eventos.extend(dados.get("_embedded", {}).get("events", []))
         if pagina >= info.get("totalPages", 0) - 1:
+            if len(eventos) < esperados:
+                raise ErroTicketmaster(
+                    f"resposta incompleta: {len(eventos)} de {esperados} "
+                    "eventos"
+                )
             return eventos
         pagina += 1
         time.sleep(pausa)

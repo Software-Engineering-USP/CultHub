@@ -10,6 +10,8 @@ from catalogo.filtros import aplicar_filtros, visiveis
 from catalogo.models import Evento, Local, Provedor
 from catalogo.tests.fabrica import criar_evento
 
+PONTO_E_ANTIPODA = ("4.32335", "-35.374447", "-4.32335", "144.625553")
+
 
 class FiltrosBuscaTest(APITestCase):
     def buscar(self, **params):
@@ -81,6 +83,25 @@ class FiltrosBuscaTest(APITestCase):
         self.assertEqual(corpo["count"], 1)
         self.assertEqual(len(corpo["results"]), 1)
 
+    def test_categorias_sem_codigo_nao_filtram(self):
+        criar_evento(titulo="Musica", categorias=["music"])
+        criar_evento(titulo="Sem categoria")
+        for valor in ("", "  ", ",", " , ,"):
+            with self.subTest(valor=valor):
+                self.assertEqual(
+                    self.titulos(categorias=valor), ["Musica", "Sem categoria"]
+                )
+
+    def test_categorias_ignoram_vazios_e_espacos(self):
+        criar_evento(titulo="Musica", categorias=["music"])
+        criar_evento(titulo="Arte", categorias=["art"])
+        criar_evento(titulo="Teatro", categorias=["theater"])
+        for valor in ("music,,art", " music , art ", ",music,art,"):
+            with self.subTest(valor=valor):
+                self.assertEqual(
+                    self.titulos(categorias=valor), ["Arte", "Musica"]
+                )
+
     def test_categoria_inexistente_400(self):
         resposta = self.buscar(categorias="music,xyz")
         self.assertEqual(resposta.status_code, 400)
@@ -147,6 +168,26 @@ class FiltroPeriodoTest(APITestCase):
             ),
             ["B"],
         )
+
+    def test_bordas_de_de_e_ate_sao_inclusivas(self):
+        criar_evento(titulo="Dia 10", data_inicio=self.dia(10))
+        dia = self.dia(10).isoformat()
+        self.assertEqual(self.titulos(de=dia), ["Dia 10"])
+        self.assertEqual(self.titulos(ate=dia), ["Dia 10"])
+        self.assertEqual(self.titulos(de=dia, ate=dia), ["Dia 10"])
+        self.assertEqual(self.titulos(de=self.dia(11).isoformat()), [])
+        self.assertEqual(self.titulos(ate=self.dia(9).isoformat()), [])
+
+    def test_de_na_data_final_de_evento_de_varios_dias(self):
+        criar_evento(
+            titulo="Festival",
+            data_inicio=self.dia(5),
+            data_fim=self.dia(10),
+        )
+        self.assertEqual(
+            self.titulos(de=self.dia(10).isoformat()), ["Festival"]
+        )
+        self.assertEqual(self.titulos(de=self.dia(11).isoformat()), [])
 
     def test_so_de(self):
         self.criar_tres()
@@ -243,6 +284,25 @@ class FiltroDistanciaTest(APITestCase):
         self.assertEqual(len(resultados), 1)
         self.assertEqual(resultados[0]["distancia_km"], 0.0)
 
+    def test_arredondamento_acima_de_1_nao_perde_o_ponto_coincidente(self):
+        # Aqui o cosseno calculado dá 1.0000000000000002 (ACos seria NULL).
+        self.evento_em("Coincidente", "-8.26449", "-70.174985")
+        resultados = self.buscar(
+            lat="-8.26449", lng="-70.174985", raio="1"
+        ).json()["results"]
+        self.assertEqual(len(resultados), 1)
+        self.assertEqual(resultados[0]["distancia_km"], 0.0)
+
+    def test_arredondamento_abaixo_de_menos_1_nao_perde_o_antipoda(self):
+        # Aqui o cosseno calculado fica abaixo de -1 (ACos seria NULL).
+        lat, lng, lat2, lng2 = PONTO_E_ANTIPODA
+        self.evento_em("Antípoda", lat2, lng2)
+        resultados = self.buscar(lat=lat, lng=lng, raio="20100").json()[
+            "results"
+        ]
+        self.assertEqual(len(resultados), 1)
+        self.assertAlmostEqual(resultados[0]["distancia_km"], 20015.1, delta=1)
+
     def test_sem_coordenada_fica_de_fora(self):
         self.evento_em("Sem coordenada", None, None)
         self.evento_em("Paulista", "-23.561414", "-46.655881")
@@ -274,6 +334,11 @@ class FiltroDistanciaTest(APITestCase):
             ("lng", "181"),
             ("raio", "-1"),
             ("raio", "0"),
+            ("raio", "nan"),
+            ("raio", "inf"),
+            ("raio", "-inf"),
+            ("lat", "nan"),
+            ("lng", "inf"),
         ]
         for parametro, valor in casos:
             with self.subTest(parametro=parametro, valor=valor):

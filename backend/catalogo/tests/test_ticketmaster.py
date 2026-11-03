@@ -2,7 +2,7 @@ import http.client
 import io
 import urllib.error
 from datetime import UTC, datetime
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from django.test import SimpleTestCase, override_settings
 
@@ -57,6 +57,27 @@ class BuscarTodosTests(SimpleTestCase):
             )
 
     @patch("catalogo.ticketmaster.time.sleep")
+    def test_pausa_so_entre_as_paginas(self, sleep):
+        paginas = [_pagina(n, 3, [{"id": str(n)}], total=3) for n in range(3)]
+        buscar_todos(INICIO, buscar=lambda p, i: paginas[p], pausa=0.5)
+        self.assertEqual(sleep.call_args_list, [call(0.5), call(0.5)])
+
+    @patch("catalogo.ticketmaster.time.sleep")
+    def test_pagina_seguinte_vazia_falha(self, _sleep):
+        paginas = [_pagina(0, 2, [{"id": "a"}], total=2), {}]
+        with self.assertRaises(ErroTicketmaster):
+            buscar_todos(INICIO, buscar=lambda p, i: paginas[p])
+
+    @patch("catalogo.ticketmaster.time.sleep")
+    def test_pagina_seguinte_sem_eventos_falha(self, _sleep):
+        paginas = [
+            _pagina(0, 2, [{"id": "a"}], total=2),
+            _pagina(1, 2, [], total=2),
+        ]
+        with self.assertRaises(ErroTicketmaster):
+            buscar_todos(INICIO, buscar=lambda p, i: paginas[p])
+
+    @patch("catalogo.ticketmaster.time.sleep")
     def test_usa_buscar_pagina_resolvido_na_chamada(self, _sleep):
         with patch(
             "catalogo.ticketmaster.buscar_pagina",
@@ -109,6 +130,8 @@ class BuscarPaginaTests(SimpleTestCase):
     @override_settings(TICKETMASTER_API_KEY="segredo123")
     def test_erros_de_transporte_viram_erro_sem_segredo(self):
         for falha in (
+            urllib.error.URLError(ConnectionRefusedError("apikey=segredo123")),
+            TimeoutError("apikey=segredo123"),
             ConnectionResetError("https://x?apikey=segredo123"),
             http.client.RemoteDisconnected("apikey=segredo123"),
             http.client.IncompleteRead(b"abc"),
