@@ -311,6 +311,156 @@ class ImportarTest(TestCase):
         self.assertEqual(len(resumo.com_erro), 1)
         self.assertEqual(resumo.criados, 10)
 
+    def test_campos_do_evento_vem_do_json(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        dados["info"] = "Sobre o show"
+        dados["pleaseNote"] = "Chegue cedo"
+        dados["url"] = "https://ingressos.test/bts"
+        dados["dates"]["status"]["code"] = "offsale"
+        importar([dados], AGORA)
+        evento = tm(id_externo=dados["id"])
+        self.assertEqual(evento.descricao, "Sobre o show")
+        self.assertEqual(evento.avisos, "Chegue cedo")
+        self.assertEqual(evento.url_externa, "https://ingressos.test/bts")
+        self.assertEqual(evento.situacao, "offsale")
+        self.assertEqual(evento.classificacoes, dados["classifications"])
+        self.assertEqual(evento.genero, "Pop")
+        self.assertEqual(evento.sincronizado_em, AGORA)
+
+    def test_campos_do_local_vem_do_json(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        venue = dados["_embedded"]["venues"][0]
+        venue.update(
+            name="Estádio",
+            address={"line1": "Rua A, 1"},
+            city={"name": "São Paulo"},
+            state={"stateCode": "SP"},
+            country={"countryCode": "AR"},
+            location={"latitude": "-23.5", "longitude": "-46.6"},
+        )
+        importar([dados], AGORA)
+        local = Local.objects.get(id_externo=venue["id"])
+        self.assertEqual(local.provedor, Provedor.TICKETMASTER)
+        self.assertEqual(local.nome, "Estádio")
+        self.assertEqual(local.endereco, "Rua A, 1")
+        self.assertEqual(local.cidade, "São Paulo")
+        self.assertEqual(local.estado, "SP")
+        self.assertEqual(local.pais, "AR")
+        self.assertEqual(local.latitude, Decimal("-23.5"))
+        self.assertEqual(local.longitude, Decimal("-46.6"))
+
+    def test_faixa_de_preco_completa(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        dados["priceRanges"] = [
+            {"type": "vip", "currency": "USD", "min": 10.5, "max": "99.90"},
+            {},
+        ]
+        importar([dados], AGORA)
+        evento = tm(id_externo=dados["id"])
+        self.assertCountEqual(
+            evento.faixas_preco.values_list(
+                "tipo", "moeda", "minimo", "maximo"
+            ),
+            [
+                ("vip", "USD", Decimal("10.50"), Decimal("99.90")),
+                ("", "BRL", None, None),
+            ],
+        )
+
+    def test_imagem_completa(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        dados["images"] = [
+            {
+                "url": "https://img.test/a.jpg",
+                "ratio": "16_9",
+                "width": 1024,
+                "height": 576,
+                "fallback": True,
+            },
+            {"url": "https://img.test/b.jpg"},
+        ]
+        importar([dados], AGORA)
+        evento = tm(id_externo=dados["id"])
+        self.assertCountEqual(
+            evento.imagens.values_list(
+                "url", "proporcao", "largura", "altura", "fallback"
+            ),
+            [
+                ("https://img.test/a.jpg", "16_9", 1024, 576, True),
+                ("https://img.test/b.jpg", "", None, None, False),
+            ],
+        )
+
+    def test_hora_a_definir_fica_nula(self):
+        for chave in ("timeTBA", "noSpecificTime"):
+            with self.subTest(chave=chave):
+                dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+                inicio = dados["dates"]["start"]
+                inicio.update(localTime="20:00:00", timeTBA=False)
+                inicio.update(noSpecificTime=False)
+                inicio[chave] = True
+                importar([dados], AGORA)
+                evento = tm(id_externo=dados["id"])
+                self.assertIsNone(evento.hora_inicio)
+                self.assertIsNone(evento.inicio)
+
+    def test_fuso_vem_do_evento_depois_do_local_depois_do_padrao(self):
+        casos = (
+            ("America/Manaus", "America/Recife", "America/Manaus"),
+            (None, "America/Recife", "America/Recife"),
+            (None, None, "America/Sao_Paulo"),
+        )
+        for do_evento, do_local, esperado in casos:
+            with self.subTest(do_evento=do_evento, do_local=do_local):
+                dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+                dados["dates"]["timezone"] = do_evento
+                dados["_embedded"]["venues"][0]["timezone"] = do_local
+                importar([dados], AGORA)
+                self.assertEqual(tm(id_externo=dados["id"]).fuso, esperado)
+
+    def test_reimportar_substitui_categorias(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        importar([dados], AGORA)
+        dados["classifications"] = [{"segment": {"name": "Sports"}}]
+        importar([dados], DEPOIS)
+        evento = tm(id_externo=dados["id"])
+        self.assertEqual(
+            set(evento.categorias.values_list("codigo", flat=True)), {"sport"}
+        )
+
+    def test_reimportar_substitui_faixas_de_preco(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        dados["priceRanges"] = [{"min": 10}, {"min": 20}]
+        importar([dados], AGORA)
+        dados["priceRanges"] = [{"min": 30}]
+        importar([dados], DEPOIS)
+        evento = tm(id_externo=dados["id"])
+        self.assertEqual(
+            list(evento.faixas_preco.values_list("minimo", flat=True)),
+            [Decimal("30.00")],
+        )
+
+    def test_reimportar_substitui_imagens(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        dados["images"] = [{"url": "https://img.test/velha.jpg"}]
+        importar([dados], AGORA)
+        dados["images"] = [{"url": "https://img.test/nova.jpg"}]
+        importar([dados], DEPOIS)
+        evento = tm(id_externo=dados["id"])
+        self.assertEqual(
+            list(evento.imagens.values_list("url", flat=True)),
+            ["https://img.test/nova.jpg"],
+        )
+
+    def test_reimportar_atualiza_o_local_sem_duplicar(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        importar([dados], AGORA)
+        venue = dados["_embedded"]["venues"][0]
+        venue["name"] = "Nome novo"
+        importar([dados], DEPOIS)
+        self.assertEqual(Local.objects.count(), 1)
+        self.assertEqual(tm(id_externo=dados["id"]).local.nome, "Nome novo")
+
     def test_venue_sem_location_importa_sem_coordenadas(self):
         eventos = copy.deepcopy(eventos_da_fixture())
         bts = achar(eventos, "BTS WORLD TOUR ARIRANG")
@@ -444,3 +594,38 @@ class ComandoTest(TestCase):
             call_command("importar_ticketmaster", stdout=saida)
         self.assertIn("criados: 11", saida.getvalue())
         self.assertIn("Halloween 2026 | Soho House", saida.getvalue())
+
+    def test_resumo_traz_todas_as_contagens(self):
+        eventos = eventos_da_fixture()
+        bom = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        sem_categoria = achar(eventos, "Halloween 2026 | Soho House")
+        de_teste = achar(eventos, "Mink Slide")
+        de_teste["test"] = True
+        ruim = achar(eventos, "TESTE PORTAL")
+        del ruim["dates"]["start"]["localDate"]
+        importar([bom], AGORA)
+        Evento.objects.create(
+            provedor=Provedor.TICKETMASTER,
+            id_externo="velho",
+            titulo="Velho",
+            data_inicio=AGORA.date(),
+        )
+        saida = StringIO()
+        with patch(
+            "catalogo.ticketmaster.buscar_pagina",
+            return_value=_pagina(0, 1, [bom, sem_categoria, de_teste, ruim]),
+        ):
+            call_command("importar_ticketmaster", stdout=saida)
+        self.assertEqual(
+            saida.getvalue().splitlines(),
+            [
+                "criados: 1",
+                "atualizados: 1",
+                "removidos: 1",
+                "ignorados: 2",
+                "sem categoria: 1",
+                "  - Halloween 2026 | Soho House",
+                "com erro: 1",
+                f"  - {ruim['id']}: TESTE PORTAL",
+            ],
+        )

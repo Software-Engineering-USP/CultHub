@@ -25,6 +25,13 @@ def _resultado(id_):
     )
 
 
+def _classificacao(segmento, genero=None):
+    classificacao = {"segment": {"name": segmento}}
+    if genero:
+        classificacao["genre"] = {"name": genero}
+    return classificacao
+
+
 class MapeamentoTests(SimpleTestCase):
     def test_bts_musica(self):
         cats, genero = _resultado("ZFIMVHtnMZ17kfjN")
@@ -66,6 +73,93 @@ class MapeamentoTests(SimpleTestCase):
         self.assertEqual(categorias_do_evento(classificacoes, "Cine"), {"art"})
 
     def test_festival_pelo_titulo_sem_acento_e_caixa(self):
-        for titulo in ("VIRADA Cultural", "Féstival de Inverno"):
+        for titulo in (
+            "VIRADA Cultural",
+            "Féstival de Inverno",
+            "The Town 2027",
+            "Rock in Rio",
+            "LOLLAPALOOZA",
+        ):
             with self.subTest(titulo=titulo):
-                self.assertIn("festival", categorias_do_evento([], titulo))
+                self.assertEqual(
+                    categorias_do_evento([], titulo), {"festival"}
+                )
+
+    def test_generos_de_teatro(self):
+        for genero in (
+            "Theatre",
+            "Comedy",
+            "Musical",
+            "Opera",
+            "Children's Theatre",
+            "Magic & Illusion",
+            "Circus & Specialty Acts",
+        ):
+            with self.subTest(genero=genero):
+                self.assertEqual(
+                    categorias_do_evento(
+                        [_classificacao("Arts & Theatre", genero)], "X"
+                    ),
+                    {"theater"},
+                )
+
+    def test_outro_genero_de_artes_vira_art(self):
+        self.assertEqual(
+            categorias_do_evento(
+                [_classificacao("Arts & Theatre", "Fine Art")], "X"
+            ),
+            {"art"},
+        )
+
+    def test_genero_de_festival_em_qualquer_segmento(self):
+        self.assertEqual(
+            categorias_do_evento(
+                [_classificacao("Miscellaneous", "Fairs & Festivals")], "X"
+            ),
+            {"festival"},
+        )
+
+    def test_considera_todas_as_classificacoes(self):
+        self.assertEqual(
+            categorias_do_evento(
+                [_classificacao("Music"), _classificacao("Sports")], "X"
+            ),
+            {"music", "sport"},
+        )
+
+    def test_classificacao_sem_segmento_nao_quebra(self):
+        self.assertEqual(
+            categorias_do_evento([{"segment": None, "genre": None}], "X"),
+            set(),
+        )
+
+    def test_genero_vem_da_classificacao_principal(self):
+        classificacoes = [
+            _classificacao("Music", "Rock"),
+            {**_classificacao("Music", "Jazz"), "primary": True},
+        ]
+        self.assertEqual(genero_do_evento(classificacoes), "Jazz")
+
+    def test_sem_principal_usa_a_primeira(self):
+        classificacoes = [
+            _classificacao("Music", "Rock"),
+            _classificacao("Music", "Jazz"),
+        ]
+        self.assertEqual(genero_do_evento(classificacoes), "Rock")
+
+    def test_genero_indefinido_usa_o_subgenero(self):
+        classificacao = {
+            **_classificacao("Music", "Undefined"),
+            "subGenre": {"name": "Bossa Nova"},
+        }
+        self.assertEqual(genero_do_evento([classificacao]), "Bossa Nova")
+
+    def test_genero_e_subgenero_indefinidos_ficam_vazios(self):
+        classificacao = {
+            **_classificacao("Music", "Undefined"),
+            "subGenre": {"name": "Undefined"},
+        }
+        self.assertEqual(genero_do_evento([classificacao]), "")
+
+    def test_sem_classificacao_fica_sem_genero(self):
+        self.assertEqual(genero_do_evento([]), "")

@@ -1,11 +1,12 @@
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from catalogo.models import Evento, FaixaPreco, ImagemEvento
+from catalogo.models import Evento, FaixaPreco, ImagemEvento, Local, Provedor
 from catalogo.paginacao import PaginacaoEventos
 from catalogo.tests.fabrica import criar_evento
 
@@ -16,24 +17,126 @@ def hoje():
     return timezone.localdate()
 
 
+class ContratoDaApiTest(APITestCase):
+    """Formato exato das respostas, como o front vai consumir."""
+
+    def setUp(self):
+        local = Local.objects.create(
+            provedor=Provedor.TICKETMASTER,
+            id_externo="venue-1",
+            nome="Teatro Municipal",
+            endereco="Praça Ramos de Azevedo, s/n",
+            cidade="São Paulo",
+            estado="SP",
+            latitude=Decimal("-23.545000"),
+            longitude=Decimal("-46.638000"),
+        )
+        self.evento = criar_evento(
+            categorias=["music", "theater"],
+            provedor=Provedor.TICKETMASTER,
+            id_externo="evento-1",
+            titulo="Ópera",
+            descricao="Sobre a ópera",
+            avisos="Chegue cedo",
+            url_externa="https://ingressos.test/opera",
+            situacao="onsale",
+            local=local,
+            data_inicio=date(2040, 3, 10),
+            hora_inicio=time(20, 0),
+            data_fim=date(2040, 3, 11),
+            hora_fim=time(22, 30),
+            gratuito=True,
+            genero="Opera",
+        )
+        FaixaPreco.objects.create(
+            evento=self.evento,
+            tipo="standard",
+            moeda="USD",
+            minimo=Decimal("10.50"),
+            maximo=Decimal("20.00"),
+        )
+        ImagemEvento.objects.create(
+            evento=self.evento,
+            url="https://img.test/a.jpg",
+            proporcao="16_9",
+            largura=1024,
+            altura=576,
+        )
+        self.esperado = {
+            "id": str(self.evento.id),
+            "provedor": "ticketmaster",
+            "titulo": "Ópera",
+            "descricao": "Sobre a ópera",
+            "genero": "Opera",
+            "categorias": ["music", "theater"],
+            "url_externa": "https://ingressos.test/opera",
+            "data_inicio": "2040-03-10",
+            "hora_inicio": "20:00:00",
+            "inicio": "2040-03-10T20:00:00-03:00",
+            "data_fim": "2040-03-11",
+            "hora_fim": "22:30:00",
+            "fim": "2040-03-11T22:30:00-03:00",
+            "fuso": "America/Sao_Paulo",
+            "local": {
+                "nome": "Teatro Municipal",
+                "endereco": "Praça Ramos de Azevedo, s/n",
+                "cidade": "São Paulo",
+                "estado": "SP",
+                "latitude": -23.545,
+                "longitude": -46.638,
+            },
+            "gratuito": True,
+            "faixas_preco": [
+                {
+                    "tipo": "standard",
+                    "moeda": "USD",
+                    "minimo": 10.5,
+                    "maximo": 20.0,
+                }
+            ],
+            "imagens": [
+                {
+                    "url": "https://img.test/a.jpg",
+                    "proporcao": "16_9",
+                    "largura": 1024,
+                    "altura": 576,
+                }
+            ],
+            "distancia_km": None,
+        }
+
+    def test_listagem(self):
+        corpo = self.client.get("/api/eventos/").json()
+        self.assertEqual(corpo["results"], [self.esperado])
+
+    def test_detalhe_acrescenta_os_campos_extras(self):
+        corpo = self.client.get(f"/api/eventos/{self.evento.id}/").json()
+        self.assertEqual(
+            corpo,
+            {
+                **self.esperado,
+                "avisos": "Chegue cedo",
+                "situacao": "onsale",
+                "removido": False,
+            },
+        )
+
+    def test_distancia_com_filtro_de_raio(self):
+        corpo = self.client.get(
+            "/api/eventos/?lat=-23.545&lng=-46.638&raio=1"
+        ).json()
+        self.assertEqual(
+            corpo["results"], [{**self.esperado, "distancia_km": 0.0}]
+        )
+
+    def test_envelope_da_paginacao(self):
+        corpo = self.client.get("/api/eventos/").json()
+        self.assertEqual(set(corpo), {"count", "next", "previous", "results"})
+
+
 class EventoDetalheTest(APITestCase):
     def url(self, evento):
         return f"/api/eventos/{evento.id}/"
-
-    def test_detalhe_campos(self):
-        evento = criar_evento(categorias=["music"], avisos="Aviso")
-        FaixaPreco.objects.create(evento=evento, minimo=10, maximo=20)
-        ImagemEvento.objects.create(evento=evento, url="https://x.test/a.jpg")
-        corpo = self.client.get(self.url(evento)).json()
-        listagem = self.client.get("/api/eventos/").json()["results"][0]
-        self.assertEqual(
-            set(corpo), set(listagem) | {"avisos", "situacao", "removido"}
-        )
-        self.assertEqual(corpo["categorias"], ["music"])
-        self.assertEqual(corpo["avisos"], "Aviso")
-        self.assertFalse(corpo["removido"])
-        self.assertEqual(corpo["local"]["latitude"], -23.561414)
-        self.assertEqual(corpo["faixas_preco"][0]["minimo"], 10.0)
 
     def test_removido_responde_com_flag(self):
         evento = criar_evento(removido_em=timezone.now())

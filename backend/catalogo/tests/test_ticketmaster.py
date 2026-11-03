@@ -3,6 +3,7 @@ import io
 import urllib.error
 from datetime import UTC, datetime
 from unittest.mock import call, patch
+from urllib.parse import parse_qs, urlsplit
 
 from django.test import SimpleTestCase, override_settings
 
@@ -121,10 +122,18 @@ class BuscarPaginaTests(SimpleTestCase):
         with patch("urllib.request.urlopen", return_value=resposta) as urlopen:
             ticketmaster.buscar_pagina(2, INICIO)
         url = urlopen.call_args.args[0]
-        self.assertIn("startDateTime=2026-10-28T03%3A00%3A00Z", url)
-        self.assertIn("page=2", url)
-        self.assertIn("size=200", url)
-        self.assertIn("countryCode=BR", url)
+        self.assertEqual(
+            parse_qs(urlsplit(url).query),
+            {
+                "apikey": ["segredo123"],
+                "countryCode": ["BR"],
+                "size": ["200"],
+                "page": ["2"],
+                "sort": ["date,asc"],
+                "startDateTime": ["2026-10-28T03:00:00Z"],
+            },
+        )
+        self.assertTrue(url.startswith(ticketmaster.URL + "?"))
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 30)
 
     @override_settings(TICKETMASTER_API_KEY="segredo123")
