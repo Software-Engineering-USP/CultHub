@@ -7,9 +7,9 @@ import { LocateIcon } from '@/components/common/Icons'
 import IconTile from '@/components/common/IconTile'
 import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
-import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
 import EventStrip from '@/components/events/EventStrip'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import WeatherStrip from '@/components/weather/WeatherStrip'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -46,7 +46,9 @@ export default function Origin() {
         title="Como chegar"
         description="Seu próximo encontro com a música começa com um ponto de partida."
       >
-        <StatusBadge>◎ Defina sua origem para começar</StatusBadge>
+        <Badge variant="muted" size="md">
+          ◎ Defina sua origem para começar
+        </Badge>
       </SectionHeading>
 
       <EventStrip event={event} />

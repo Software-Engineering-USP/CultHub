@@ -4,9 +4,9 @@ import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
 import SectionHeading from '@/components/common/SectionHeading'
-import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
 import EventCard from '@/components/events/EventCard'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useUserComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -64,9 +64,9 @@ export default function Account() {
           </Avatar>
           <h2 className="mb-[6px] text-[21px]">{user.name}</h2>
           <p className="text-[11px]">Perfil fictício • {user.city}</p>
-          <StatusBadge tone="green" size="sm" className="mt-4 max-md:mt-[10px]">
+          <Badge variant="success" size="md" className="mt-4 max-md:mt-2.5">
             ● Conta conectada (exemplo)
-          </StatusBadge>
+          </Badge>
 
           <nav
             aria-label="Seções da conta"

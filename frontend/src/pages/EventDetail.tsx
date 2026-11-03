@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import Avatar from '@/components/common/Avatar'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
-import CategoryBadge from '@/components/common/CategoryBadge'
 import DemoNote from '@/components/common/DemoNote'
 import { CalendarIcon, PinIcon } from '@/components/common/Icons'
 import IconTile from '@/components/common/IconTile'
@@ -11,6 +10,7 @@ import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
 import CommentItem from '@/components/events/CommentItem'
 import RoutePreview from '@/components/events/RoutePreview'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import WeatherCard from '@/components/weather/WeatherCard'
 import { useComments } from '@/hooks/useComments'
@@ -50,12 +50,9 @@ export default function EventDetail() {
           alt={event.imageAlt}
           className="block h-[400px] w-full object-cover object-[center_47%] max-md:h-[330px] max-sm:h-[235px]"
         />
-        <CategoryBadge
-          size="lg"
-          className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4"
-        >
+        <Badge size="lg" className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4">
           {category.label} • {shortName}
-        </CategoryBadge>
+        </Badge>
       </div>
 
       <div className="space-y-12 max-sm:space-y-[34px]">
@@ -122,7 +119,7 @@ export default function EventDetail() {
           </div>
 
           <Surface as="aside" aria-label="Preço e planejamento da visita" bg="bg-[#fff0d9]">
-            <CategoryBadge>{category.label}</CategoryBadge>
+            <Badge>{category.label}</Badge>
             <p className="mt-[22px] text-[36px] leading-[1.2] font-[750] tracking-[-.04em] text-maroon max-md:mt-[14px] max-sm:text-[32px]">
               {event.price}
             </p>

@@ -5,9 +5,9 @@ import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
-import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
 import EventStrip from '@/components/events/EventStrip'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import WeatherStrip from '@/components/weather/WeatherStrip'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -53,7 +53,9 @@ export default function RoutePlan() {
         title="Como chegar"
         description="Planeje seu caminho até a música. Compare as opções neste trajeto demonstrativo."
       >
-        <StatusBadge>Rota ilustrativa • origem fictícia</StatusBadge>
+        <Badge variant="muted" size="md">
+          Rota ilustrativa • origem fictícia
+        </Badge>
       </SectionHeading>
 
       <EventStrip event={event} />

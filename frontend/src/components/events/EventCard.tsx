@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import CategoryBadge from '@/components/common/CategoryBadge'
 import { CalendarIcon, PinIcon } from '@/components/common/Icons'
+import { Badge } from '@/components/ui/badge'
 import { categories } from '@/lib/categories'
 import { eventPath } from '@/lib/events'
 import { cn } from '@/lib/utils'
@@ -47,9 +47,7 @@ export default function EventCard({
         ) : (
           image
         )}
-        <CategoryBadge className="absolute top-[14px] left-[14px] shadow-badge">
-          {category.label}
-        </CategoryBadge>
+        <Badge className="absolute top-3.5 left-3.5 shadow-badge">{category.label}</Badge>
       </div>
 
       <div className={compact ? 'p-5' : 'p-[22px] max-lg:p-[19px] max-sm:p-[22px]'}>
