@@ -193,7 +193,6 @@ class ImportarTest(TestCase):
 
     def test_campo_opcional_nulo_nao_impede_a_importacao(self):
         casos = {
-            "name": lambda e: e.update(name=None),
             "info": lambda e: e.update(info=None),
             "pleaseNote": lambda e: e.update(pleaseNote=None),
             "url": lambda e: e.update(url=None),
@@ -229,6 +228,29 @@ class ImportarTest(TestCase):
                 resumo = importar([evento], AGORA)
                 self.assertEqual(resumo.com_erro, [])
                 self.assertTrue(tm(id_externo=evento["id"]))
+
+    def test_evento_sem_titulo_vai_para_com_erro(self):
+        casos = {
+            "ausente": lambda e: e.pop("name"),
+            "nulo": lambda e: e.update(name=None),
+            "vazio": lambda e: e.update(name=""),
+            "só espaços": lambda e: e.update(name="   "),
+        }
+        for nome, alterar in casos.items():
+            with self.subTest(caso=nome):
+                Evento.objects.all().delete()
+                eventos = eventos_da_fixture()
+                ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+                alterar(ruim)
+                resumo = importar(eventos, AGORA)
+                self.assertEqual(resumo.criados, 10)
+                self.assertEqual(
+                    resumo.com_erro,
+                    [f"{ruim['id']}: {ruim.get('name') or '?'}"],
+                )
+                self.assertFalse(
+                    Evento.objects.filter(id_externo=ruim["id"]).exists()
+                )
 
     def test_null_em_info_vira_texto_vazio(self):
         evento = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")

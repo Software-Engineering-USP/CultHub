@@ -77,6 +77,9 @@ def _hora(inicio):
 
 
 def _salvar_evento(dados, agora):
+    titulo = _texto(dados, "name").strip()
+    if not titulo:
+        raise ValueError("evento sem título")
     venue = _venue(dados)
     datas = _objeto(dados, "dates")
     inicio = _objeto(datas, "start")
@@ -85,7 +88,7 @@ def _salvar_evento(dados, agora):
         provedor=Provedor.TICKETMASTER,
         id_externo=dados["id"],
         defaults={
-            "titulo": _texto(dados, "name"),
+            "titulo": titulo,
             "descricao": _texto(dados, "info"),
             "avisos": _texto(dados, "pleaseNote"),
             "url_externa": _texto(dados, "url"),
@@ -155,7 +158,7 @@ def importar(eventos, agora):
             # do próprio banco (ex.: OperationalError) continua interrompendo.
             resumo.ignorados += 1
             resumo.com_erro.append(
-                f"{dados.get('id', '?')}: {dados.get('name', '?')}"
+                f"{dados.get('id', '?')}: {dados.get('name') or '?'}"
             )
             continue
         vistos.add(evento.id_externo)
