@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from catalogo.models import (
@@ -88,7 +89,8 @@ class EventoSerializer(serializers.ModelSerializer):
             "distancia_km",
         )
 
-    def get_imagens(self, obj) -> list[dict]:
+    @extend_schema_field(ImagemSerializer(many=True))
+    def get_imagens(self, obj):
         # `all()` usa o prefetch; ordena em Python para não refazer a query.
         imagens = list(obj.imagens.all())
         # `fallback` só entra se não houver outra imagem.

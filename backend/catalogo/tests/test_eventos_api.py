@@ -317,6 +317,38 @@ class EventoListagemTest(APITestCase):
             [i["url"].rsplit("/", 1)[1] for i in imagens], ["fb2", "fb1"]
         )
 
+    def test_schema_descreve_os_campos_de_imagens(self):
+        schema = self.client.get("/api/schema/?format=json").json()
+        componentes = schema["components"]["schemas"]
+        for nome in ("Evento", "EventoDetalhe"):
+            with self.subTest(componente=nome):
+                self.assertEqual(
+                    componentes[nome]["properties"]["imagens"]["items"],
+                    {"$ref": "#/components/schemas/Imagem"},
+                )
+        self.assertEqual(
+            set(componentes["Imagem"]["properties"]),
+            {"url", "proporcao", "largura", "altura"},
+        )
+
+    def test_schema_documenta_o_erro_de_filtro(self):
+        schema = self.client.get("/api/schema/?format=json").json()
+        respostas = schema["paths"]["/api/eventos/"]["get"]["responses"]
+        self.assertEqual(
+            respostas["400"]["content"]["application/json"]["schema"],
+            {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+        )
+        self.assertEqual(
+            respostas["200"]["content"]["application/json"]["schema"],
+            {"$ref": "#/components/schemas/PaginatedEventoList"},
+        )
+
     def test_schema_documenta_a_listagem_e_o_detalhe(self):
         schema = self.client.get("/api/schema/?format=json").json()
         lista = schema["paths"]["/api/eventos/"]["get"]

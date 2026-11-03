@@ -1,7 +1,11 @@
 from django.db.models import F
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+)
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
 
@@ -30,7 +34,24 @@ def _eventos():
     )
 
 
+# Corpo do 400 da listagem: `{"preco": ["Use 'gratuito' ou 'pago'."]}`.
+ERRO_DE_FILTRO = {
+    "type": "object",
+    "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"},
+    },
+}
+
+
 @extend_schema(
+    responses={
+        200: EventoSerializer(many=True),
+        400: OpenApiResponse(
+            response=ERRO_DE_FILTRO,
+            description="Filtro inválido; mensagens por parâmetro.",
+        ),
+    },
     parameters=[
         OpenApiParameter(
             "q",
@@ -73,7 +94,7 @@ def _eventos():
             float,
             description="Raio da busca em km (com lat e lng).",
         ),
-    ]
+    ],
 )
 class EventoListView(ListAPIView):
     """Eventos futuros ou em andamento, por data, hora e título."""
