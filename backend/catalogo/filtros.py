@@ -18,6 +18,8 @@ from rest_framework.exceptions import ValidationError
 
 from catalogo.models import CategoriaCultural
 
+DATA_FIM_EFETIVA = Coalesce("data_fim", "data_inicio")
+
 
 def visiveis(queryset, agora):
     """Eventos não removidos e que ainda não terminaram."""
@@ -27,7 +29,7 @@ def visiveis(queryset, agora):
     )
     return (
         queryset.filter(removido_em__isnull=True)
-        .annotate(data_fim_efetiva=Coalesce("data_fim", "data_inicio"))
+        .alias(data_fim_efetiva=DATA_FIM_EFETIVA)
         .exclude(terminou)
     )
 
@@ -49,7 +51,7 @@ def _busca(queryset, texto):
     texto = normalizar_texto(texto.strip())
     if not texto:
         return queryset
-    return queryset.annotate(
+    return queryset.alias(
         titulo_norm=Normalizar(F("titulo")),
         descricao_norm=Normalizar(F("descricao")),
         local_nome_norm=Normalizar(F("local__nome")),
@@ -104,9 +106,9 @@ def _periodo(queryset, params):
     if ate:
         queryset = queryset.filter(data_inicio__lte=ate)
     if de:
-        queryset = queryset.annotate(
-            fim_do_evento=Coalesce("data_fim", "data_inicio")
-        ).filter(fim_do_evento__gte=de)
+        queryset = queryset.alias(data_fim_efetiva=DATA_FIM_EFETIVA).filter(
+            data_fim_efetiva__gte=de
+        )
     return queryset
 
 

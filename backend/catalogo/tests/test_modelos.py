@@ -94,3 +94,29 @@ class EventoCleanTest(TestCase):
     def test_data_fim_antes_do_inicio(self):
         erros = self.erros(self.evento(data_fim=date(2026, 10, 31)))
         self.assertIn("data_fim", erros)
+
+    def test_hora_fim_antes_do_inicio_no_mesmo_dia(self):
+        erros = self.erros(
+            self.evento(
+                hora_inicio=time(22, 0),
+                data_fim=date(2026, 11, 1),
+                hora_fim=time(2, 0),
+            )
+        )
+        self.assertIn("hora_fim", erros)
+
+    def test_hora_fim_igual_ou_depois_no_mesmo_dia_e_valida(self):
+        for hora_fim in (time(22, 0), time(23, 0)):
+            with self.subTest(hora_fim=hora_fim):
+                self.evento(
+                    hora_inicio=time(22, 0),
+                    data_fim=date(2026, 11, 1),
+                    hora_fim=hora_fim,
+                ).full_clean()
+
+    def test_evento_que_vira_a_noite_e_valido(self):
+        self.evento(
+            hora_inicio=time(22, 0),
+            data_fim=date(2026, 11, 2),
+            hora_fim=time(2, 0),
+        ).full_clean()

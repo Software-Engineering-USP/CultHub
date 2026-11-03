@@ -1,12 +1,10 @@
 """Importação dos eventos do Ticketmaster para o catálogo."""
 
-import re
 from dataclasses import dataclass, field
 from datetime import date, time
 from decimal import Decimal
-from zoneinfo import ZoneInfoNotFoundError
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
@@ -18,7 +16,6 @@ from .models import (
     Provedor,
 )
 
-PADRAO_TESTE = re.compile(r"\btest(e)?\b", re.IGNORECASE)
 FUSO_PADRAO = Evento._meta.get_field("fuso").default
 
 
@@ -32,17 +29,19 @@ class ResumoImportacao:
     com_erro: list[str] = field(default_factory=list)
 
 
+def _objeto(dados, chave):
+    """Subobjeto do JSON; ausente ou `null` vira {}."""
+    return dados.get(chave) or {}
+
+
+def _texto(dados, chave):
+    """Texto do JSON; ausente ou `null` vira ""."""
+    return dados.get(chave) or ""
+
+
 def _venue(dados):
-    venues = dados.get("_embedded", {}).get("venues") or []
+    venues = _objeto(dados, "_embedded").get("venues") or []
     return venues[0] if venues else None
-
-
-def eh_evento_de_teste(dados):
-    if dados.get("test") is True:
-        return True
-    venue = _venue(dados) or {}
-    nomes = (dados.get("name", ""), venue.get("name", ""))
-    return any(PADRAO_TESTE.search(nome) for nome in nomes)
 
 
 def _decimal(valor):
@@ -52,16 +51,16 @@ def _decimal(valor):
 def _salvar_local(venue):
     if venue is None:
         return None
-    coordenadas = venue.get("location", {})
+    coordenadas = _objeto(venue, "location")
     local, _ = Local.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
         id_externo=venue["id"],
         defaults={
-            "nome": venue.get("name", ""),
-            "endereco": venue.get("address", {}).get("line1", ""),
-            "cidade": venue.get("city", {}).get("name", ""),
-            "estado": venue.get("state", {}).get("stateCode", ""),
-            "pais": venue.get("country", {}).get("countryCode", ""),
+            "nome": _texto(venue, "name"),
+            "endereco": _texto(_objeto(venue, "address"), "line1"),
+            "cidade": _texto(_objeto(venue, "city"), "name"),
+            "estado": _texto(_objeto(venue, "state"), "stateCode"),
+            "pais": _texto(_objeto(venue, "country"), "countryCode"),
             "latitude": _decimal(coordenadas.get("latitude")),
             "longitude": _decimal(coordenadas.get("longitude")),
         },
@@ -78,18 +77,18 @@ def _hora(inicio):
 
 def _salvar_evento(dados, agora):
     venue = _venue(dados)
-    datas = dados.get("dates", {})
-    inicio = datas.get("start", {})
-    classificacoes = dados.get("classifications", [])
+    datas = _objeto(dados, "dates")
+    inicio = _objeto(datas, "start")
+    classificacoes = dados.get("classifications") or []
     evento, criado = Evento.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
         id_externo=dados["id"],
         defaults={
-            "titulo": dados.get("name", ""),
-            "descricao": dados.get("info", ""),
-            "avisos": dados.get("pleaseNote", ""),
-            "url_externa": dados.get("url", ""),
-            "situacao": datas.get("status", {}).get("code", ""),
+            "titulo": _texto(dados, "name"),
+            "descricao": _texto(dados, "info"),
+            "avisos": _texto(dados, "pleaseNote"),
+            "url_externa": _texto(dados, "url"),
+            "situacao": _texto(_objeto(datas, "status"), "code"),
             "local": _salvar_local(venue),
             "data_inicio": date.fromisoformat(inicio["localDate"]),
             "hora_inicio": _hora(inicio),
@@ -109,23 +108,23 @@ def _salvar_evento(dados, agora):
         ImagemEvento(
             evento=evento,
             url=imagem["url"],
-            proporcao=imagem.get("ratio", ""),
+            proporcao=_texto(imagem, "ratio"),
             largura=imagem.get("width"),
             altura=imagem.get("height"),
             fallback=bool(imagem.get("fallback")),
         )
-        for imagem in dados.get("images", [])
+        for imagem in dados.get("images") or []
     )
     evento.faixas_preco.all().delete()
     FaixaPreco.objects.bulk_create(
         FaixaPreco(
             evento=evento,
-            tipo=faixa.get("type", ""),
-            moeda=faixa.get("currency", "BRL"),
+            tipo=_texto(faixa, "type"),
+            moeda=faixa.get("currency") or "BRL",
             minimo=_decimal(faixa.get("min")),
             maximo=_decimal(faixa.get("max")),
         )
-        for faixa in dados.get("priceRanges", [])
+        for faixa in dados.get("priceRanges") or []
     )
     return evento, criado, bool(codigos)
 
@@ -135,15 +134,23 @@ def importar(eventos, agora):
     resumo = ResumoImportacao()
     vistos = set()
     for dados in eventos:
-        cancelado = dados.get("dates", {}).get("status", {}).get("code")
-        if eh_evento_de_teste(dados) or cancelado == "cancelled":
-            resumo.ignorados += 1
-            continue
         try:
+            situacao = _objeto(_objeto(dados, "dates"), "status").get("code")
+            if dados.get("test") is True or situacao == "cancelled":
+                resumo.ignorados += 1
+                continue
             with transaction.atomic():
                 evento, criado, tem_categoria = _salvar_evento(dados, agora)
-        except (KeyError, ValueError, TypeError, ZoneInfoNotFoundError):
-            # Evento malformado: não derruba a importação inteira.
+        except (
+            KeyError,
+            ValueError,
+            TypeError,
+            AttributeError,
+            ArithmeticError,
+            IntegrityError,
+        ):
+            # Dado ruim em um evento não derruba a importação inteira. Falha
+            # do próprio banco (ex.: OperationalError) continua interrompendo.
             resumo.ignorados += 1
             resumo.com_erro.append(
                 f"{dados.get('id', '?')}: {dados.get('name', '?')}"

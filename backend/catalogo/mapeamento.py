@@ -1,6 +1,6 @@
 """Mapeamento das classificações do Ticketmaster para as categorias do app."""
 
-import unicodedata
+from catalogo.filtros import normalizar_texto
 
 # Segmento -> categoria (quando o segmento basta).
 CATEGORIA_POR_SEGMENTO = {
@@ -33,12 +33,6 @@ PALAVRAS_FESTIVAL = (
 )
 
 
-def _normalizar(texto):
-    sem_acento = unicodedata.normalize("NFKD", texto)
-    sem_acento = "".join(c for c in sem_acento if not unicodedata.combining(c))
-    return sem_acento.casefold()
-
-
 def _nome(classificacao, chave):
     return (classificacao.get(chave) or {}).get("name") or ""
 
@@ -58,7 +52,7 @@ def categorias_do_evento(classificacoes, titulo):
             categorias.add(CATEGORIA_POR_SEGMENTO[segmento])
         if genero == GENERO_FESTIVAL:
             categorias.add("festival")
-    titulo_normalizado = _normalizar(titulo)
+    titulo_normalizado = normalizar_texto(titulo)
     if any(p in titulo_normalizado for p in PALAVRAS_FESTIVAL):
         categorias.add("festival")
     return categorias

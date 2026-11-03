@@ -2,10 +2,12 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import ClassVar
 
+from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from catalogo.models import Local, Provedor
+from catalogo.filtros import aplicar_filtros, visiveis
+from catalogo.models import Evento, Local, Provedor
 from catalogo.tests.fabrica import criar_evento
 
 
@@ -284,3 +286,12 @@ class FiltroDistanciaTest(APITestCase):
         self.evento_em("Paulista", "-23.561414", "-46.655881")
         resultados = self.buscar().json()["results"]
         self.assertIsNone(resultados[0]["distancia_km"])
+
+
+class FiltrosSemColunasExtrasTest(TestCase):
+    def test_busca_e_periodo_nao_adicionam_colunas_ao_select(self):
+        eventos = aplicar_filtros(
+            visiveis(Evento.objects.all(), timezone.now()),
+            {"q": "jazz", "de": "2026-01-01"},
+        )
+        self.assertEqual(list(eventos.query.annotation_select), [])

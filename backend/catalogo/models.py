@@ -139,6 +139,15 @@ class Evento(models.Model):
             erros["data_fim"] = (
                 "A data de fim não pode ser anterior ao início."
             )
+        elif (
+            self.data_fim == self.data_inicio
+            and self.hora_inicio is not None
+            and self.hora_fim is not None
+            and self.hora_fim < self.hora_inicio
+        ):
+            erros["hora_fim"] = (
+                "A hora de fim não pode ser anterior ao início no mesmo dia."
+            )
         if erros:
             raise ValidationError(erros)
 

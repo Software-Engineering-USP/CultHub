@@ -8,9 +8,10 @@ from unittest.mock import patch
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import OperationalError
 from django.test import TestCase, override_settings
 
-from catalogo.importacao import eh_evento_de_teste, importar
+from catalogo.importacao import importar
 from catalogo.models import Evento, ImagemEvento, Local, Provedor
 from catalogo.ticketmaster import ErroTicketmaster
 
@@ -32,26 +33,12 @@ def tm(**filtros):
     return Evento.objects.get(provedor=Provedor.TICKETMASTER, **filtros)
 
 
-class EhEventoDeTesteTest(TestCase):
-    def test_marcador_e_nomes(self):
-        self.assertTrue(eh_evento_de_teste({"test": True}))
-        self.assertTrue(eh_evento_de_teste({"name": "Evento Teste - 2025"}))
-        self.assertTrue(eh_evento_de_teste({"name": "TESTE PORTAL"}))
-        self.assertTrue(
-            eh_evento_de_teste(
-                {"name": "X", "_embedded": {"venues": [{"name": "Test"}]}}
-            )
-        )
-        self.assertFalse(eh_evento_de_teste({"name": "Contestetico"}))
-        self.assertFalse(eh_evento_de_teste({"name": "BTS"}))
-
-
 class ImportarTest(TestCase):
     def test_cria_eventos_e_locais(self):
         resumo = importar(eventos_da_fixture(), AGORA)
-        self.assertEqual(resumo.criados, 9)
-        self.assertEqual(resumo.ignorados, 2)
-        self.assertEqual(Evento.objects.count(), 9)
+        self.assertEqual(resumo.criados, 11)
+        self.assertEqual(resumo.ignorados, 0)
+        self.assertEqual(Evento.objects.count(), 11)
         bts = tm(titulo="BTS WORLD TOUR ARIRANG")
         self.assertEqual(bts.data_inicio.isoformat(), "2026-10-28")
         self.assertEqual(bts.hora_inicio.isoformat(), "20:00:00")
@@ -87,7 +74,7 @@ class ImportarTest(TestCase):
             ImagemEvento.objects.count(),
         )
         resumo = importar(eventos_da_fixture(), DEPOIS)
-        self.assertEqual((resumo.criados, resumo.atualizados), (0, 9))
+        self.assertEqual((resumo.criados, resumo.atualizados), (0, 11))
         depois = (
             Evento.objects.count(),
             Local.objects.count(),
@@ -134,6 +121,18 @@ class ImportarTest(TestCase):
         importar(eventos_da_fixture(), DEPOIS)
         self.assertIsNone(tm(titulo="Mink Slide").removido_em)
 
+    def test_titulo_ou_local_com_a_palavra_teste_e_importado(self):
+        importar(eventos_da_fixture(), AGORA)
+        self.assertTrue(tm(titulo="TESTE PORTAL"))
+        self.assertTrue(tm(titulo="Evento Teste - 2025"))
+
+    def test_marcado_como_test_e_ignorado(self):
+        eventos = eventos_da_fixture()
+        achar(eventos, "Mink Slide")["test"] = True
+        resumo = importar(eventos, AGORA)
+        self.assertEqual(resumo.ignorados, 1)
+        self.assertFalse(Evento.objects.filter(titulo="Mink Slide").exists())
+
     def test_cancelado_vira_removido(self):
         importar(eventos_da_fixture(), AGORA)
         eventos = eventos_da_fixture()
@@ -164,8 +163,8 @@ class ImportarTest(TestCase):
         ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
         del ruim["dates"]["start"]["localDate"]
         resumo = importar(eventos, AGORA)
-        self.assertEqual(resumo.criados, 8)
-        self.assertEqual(resumo.ignorados, 3)
+        self.assertEqual(resumo.criados, 10)
+        self.assertEqual(resumo.ignorados, 1)
         self.assertEqual(len(resumo.com_erro), 1)
         self.assertIn("BTS WORLD TOUR ARIRANG", resumo.com_erro[0])
         self.assertIn(ruim["id"], resumo.com_erro[0])
@@ -192,13 +191,96 @@ class ImportarTest(TestCase):
             Evento.objects.filter(titulo="BTS WORLD TOUR ARIRANG").exists()
         )
 
+    def test_campo_opcional_nulo_nao_impede_a_importacao(self):
+        casos = {
+            "name": lambda e: e.update(name=None),
+            "info": lambda e: e.update(info=None),
+            "pleaseNote": lambda e: e.update(pleaseNote=None),
+            "url": lambda e: e.update(url=None),
+            "dates.status": lambda e: e["dates"].update(status=None),
+            "dates.timezone": lambda e: e["dates"].update(timezone=None),
+            "classifications": lambda e: e.update(classifications=None),
+            "images": lambda e: e.update(images=None),
+            "priceRanges": lambda e: e.update(priceRanges=None),
+            "_embedded": lambda e: e.update(_embedded=None),
+            "venue.name": lambda e: e["_embedded"]["venues"][0].update(
+                name=None
+            ),
+            "venue.address": lambda e: e["_embedded"]["venues"][0].update(
+                address=None
+            ),
+            "venue.city": lambda e: e["_embedded"]["venues"][0].update(
+                city=None
+            ),
+            "venue.state": lambda e: e["_embedded"]["venues"][0].update(
+                state=None
+            ),
+            "venue.country": lambda e: e["_embedded"]["venues"][0].update(
+                country=None
+            ),
+            "venue.location": lambda e: e["_embedded"]["venues"][0].update(
+                location=None
+            ),
+        }
+        for nome, alterar in casos.items():
+            with self.subTest(campo=nome):
+                evento = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+                alterar(evento)
+                resumo = importar([evento], AGORA)
+                self.assertEqual(resumo.com_erro, [])
+                self.assertTrue(tm(id_externo=evento["id"]))
+
+    def test_null_em_info_vira_texto_vazio(self):
+        evento = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        evento["info"] = None
+        importar([evento], AGORA)
+        self.assertEqual(tm(id_externo=evento["id"]).descricao, "")
+
+    def test_dado_invalido_vai_para_com_erro_e_resto_importa(self):
+        def venue(evento):
+            return evento["_embedded"]["venues"][0]
+
+        casos = {
+            "preço inválido": lambda e: e.update(priceRanges=[{"min": "abc"}]),
+            "latitude inválida": lambda e: venue(e)["location"].update(
+                latitude="N/A"
+            ),
+            "imagem sem url": lambda e: e.update(images=[{"url": None}]),
+            "dates nulo": lambda e: e.update(dates=None),
+            "dates.start nulo": lambda e: e["dates"].update(start=None),
+        }
+        for nome, alterar in casos.items():
+            with self.subTest(caso=nome):
+                Evento.objects.all().delete()
+                eventos = eventos_da_fixture()
+                alterar(achar(eventos, "BTS WORLD TOUR ARIRANG"))
+                resumo = importar(eventos, AGORA)
+                self.assertEqual(resumo.criados, 10)
+                self.assertEqual(len(resumo.com_erro), 1)
+                self.assertIn("BTS WORLD TOUR ARIRANG", resumo.com_erro[0])
+                self.assertFalse(
+                    Evento.objects.filter(
+                        titulo="BTS WORLD TOUR ARIRANG"
+                    ).exists()
+                )
+
+    def test_problema_do_banco_interrompe_a_importacao(self):
+        with (
+            patch(
+                "catalogo.importacao._salvar_evento",
+                side_effect=OperationalError("database is locked"),
+            ),
+            self.assertRaises(OperationalError),
+        ):
+            importar(eventos_da_fixture(), AGORA)
+
     def test_fuso_desconhecido_e_ignorado(self):
         eventos = copy.deepcopy(eventos_da_fixture())
         ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
         ruim["dates"]["timezone"] = "Marte/Olimpo"
         resumo = importar(eventos, AGORA)
         self.assertEqual(len(resumo.com_erro), 1)
-        self.assertEqual(resumo.criados, 8)
+        self.assertEqual(resumo.criados, 10)
 
     def test_venue_sem_location_importa_sem_coordenadas(self):
         eventos = copy.deepcopy(eventos_da_fixture())
@@ -291,5 +373,5 @@ class ComandoTest(TestCase):
             return_value=_pagina(0, 1, eventos_da_fixture()),
         ):
             call_command("importar_ticketmaster", stdout=saida)
-        self.assertIn("criados: 9", saida.getvalue())
+        self.assertIn("criados: 11", saida.getvalue())
         self.assertIn("Halloween 2026 | Soho House", saida.getvalue())
