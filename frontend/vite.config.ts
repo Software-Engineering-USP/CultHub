@@ -32,6 +32,7 @@ export default defineConfig({
       reporter: ['text', 'lcovonly'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/test/**', 'src/**/*.test.{ts,tsx}'],
+      thresholds: { lines: 80 },
     },
   },
 })

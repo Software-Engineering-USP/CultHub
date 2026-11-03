@@ -19,3 +19,6 @@ extend-select = ["E501"]
 [tool.coverage.run]
 source = ["."]
 omit = ["*/tests/*", "*/tests.py", "*/migrations/*", "manage.py", ".venv/*"]
+
+[tool.coverage.report]
+fail_under = 80
