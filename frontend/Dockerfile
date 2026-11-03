@@ -2,10 +2,15 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+# O Vite grava o cache em node_modules, então o usuário node precisa ser o dono.
+RUN npm ci --ignore-scripts && chown -R node:node node_modules
 
-COPY . .
+COPY index.html vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json ./
+COPY public ./public
+COPY src ./src
+
+USER node
 
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
