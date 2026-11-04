@@ -1,3 +1,4 @@
+import { ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
@@ -38,7 +39,7 @@ export default function RoutePlan() {
 
   return (
     <>
-      <BackLink to={paths.event(event.id)}>← Voltar para o evento</BackLink>
+      <BackLink to={paths.event(event.id)}>Voltar para o evento</BackLink>
       <Breadcrumbs
         items={[
           { label: 'Explorar', to: paths.home },
@@ -151,7 +152,7 @@ export default function RoutePlan() {
             aria-describedby="navegacao-aviso"
             onClick={() => logDemoAction('Abrir rota no app de mapas', { eventId: event.id })}
           >
-            Abrir no app de mapas <span aria-hidden="true">↗</span>
+            Abrir no app de mapas <ArrowUpRight />
           </Button>
           <DemoNote id="navegacao-aviso" size="xs" className="mt-[10px]">
             Navegação real exige um serviço externo e consentimento de localização. Nesta demonstração, o

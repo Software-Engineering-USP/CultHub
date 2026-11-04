@@ -1,3 +1,4 @@
+import { ArrowRight, LocateFixed } from 'lucide-react'
 import CategoryDot from '@/components/common/CategoryDot'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
@@ -30,7 +31,8 @@ export default function Home() {
               onClick={() => logDemoAction('Pedir localização do usuário')}
               className="max-sm:min-h-10 max-sm:px-[14px] max-sm:py-[9px]"
             >
-              ◎ Minha Localização
+              <LocateFixed />
+              Minha Localização
             </Button>
             <DemoNote id="localizacao-aviso" className="mt-[5px]">
               Mapa ilustrativo. Nesta demonstração, o pedido de localização só aparece no console.
@@ -87,7 +89,9 @@ export default function Home() {
 
         <div className="mt-[7px] flex justify-between gap-4 text-[11px] text-muted-foreground max-sm:flex-wrap max-sm:gap-[6px] max-sm:text-[10px]">
           <span>{featured.length} experiências em destaque</span>
-          <span>Deslize para descobrir mais →</span>
+          <span className="inline-flex items-center gap-1">
+            Deslize para descobrir mais <ArrowRight className="size-3.5" />
+          </span>
         </div>
       </section>
 

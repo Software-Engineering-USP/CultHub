@@ -1,9 +1,9 @@
+import { ArrowRight, LocateFixed } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import DemoNote from '@/components/common/DemoNote'
 import Field from '@/components/common/Field'
-import { LocateIcon } from '@/components/common/Icons'
 import IconTile from '@/components/common/IconTile'
 import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
@@ -31,7 +31,7 @@ export default function Origin() {
 
   return (
     <>
-      <BackLink to={paths.event(event.id)}>← Voltar para o evento</BackLink>
+      <BackLink to={paths.event(event.id)}>Voltar para o evento</BackLink>
       <Breadcrumbs
         items={[
           { label: 'Explorar', to: paths.home },
@@ -47,7 +47,8 @@ export default function Origin() {
         description="Seu próximo encontro com a música começa com um ponto de partida."
       >
         <Badge variant="muted" size="md">
-          ◎ Defina sua origem para começar
+          <LocateFixed className="size-3.5" />
+          Defina sua origem para começar
         </Badge>
       </SectionHeading>
 
@@ -61,9 +62,7 @@ export default function Origin() {
           className="p-6 max-md:p-7 max-sm:p-[21px]"
         >
           <div className="mb-5 flex items-center gap-3">
-            <IconTile>
-              <LocateIcon className="h-[23px] w-[23px]" />
-            </IconTile>
+            <IconTile icon={LocateFixed} />
             <h2 id="origem-titulo" className="text-[20px] max-sm:text-[18px]">
               De onde você vai sair?
             </h2>
@@ -82,7 +81,8 @@ export default function Origin() {
             aria-describedby="geolocalizacao-aviso"
             onClick={() => logDemoAction('Pedir localização do usuário')}
           >
-            ◎ Usar minha localização (demo)
+            <LocateFixed />
+            Usar minha localização (demo)
           </Button>
           <DemoNote id="geolocalizacao-aviso" size="xs" className="mt-[10px]">
             Demonstração: o pedido só aparece no console; nenhuma localização é solicitada ou coletada.
@@ -141,7 +141,7 @@ export default function Origin() {
             </DemoNote>
 
             <Button type="submit" block disabled>
-              Traçar rota <span aria-hidden="true">→</span>
+              Traçar rota <ArrowRight />
             </Button>
             <DemoNote id="planejamento-aviso" size="xs" className="mt-[10px]">
               Defina a partida para habilitar o planejamento.
@@ -152,7 +152,9 @@ export default function Origin() {
           </form>
 
           <Button asChild variant="link" className="mt-4 flex">
-            <Link to={paths.eventRoute(event.id)}>Ver rota de exemplo →</Link>
+            <Link to={paths.eventRoute(event.id)}>
+              Ver rota de exemplo <ArrowRight />
+            </Link>
           </Button>
 
           <DemoNote size="xs" className="mt-[18px] border-t border-line pt-[15px]">

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 // Base: shadcn/ui (npx shadcn add button), com os estilos do CultHub.
 // O foco usa o contorno global definido em index.css.
 const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-2 text-center font-bold transition-colors disabled:pointer-events-none disabled:opacity-60',
+  "inline-flex shrink-0 items-center justify-center gap-2 text-center font-bold transition-colors disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

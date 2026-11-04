@@ -1,6 +1,6 @@
+import { MapPin, Search, SlidersHorizontal } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import CategoryDot from '@/components/common/CategoryDot'
-import { BrandMark, FiltersIcon, SearchIcon } from '@/components/common/Icons'
 import InitialsAvatar from '@/components/common/InitialsAvatar'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { categories, categoryOrder } from '@/lib/categories'
@@ -19,7 +19,7 @@ export default function Header() {
         aria-label="CultHub São Paulo, início"
         className="inline-flex shrink-0 items-center gap-[9px] text-maroon no-underline"
       >
-        <BrandMark className="h-9 w-[30px] max-sm:w-[26px]" />
+        <MapPin strokeWidth={2.5} className="size-9 max-sm:size-7" />
         <span>
           <span className="block text-[26px] leading-[1.1] font-extrabold tracking-[-.055em] max-sm:text-[24px]">
             CultHub
@@ -34,7 +34,7 @@ export default function Header() {
         role="search"
         className="mx-auto flex w-[min(100%,500px)] items-center gap-[10px] rounded-[28px] border border-[#eae3d8] bg-[#f4f0e8] px-[18px] py-[10px] max-lg:max-w-[420px] max-md:order-3 max-md:w-full max-md:max-w-none max-sm:px-[13px]"
       >
-        <SearchIcon className="h-[19px] w-[19px] shrink-0" />
+        <Search className="size-5 shrink-0" />
         <label className="sr-only" htmlFor="busca">
           Buscar eventos (campo demonstrativo, sem filtragem)
         </label>
@@ -56,7 +56,7 @@ export default function Header() {
       >
         <details className="relative max-sm:static">
           <summary className="flex min-h-11 list-none items-center gap-[9px] text-[13px] font-[650] max-sm:gap-[5px] max-sm:text-[11px] [&::-webkit-details-marker]:hidden">
-            <FiltersIcon className="h-[18px] w-[18px] max-sm:w-4" />
+            <SlidersHorizontal className="size-4.5 max-sm:size-4" />
             Filtros
           </summary>
           <div className="absolute top-[calc(100%+14px)] right-0 w-[280px] rounded-[20px] border border-line bg-surface p-[22px] shadow-popover max-sm:top-[calc(100%+8px)] max-sm:right-3 max-sm:w-[min(280px,calc(100vw-72px))]">

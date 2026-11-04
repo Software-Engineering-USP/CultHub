@@ -1,8 +1,8 @@
+import { ArrowRight, Calendar, Heart, MapPin, Share2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import DemoNote from '@/components/common/DemoNote'
-import { CalendarIcon, PinIcon } from '@/components/common/Icons'
 import IconTile from '@/components/common/IconTile'
 import InitialsAvatar from '@/components/common/InitialsAvatar'
 import NotFound from '@/components/common/NotFound'
@@ -39,7 +39,7 @@ export default function EventDetail() {
 
   return (
     <>
-      <BackLink to={paths.home}>← Voltar para explorar</BackLink>
+      <BackLink to={paths.home}>Voltar para explorar</BackLink>
       <Breadcrumbs
         items={[{ label: 'Explorar', to: paths.home }, { label: category.label }, { label: shortName }]}
       />
@@ -71,14 +71,16 @@ export default function EventDetail() {
                 aria-describedby="acoes-aviso"
                 onClick={() => api.events.save(event.id)}
               >
-                ♡ Salvar
+                <Heart />
+                Salvar
               </Button>
               <Button
                 variant="outline"
                 aria-describedby="acoes-aviso"
                 onClick={() => logDemoAction('Compartilhar evento', { eventId: event.id })}
               >
-                ↗ Compartilhar
+                <Share2 />
+                Compartilhar
               </Button>
             </div>
             <DemoNote id="acoes-aviso">
@@ -99,9 +101,7 @@ export default function EventDetail() {
               aria-labelledby="local-titulo"
               className="mt-[26px] flex gap-[17px] max-sm:flex-col max-sm:gap-3"
             >
-              <IconTile>
-                <PinIcon className="h-[23px] w-[23px]" />
-              </IconTile>
+              <IconTile icon={MapPin} />
               <div>
                 <h2 id="local-titulo" className="text-[22px]">
                   Onde acontece
@@ -112,7 +112,9 @@ export default function EventDetail() {
                   endereço de acesso, acessibilidade e orientações de chegada.
                 </p>
                 <Button asChild variant="link">
-                  <Link to={paths.eventOrigin(event.id)}>Ver local no mapa →</Link>
+                  <Link to={paths.eventOrigin(event.id)}>
+                    Ver local no mapa <ArrowRight />
+                  </Link>
                 </Button>
               </div>
             </Surface>
@@ -127,7 +129,7 @@ export default function EventDetail() {
 
             <div className="my-6 grid gap-4 border-y border-[#e8d8bf] py-6 text-[13px] max-md:my-[18px] max-md:flex max-md:flex-wrap max-md:gap-x-8 max-md:gap-y-[18px] max-md:py-[18px]">
               <p className="flex items-start gap-2">
-                <CalendarIcon />
+                <Calendar className="mt-0.5 size-4 shrink-0" />
                 <span>
                   <strong>{event.schedule}</strong>
                   <br />
@@ -135,14 +137,14 @@ export default function EventDetail() {
                 </span>
               </p>
               <p className="flex items-start gap-2">
-                <PinIcon />
+                <MapPin className="mt-0.5 size-4 shrink-0" />
                 <strong>{event.venue}</strong>
               </p>
             </div>
 
             <Button asChild block>
               <Link to={paths.eventOrigin(event.id)}>
-                Planejar minha visita <span aria-hidden="true">→</span>
+                Planejar minha visita <ArrowRight />
               </Link>
             </Button>
             <DemoNote className="mt-4">

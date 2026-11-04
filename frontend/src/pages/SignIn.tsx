@@ -1,3 +1,4 @@
+import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import CategoryDot from '@/components/common/CategoryDot'
@@ -19,7 +20,7 @@ export default function SignIn() {
 
   return (
     <>
-      <BackLink to={paths.home}>← Continuar como visitante</BackLink>
+      <BackLink to={paths.home}>Continuar como visitante</BackLink>
 
       <div className="mt-3 mb-[30px] max-sm:mt-1">
         <h1 className="max-w-[850px] max-md:text-[32px] max-sm:text-[30px]">
@@ -111,7 +112,7 @@ export default function SignIn() {
             </div>
 
             <Button type="submit" block disabled>
-              Entrar <span aria-hidden="true">→</span>
+              Entrar <ArrowRight />
             </Button>
 
             <DemoNote id="login-aviso" className="mt-[14px]">
@@ -121,7 +122,9 @@ export default function SignIn() {
           </form>
 
           <Button asChild variant="link" className="mt-[22px]">
-            <Link to={paths.account}>Ver perfil de exemplo →</Link>
+            <Link to={paths.account}>
+              Ver perfil de exemplo <ArrowRight />
+            </Link>
           </Button>
           <DemoNote size="sm" className="mt-[14px] mb-6">
             Conheça a conta fictícia de Lívia Costa, sem precisar fazer login.
@@ -176,7 +179,7 @@ export default function SignIn() {
             </div>
 
             <Button type="submit" block disabled>
-              Criar conta <span aria-hidden="true">→</span>
+              Criar conta <ArrowRight />
             </Button>
 
             <DemoNote id="cadastro-aviso" className="mt-[14px]">
@@ -199,7 +202,9 @@ export default function SignIn() {
           estão desativados.
         </p>
         <Button asChild variant="link">
-          <Link to={paths.home}>Voltar para explorar →</Link>
+          <Link to={paths.home}>
+            Voltar para explorar <ArrowRight />
+          </Link>
         </Button>
       </Surface>
     </>

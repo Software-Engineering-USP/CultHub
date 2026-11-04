@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
@@ -48,7 +49,9 @@ export default function Account() {
         description="Seu jeito de viver a cultura de São Paulo."
       >
         <Button asChild variant="outline">
-          <Link to={paths.home}>← Voltar ao mapa</Link>
+          <Link to={paths.home}>
+            <ArrowLeft /> Voltar ao mapa
+          </Link>
         </Button>
       </SectionHeading>
 
@@ -68,7 +71,8 @@ export default function Account() {
           <h2 className="mb-[6px] text-[21px]">{user.name}</h2>
           <p className="text-[11px]">Perfil fictício • {user.city}</p>
           <Badge variant="success" size="md" className="mt-4 max-md:mt-2.5">
-            ● Conta conectada (exemplo)
+            <span aria-hidden="true" className="size-2 rounded-full bg-current" />
+            Conta conectada (exemplo)
           </Badge>
 
           <nav
@@ -214,7 +218,7 @@ export default function Account() {
                   to={paths.event(commentEvent.id)}
                   className="mb-[10px] block text-[13px] font-bold text-maroon underline"
                 >
-                  {commentEvent.title} ↗
+                  {commentEvent.title} <ArrowUpRight className="inline size-4" />
                 </Link>
                 <p className="text-[13px] leading-[1.8] text-muted-foreground">
                   {myComment.author} • Perfil fictício • comentário de exemplo

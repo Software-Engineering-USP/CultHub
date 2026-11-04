@@ -1,3 +1,4 @@
+import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
@@ -43,7 +44,7 @@ export default function RoutePreview({ event }: { event: CultEvent }) {
 
       <Button asChild block>
         <Link to={paths.eventRoute(event.id)} aria-label="Ver rota completa de exemplo">
-          Ver rota completa <span aria-hidden="true">→</span>
+          Ver rota completa <ArrowRight />
         </Link>
       </Button>
       <DemoNote size="sm" className="mt-2">

@@ -1,5 +1,5 @@
+import { ArrowUpRight, Calendar, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { CalendarIcon, PinIcon } from '@/components/common/Icons'
 import { Badge } from '@/components/ui/badge'
 import { categories } from '@/lib/categories'
 import { eventPath } from '@/lib/events'
@@ -68,11 +68,11 @@ export default function EventCard({
           {icons ? (
             <>
               <p className="flex items-start gap-2">
-                <PinIcon />
+                <MapPin className="mt-0.5 size-4 shrink-0" />
                 {event.venue}
               </p>
               <p className="flex items-start gap-2">
-                <CalendarIcon />
+                <Calendar className="mt-0.5 size-4 shrink-0" />
                 {event.schedule}
               </p>
             </>
@@ -92,7 +92,7 @@ export default function EventCard({
               aria-label={`Ver detalhes do ${shortName}`}
               className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-maroon/22 text-[19px] no-underline"
             >
-              ↗
+              <ArrowUpRight className="size-5" />
             </Link>
           ) : (
             <span className="text-[10px] font-normal text-ink">Evento de exemplo</span>
