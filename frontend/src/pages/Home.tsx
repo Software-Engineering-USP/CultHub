@@ -1,13 +1,13 @@
-import { ArrowRight, LocateFixed } from 'lucide-react'
-import CategoryDot from '@/components/common/CategoryDot'
+import { LocateFixed } from 'lucide-react'
+import CategoryList from '@/components/common/CategoryList'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import SectionHeading from '@/components/common/SectionHeading'
 import EventCard from '@/components/events/EventCard'
+import FeaturedCarousel from '@/components/events/FeaturedCarousel'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEvents } from '@/hooks/useEvents'
-import { categories, categoryOrder } from '@/lib/categories'
 import { logDemoAction } from '@/lib/demo'
 
 export default function Home() {
@@ -49,17 +49,10 @@ export default function Home() {
             alt="Mapa ilustrativo de São Paulo com marcadores de eventos culturais. Os elementos representados na imagem não são interativos."
           />
           <figcaption className="mt-[14px] flex flex-wrap items-center justify-between gap-x-6 gap-y-3 max-sm:gap-[10px]">
-            <ul
+            <CategoryList
               aria-label="Legenda de categorias"
-              className="flex flex-wrap gap-[22px] text-[11px] font-semibold max-md:gap-4 max-sm:gap-x-[14px] max-sm:gap-y-[10px] max-sm:text-[10px]"
-            >
-              {categoryOrder.map((id) => (
-                <li key={id}>
-                  <CategoryDot id={id} />
-                  {categories[id].label}
-                </li>
-              ))}
-            </ul>
+              className="gap-[22px] text-[11px] font-semibold max-md:gap-4 max-sm:gap-x-[14px] max-sm:gap-y-[10px] max-sm:text-[10px]"
+            />
             <DemoNote className="max-sm:text-[10px]">
               Imagem estática de referência, sem navegação ou localização em tempo real.
             </DemoNote>
@@ -76,23 +69,7 @@ export default function Home() {
           <Eyebrow className="text-[10px] text-muted-foreground">SEU PRÓXIMO ENCONTRO COM A CIDADE</Eyebrow>
         </SectionHeading>
 
-        <div
-          tabIndex={0}
-          role="region"
-          aria-label={`${featured.length} experiências em destaque, role horizontalmente para explorar`}
-          className="grid snap-x snap-proximity scrollbar-thin [scrollbar-color:#c2a789_transparent] auto-cols-[350px] grid-flow-col gap-5 overflow-x-auto px-[2px] pb-4 *:snap-start max-sm:auto-cols-[min(310px,85vw)] max-sm:gap-[15px]"
-        >
-          {featured.map((event, index) => (
-            <EventCard key={event.id} event={event} priority={index === 0} />
-          ))}
-        </div>
-
-        <div className="mt-[7px] flex justify-between gap-4 text-[11px] text-muted-foreground max-sm:flex-wrap max-sm:gap-[6px] max-sm:text-[10px]">
-          <span>{featured.length} experiências em destaque</span>
-          <span className="inline-flex items-center gap-1">
-            Deslize para descobrir mais <ArrowRight className="size-3.5" />
-          </span>
-        </div>
+        <FeaturedCarousel events={featured} />
       </section>
 
       <section aria-labelledby="eventos-titulo">

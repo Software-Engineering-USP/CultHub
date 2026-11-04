@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 /*
   Tokens do CultHub.
@@ -73,6 +74,8 @@
   --color-background: var(--color-page);
   --color-foreground: var(--color-ink);
   --color-card: var(--color-surface);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-ink);
   --color-primary: var(--color-orange);
   --color-primary-foreground: var(--color-maroon);
   --color-accent: var(--color-sand-100);

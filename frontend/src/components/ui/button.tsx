@@ -20,6 +20,8 @@ const buttonVariants = cva(
       },
       size: {
         default: 'min-h-11 rounded-xl px-5 py-3 text-sm',
+        sm: 'min-h-9 rounded-lg px-4 py-2 text-xs',
+        icon: 'size-9 rounded-full',
       },
       block: {
         true: 'w-full',
@@ -39,7 +41,7 @@ const buttonVariants = cva(
 
 type ButtonProps = ComponentProps<'button'> &
   VariantProps<typeof buttonVariants> & {
-    /** Aplica o estilo no filho em vez de criar um <button> (ex.: <Button asChild><Link /></Button>) */
+    /** Aplica o estilo no filho em vez de criar um <button>*/
     asChild?: boolean
   }
 

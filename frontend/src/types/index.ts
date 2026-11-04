@@ -14,7 +14,9 @@ export interface CultEvent {
   description: string
   venue: string
   schedule: string
+  /* Preço em texto para exibição na UI */
   price: string
+  priceValue: number
   /** Caminho em public/assets */
   image: string
   imageAlt: string
