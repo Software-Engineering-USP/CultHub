@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
-import Avatar from '@/components/common/Avatar'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import DemoNote from '@/components/common/DemoNote'
 import { CalendarIcon, PinIcon } from '@/components/common/Icons'
 import IconTile from '@/components/common/IconTile'
+import InitialsAvatar from '@/components/common/InitialsAvatar'
 import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
@@ -179,9 +179,7 @@ export default function EventDetail() {
             className="mb-[22px]"
           >
             <div className="mb-[18px] flex items-center gap-3 text-[12px]">
-              <Avatar size="sm" aria-hidden="true">
-                {user.initials}
-              </Avatar>
+              <InitialsAvatar initials={user.initials} size="sm" aria-hidden="true" />
               <p>
                 Comentando como <strong>{user.name}</strong> • perfil fictício
               </p>

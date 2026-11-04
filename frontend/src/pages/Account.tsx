@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import Avatar from '@/components/common/Avatar'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
+import InitialsAvatar from '@/components/common/InitialsAvatar'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
 import EventCard from '@/components/events/EventCard'
@@ -59,9 +59,12 @@ export default function Account() {
           padded={false}
           className="px-[22px] py-7 text-center max-md:text-left max-sm:p-[22px] max-sm:text-center"
         >
-          <Avatar size="lg" aria-hidden="true">
-            {user.initials}
-          </Avatar>
+          <InitialsAvatar
+            initials={user.initials}
+            size="lg"
+            aria-hidden="true"
+            className="mb-4 max-md:float-left max-md:mr-4.5 max-md:size-16 max-sm:float-none max-sm:mr-0 max-sm:mb-3.5"
+          />
           <h2 className="mb-[6px] text-[21px]">{user.name}</h2>
           <p className="text-[11px]">Perfil fictício • {user.city}</p>
           <Badge variant="success" size="md" className="mt-4 max-md:mt-2.5">

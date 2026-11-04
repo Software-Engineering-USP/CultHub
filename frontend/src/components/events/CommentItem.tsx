@@ -1,4 +1,4 @@
-import Avatar from '@/components/common/Avatar'
+import InitialsAvatar from '@/components/common/InitialsAvatar'
 import { Button } from '@/components/ui/button'
 import { logDemoAction } from '@/lib/demo'
 import type { EventComment } from '@/types'
@@ -7,9 +7,7 @@ export default function CommentItem({ comment }: { comment: EventComment }) {
   return (
     <article className="border-b border-line py-[22px] first:pt-0 last:border-b-0 last:pb-0">
       <div className="mb-3 flex items-center gap-3 text-[12px]">
-        <Avatar size="sm" aria-hidden="true">
-          {comment.initials}
-        </Avatar>
+        <InitialsAvatar initials={comment.initials} size="sm" aria-hidden="true" />
         <div>
           <strong>{comment.author}</strong>
           <p className="text-[13px] leading-[1.8] text-muted-foreground">

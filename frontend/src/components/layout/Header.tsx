@@ -1,9 +1,9 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import CategoryDot from '@/components/common/CategoryDot'
 import { BrandMark, FiltersIcon, SearchIcon } from '@/components/common/Icons'
+import InitialsAvatar from '@/components/common/InitialsAvatar'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { categories, categoryOrder } from '@/lib/categories'
-import { avatarClass } from '@/lib/classes'
 import { paths } from '@/lib/paths'
 
 export default function Header() {
@@ -83,9 +83,9 @@ export default function Header() {
           <NavLink
             to={paths.account}
             aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de exemplo de ${user.name}`}
-            className={avatarClass('md')}
+            className="rounded-full"
           >
-            {user.initials}
+            <InitialsAvatar initials={user.initials} className="max-sm:size-9.5" />
           </NavLink>
         )}
       </nav>
