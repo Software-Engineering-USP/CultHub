@@ -2,3 +2,4 @@ Django==6.1.2
 djangorestframework==3.18.3
 drf-spectacular==0.30.0
 ruff==0.17.0
+coverage==7.17.1
