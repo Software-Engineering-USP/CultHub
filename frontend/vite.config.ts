@@ -33,7 +33,6 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcovonly'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/test/**', 'src/**/*.test.{ts,tsx}'],
       thresholds: { lines: 80 },
     },
   },
