@@ -1,7 +1,8 @@
-import type { InputHTMLAttributes, ReactNode } from 'react'
-import { inputClass } from '@/lib/classes'
+import type { ComponentProps, ReactNode } from 'react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
-interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
+interface FieldProps extends ComponentProps<'input'> {
   id: string
   label: string
   help?: ReactNode
@@ -11,18 +12,11 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
 export default function Field({ id, label, help, ...rest }: FieldProps) {
   const helpId = `${id}-ajuda`
   return (
-    <div className="mb-[18px] grid min-w-0 gap-[7px]">
-      <label htmlFor={id} className="text-[12px] font-[650]">
-        {label}
-      </label>
-      <input
-        id={id}
-        aria-describedby={help ? helpId : undefined}
-        className={`${inputClass} min-h-[46px] w-full`}
-        {...rest}
-      />
+    <div className="mb-4.5 grid min-w-0 gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} aria-describedby={help ? helpId : undefined} {...rest} />
       {help && (
-        <small id={helpId} className="text-[10px] text-muted-foreground">
+        <small id={helpId} className="text-2xs text-muted-foreground">
           {help}
         </small>
       )}

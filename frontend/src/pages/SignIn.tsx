@@ -9,7 +9,7 @@ import Surface from '@/components/common/Surface'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { checkboxClass } from '@/lib/classes'
-import { preventSubmit } from '@/lib/forms'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { api } from '@/services/api'
 
@@ -74,10 +74,18 @@ export default function SignIn() {
             aria-label="Entrar (demonstração)"
             aria-describedby="login-aviso"
             autoComplete="off"
-            onSubmit={preventSubmit}
+            onSubmit={onFormSubmit((data) =>
+              api.auth.signIn({
+                email: text(data, 'email'),
+                password: text(data, 'senha'),
+                remember: data.has('lembrar'),
+              }),
+            )}
           >
             <Field
               id="login-email"
+              required
+              name="email"
               label="E-mail"
               type="email"
               placeholder="voce@exemplo.com"
@@ -86,6 +94,8 @@ export default function SignIn() {
             />
             <Field
               id="login-senha"
+              required
+              name="senha"
               label="Senha"
               type="password"
               placeholder="Digite sua senha"
@@ -94,30 +104,28 @@ export default function SignIn() {
 
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="lembrar">
-                <input id="lembrar" type="checkbox" className={checkboxClass} />
+                <input id="lembrar" name="lembrar" type="checkbox" className={checkboxClass} />
                 Lembrar de mim
               </label>
               <Button
                 variant="linkMuted"
                 aria-describedby="login-aviso"
                 onClick={(event) => {
-                  const email = event.currentTarget.form?.elements.namedItem(
-                    'login-email',
-                  ) as HTMLInputElement | null
-                  api.auth.forgotPassword(email?.value ?? '')
+                  const form = event.currentTarget.form
+                  api.auth.forgotPassword(form ? text(new FormData(form), 'email') : '')
                 }}
               >
                 Esqueci minha senha
               </Button>
             </div>
 
-            <Button type="submit" block disabled>
+            <Button type="submit" block>
               Entrar <ArrowRight />
             </Button>
 
             <DemoNote id="login-aviso" className="mt-[14px]">
-              Formulário de demonstração, sem envio ou autenticação. Não use credenciais reais. "Esqueci minha
-              senha" só registra o pedido no console.
+              Formulário de demonstração, sem autenticação: os dados só aparecem no console (a senha nunca é
+              mostrada). Não use credenciais reais.
             </DemoNote>
           </form>
 
@@ -141,10 +149,19 @@ export default function SignIn() {
             aria-label="Criar conta (demonstração)"
             aria-describedby="cadastro-aviso"
             autoComplete="off"
-            onSubmit={preventSubmit}
+            onSubmit={onFormSubmit((data) =>
+              api.auth.signUp({
+                name: text(data, 'nome'),
+                email: text(data, 'email'),
+                password: text(data, 'senha'),
+                acceptedTerms: data.has('termos'),
+              }),
+            )}
           >
             <Field
               id="cadastro-nome"
+              required
+              name="nome"
               label="Nome"
               type="text"
               placeholder="Como você quer ser chamado?"
@@ -152,6 +169,8 @@ export default function SignIn() {
             />
             <Field
               id="cadastro-email"
+              required
+              name="email"
               label="E-mail"
               type="email"
               placeholder="voce@exemplo.com"
@@ -160,6 +179,8 @@ export default function SignIn() {
             />
             <Field
               id="cadastro-senha"
+              required
+              name="senha"
               label="Senha"
               type="password"
               placeholder="Crie uma senha"
@@ -170,7 +191,7 @@ export default function SignIn() {
 
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="termos">
-                <input id="termos" type="checkbox" className={checkboxClass} />
+                <input id="termos" name="termos" type="checkbox" required className={checkboxClass} />
                 <span>
                   Aceito os termos e a política de privacidade <strong>ilustrativos</strong>. Esta opção não
                   registra consentimento nem cria uma conta.
@@ -178,13 +199,13 @@ export default function SignIn() {
               </label>
             </div>
 
-            <Button type="submit" block disabled>
+            <Button type="submit" block>
               Criar conta <ArrowRight />
             </Button>
 
             <DemoNote id="cadastro-aviso" className="mt-[14px]">
-              Formulário visual de demonstração. Nenhum cadastro é realizado e nenhum dado é enviado. Não há
-              termos contratuais ativos nesta versão.
+              Formulário de demonstração: os dados só aparecem no console e nenhum cadastro é realizado. Não
+              há termos contratuais ativos nesta versão.
             </DemoNote>
           </form>
         </Surface>

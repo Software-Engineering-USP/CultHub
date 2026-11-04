@@ -12,15 +12,16 @@ import CommentItem from '@/components/events/CommentItem'
 import RoutePreview from '@/components/events/RoutePreview'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import WeatherCard from '@/components/weather/WeatherCard'
 import { useComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEvent } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
-import { inputClass } from '@/lib/classes'
 import { logDemoAction } from '@/lib/demo'
-import { preventSubmit } from '@/lib/forms'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { api } from '@/services/api'
 
@@ -177,7 +178,10 @@ export default function EventDetail() {
             as="form"
             aria-label="Comentário demonstrativo"
             aria-describedby="comentario-aviso"
-            onSubmit={preventSubmit}
+            onSubmit={onFormSubmit((data, form) => {
+              api.comments.create(event.id, text(data, 'comentario'))
+              form.reset()
+            })}
             className="mb-[22px]"
           >
             <div className="mb-[18px] flex items-center gap-3 text-[12px]">
@@ -187,22 +191,23 @@ export default function EventDetail() {
               </p>
             </div>
 
-            <label className="sr-only" htmlFor="comentario">
+            <Label className="sr-only" htmlFor="comentario">
               Seu comentário sobre o evento
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id="comentario"
+              name="comentario"
+              required
               placeholder="Escreva seu comentário sobre o evento..."
-              className={`${inputClass} block min-h-[112px] w-full resize-y`}
             />
 
             <div className="mt-[14px] flex items-center justify-between gap-[18px] max-sm:flex-col max-sm:items-start max-sm:gap-3">
               <DemoNote id="comentario-aviso">
                 Compartilhe ideias com respeito.
                 <br />
-                Demonstração: o texto não é enviado nem publicado.
+                Demonstração: o texto só aparece no console, não é publicado.
               </DemoNote>
-              <Button type="submit" disabled className="max-sm:w-full">
+              <Button type="submit" className="max-sm:w-full">
                 Publicar comentário
               </Button>
             </div>
@@ -213,8 +218,7 @@ export default function EventDetail() {
               <CommentItem key={comment.id} comment={comment} />
             ))}
             <DemoNote className="mt-5">
-              Comentários ilustrativos. Responder só registra a ação no console; publicar ainda está
-              desativado.
+              Comentários ilustrativos. Responder e publicar só registram a ação no console.
             </DemoNote>
           </Surface>
         </section>

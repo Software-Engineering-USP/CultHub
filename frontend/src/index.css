@@ -79,6 +79,7 @@
   --color-muted: var(--color-sand-200);
   --color-muted-foreground: var(--color-slate);
   --color-border: var(--color-line);
+  --color-input: var(--color-line);
   --color-ring: var(--color-maroon);
 }
 

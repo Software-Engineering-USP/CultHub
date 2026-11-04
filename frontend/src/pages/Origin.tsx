@@ -1,5 +1,5 @@
 import { ArrowRight, LocateFixed } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
 import DemoNote from '@/components/common/DemoNote'
@@ -17,11 +17,14 @@ import { useEvent } from '@/hooks/useEvents'
 import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { peerFocusRing } from '@/lib/classes'
 import { logDemoAction } from '@/lib/demo'
-import { preventSubmit } from '@/lib/forms'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
+import type { RouteOption } from '@/types'
 
 export default function Origin() {
   const event = useEvent()
+  const navigate = useNavigate()
   const routeOptions = useRouteOptions(event?.id)
   useDocumentTitle('Defina sua origem | CultHub')
 
@@ -96,10 +99,19 @@ export default function Origin() {
             aria-label="Definir partida (demonstração)"
             aria-describedby="planejamento-aviso"
             autoComplete="off"
-            onSubmit={preventSubmit}
+            onSubmit={onFormSubmit(async (data) => {
+              await api.routes.plan({
+                eventId: event.id,
+                origin: text(data, 'endereco'),
+                mode: text(data, 'transporte') as RouteOption['id'],
+              })
+              navigate(paths.eventRoute(event.id))
+            })}
           >
             <Field
               id="endereco"
+              required
+              name="endereco"
               label="Endereço de partida"
               type="text"
               placeholder="Digite um endereço de partida"
@@ -140,14 +152,12 @@ export default function Origin() {
               A escolha é apenas visual e não altera o mapa.
             </DemoNote>
 
-            <Button type="submit" block disabled>
+            <Button type="submit" block>
               Traçar rota <ArrowRight />
             </Button>
             <DemoNote id="planejamento-aviso" size="xs" className="mt-[10px]">
-              Defina a partida para habilitar o planejamento.
-              <br />
-              Nesta versão estática, o planejamento permanece desativado mesmo após preencher o campo. Nenhum
-              endereço é enviado.
+              Demonstração: o pedido de rota só aparece no console e abre a rota de exemplo. Nenhum endereço é
+              enviado.
             </DemoNote>
           </form>
 

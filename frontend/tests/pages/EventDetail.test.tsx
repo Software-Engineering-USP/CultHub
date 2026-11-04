@@ -41,4 +41,23 @@ describe('EventDetail', () => {
     await user.click(screen.getByRole('button', { name: 'Responder a Rafael Martins' }))
     expect(log).toHaveBeenCalledWith('Abrir resposta ao comentário', { commentId: 'c2' })
   })
+
+  it('Publicar comentário envia o texto e limpa o campo', async () => {
+    const create = vi.spyOn(api.comments, 'create').mockResolvedValue()
+    const { user } = renderEvent()
+    const campo = screen.getByLabelText('Seu comentário sobre o evento')
+
+    await user.type(campo, 'Que noite!')
+    await user.click(screen.getByRole('button', { name: 'Publicar comentário' }))
+
+    expect(create).toHaveBeenCalledWith('sp-jazz-blues-festival', 'Que noite!')
+    expect(campo).toHaveValue('')
+  })
+
+  it('não publica comentário vazio', async () => {
+    const create = vi.spyOn(api.comments, 'create').mockResolvedValue()
+    const { user } = renderEvent()
+    await user.click(screen.getByRole('button', { name: 'Publicar comentário' }))
+    expect(create).not.toHaveBeenCalled()
+  })
 })

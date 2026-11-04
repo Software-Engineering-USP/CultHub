@@ -16,7 +16,7 @@ import { useEventById, useSavedEvents } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
 import { peerFocusRing } from '@/lib/classes'
 import { logDemoAction } from '@/lib/demo'
-import { preventSubmit } from '@/lib/forms'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { api } from '@/services/api'
 import type { CategoryId } from '@/types'
@@ -117,20 +117,42 @@ export default function Account() {
               aria-label="Editar dados fictícios"
               aria-describedby="dados-aviso"
               autoComplete="off"
-              onSubmit={preventSubmit}
+              onSubmit={onFormSubmit((data) =>
+                api.profile.update({
+                  name: text(data, 'nome'),
+                  city: text(data, 'cidade'),
+                  district: text(data, 'bairro'),
+                }),
+              )}
             >
               <div className="grid grid-cols-2 gap-x-5 max-sm:grid-cols-[minmax(0,1fr)]">
                 <Field
                   id="nome"
+                  name="nome"
                   label="Nome completo"
                   type="text"
                   defaultValue={user.name}
                   autoComplete="off"
                 />
-                <Field id="email" label="E-mail" type="email" defaultValue={user.email} autoComplete="off" />
-                <Field id="cidade" label="Cidade" type="text" defaultValue={user.city} autoComplete="off" />
+                <Field
+                  id="email"
+                  label="E-mail"
+                  type="email"
+                  defaultValue={user.email}
+                  readOnly
+                  help="O e-mail não pode ser alterado."
+                />
+                <Field
+                  id="cidade"
+                  name="cidade"
+                  label="Cidade"
+                  type="text"
+                  defaultValue={user.city}
+                  autoComplete="off"
+                />
                 <Field
                   id="bairro"
+                  name="bairro"
                   label="Bairro"
                   type="text"
                   defaultValue={user.district}
@@ -140,12 +162,10 @@ export default function Account() {
 
               <div className="mt-1 flex items-center justify-between gap-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-[14px]">
                 <DemoNote id="dados-aviso" className="max-w-[410px]">
-                  Sua privacidade importa. Este perfil é fictício: os campos são editáveis, mas não são
-                  enviados ou salvos. Não insira dados pessoais reais.
+                  Sua privacidade importa. Este perfil é fictício: ao salvar, os dados só aparecem no console
+                  e não são guardados. Não insira dados pessoais reais.
                 </DemoNote>
-                <Button type="submit" disabled>
-                  Salvar alterações
-                </Button>
+                <Button type="submit">Salvar alterações</Button>
               </div>
             </form>
           </Surface>
@@ -160,13 +180,21 @@ export default function Account() {
               Categorias que você gosta de acompanhar. {selectedLabels} selecionadas.
             </p>
 
-            <fieldset aria-describedby="preferencias-aviso" className="flex flex-wrap gap-[10px]">
+            <fieldset
+              aria-describedby="preferencias-aviso"
+              className="flex flex-wrap gap-[10px]"
+              onChange={(event) => {
+                const checked = event.currentTarget.querySelectorAll<HTMLInputElement>('input:checked')
+                api.profile.updatePreferences(Array.from(checked, (input) => input.value as CategoryId))
+              }}
+            >
               <legend className="sr-only">Categorias culturais de interesse</legend>
               {preferenceOrder.map((id) => (
                 <div key={id} className="relative">
                   <input
                     id={`pref-${id}`}
                     type="checkbox"
+                    value={id}
                     defaultChecked={user.preferences.includes(id)}
                     className="peer absolute top-3 left-[15px] mt-[2px] h-4 w-4 accent-maroon"
                   />
@@ -181,8 +209,8 @@ export default function Account() {
             </fieldset>
 
             <DemoNote id="preferencias-aviso" className="mt-4">
-              Seleção visual em CSS. Você pode marcar categorias, mas as escolhas não são salvas e não filtram
-              eventos. A seleção inicial acima descreve apenas o exemplo.
+              Demonstração: cada mudança aparece no console, mas não é salva e não filtra eventos. A seleção
+              inicial acima descreve apenas o exemplo.
             </DemoNote>
           </Surface>
 
