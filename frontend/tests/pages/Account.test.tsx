@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as demo from '@/lib/demo'
 import Account from '@/pages/Account'
@@ -44,5 +44,15 @@ describe('Account', () => {
     await user.click(screen.getByLabelText('Teatro'))
 
     expect(updatePreferences).toHaveBeenCalledWith(['music', 'theater', 'art'])
+  })
+
+  it('o menu lateral marca a seção atual', () => {
+    renderWithRouter(<Account />)
+    const menu = screen.getByRole('navigation', { name: 'Seções da conta' })
+    expect(within(menu).getByRole('link', { name: 'Dados pessoais' })).toHaveAttribute(
+      'aria-current',
+      'location',
+    )
+    expect(within(menu).getByRole('link', { name: 'Eventos salvos' })).not.toHaveAttribute('aria-current')
   })
 })

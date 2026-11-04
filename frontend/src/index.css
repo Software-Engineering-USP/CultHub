@@ -63,6 +63,13 @@
   --color-dot-sport: #9e4e57;
   --color-dot-art: #587ba4;
 
+  /* Texto do selo da categoria nos cards (mais escuro que a bolinha, para ler bem em letra pequena) */
+  --color-label-music: #a85316;
+  --color-label-festival: #9b6020;
+  --color-label-theater: #3d775f;
+  --color-label-sport: #9e4e57;
+  --color-label-art: #4f6e93;
+
   --shadow-soft: 0 8px 28px rgb(70 43 22 / 5%);
   --shadow-card: 0 5px 16px rgb(81 48 22 / 4%);
   --shadow-popover: 0 15px 40px rgb(46 30 15 / 14%);

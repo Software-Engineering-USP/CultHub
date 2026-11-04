@@ -1,9 +1,9 @@
 import { LocateFixed } from 'lucide-react'
 import CategoryList from '@/components/common/CategoryList'
 import DemoNote from '@/components/common/DemoNote'
-import Eyebrow from '@/components/common/Eyebrow'
 import SectionHeading from '@/components/common/SectionHeading'
 import EventCard from '@/components/events/EventCard'
+import EventSort from '@/components/events/EventSort'
 import FeaturedCarousel from '@/components/events/FeaturedCarousel'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -61,15 +61,7 @@ export default function Home() {
       </section>
 
       <section aria-labelledby="destaques-titulo">
-        <SectionHeading
-          id="destaques-titulo"
-          title="Eventos em Destaque"
-          description="As experiências mais recomendadas da semana"
-        >
-          <Eyebrow className="text-[10px] text-muted-foreground">SEU PRÓXIMO ENCONTRO COM A CIDADE</Eyebrow>
-        </SectionHeading>
-
-        <FeaturedCarousel events={featured} />
+        <FeaturedCarousel events={featured} titleId="destaques-titulo" />
       </section>
 
       <section aria-labelledby="eventos-titulo">
@@ -78,20 +70,18 @@ export default function Home() {
           title="Todos os Eventos Encontrados"
           description={`Exibindo ${events.length} evento(s) encontrado(s)`}
         >
-          <span className="rounded-xl border border-line bg-surface/65 px-4 py-[10px] text-[12px] whitespace-nowrap max-sm:text-[11px]">
-            Ordenar: <strong>Relevância</strong> <span className="text-muted-foreground">· exemplo fixo</span>
-          </span>
+          <EventSort />
         </SectionHeading>
 
         <div className="grid grid-cols-3 gap-6 max-lg:gap-[18px] max-md:grid-cols-2 max-sm:grid-cols-1 max-sm:gap-5">
           {events.map((event) => (
-            <EventCard key={event.id} event={event} icons />
+            <EventCard key={event.id} event={event} />
           ))}
         </div>
 
         <DemoNote className="mt-5">
-          Busca, filtros e ordenação são demonstrativos. Apenas o Jazz &amp; Blues Festival possui uma página
-          de detalhes neste exemplo.
+          Busca, filtros e ordenação são demonstrativos e só aparecem no console. Apenas o Jazz &amp; Blues
+          Festival possui uma página de detalhes neste exemplo.
         </DemoNote>
       </section>
     </div>

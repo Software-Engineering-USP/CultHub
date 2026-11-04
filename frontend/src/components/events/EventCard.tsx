@@ -2,101 +2,77 @@ import { ArrowUpRight, Calendar, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { categories } from '@/lib/categories'
-import { eventPath } from '@/lib/events'
+import { shortName } from '@/lib/events'
+import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 import type { CultEvent } from '@/types'
 
 interface EventCardProps {
   event: CultEvent
-  /** Mostra ícones de local/data nas linhas de informação */
-  icons?: boolean
-  /** Versão menor, usada em "Eventos salvos" */
+  /** Versão com imagem menor, usada em "Eventos salvos" */
   compact?: boolean
   /** Carrega a imagem imediatamente (primeiro card visível) */
   priority?: boolean
 }
 
-export default function EventCard({
-  event,
-  icons = false,
-  compact = false,
-  priority = false,
-}: EventCardProps) {
+export default function EventCard({ event, compact = false, priority = false }: EventCardProps) {
   const category = categories[event.category]
-  const href = eventPath(event)
-  const shortName = event.shortTitle ?? event.title
-
-  const image = (
-    <img
-      src={event.image}
-      alt={event.imageAlt}
-      loading={priority ? undefined : 'lazy'}
-      className={cn('block w-full object-cover', compact ? 'h-[170px]' : 'h-[192px]')}
-    />
-  )
+  const href = paths.event(event.id)
+  const info = [
+    { icon: MapPin, text: event.venue },
+    { icon: Calendar, text: event.schedule },
+  ]
 
   return (
     <article
-      className={cn('overflow-hidden rounded-[22px] border border-[#e1d8ca] shadow-card', category.card)}
+      className={cn(
+        'flex h-full flex-col overflow-hidden rounded-3xl border border-border shadow-card',
+        category.card,
+      )}
     >
       <div className="relative">
-        {href ? (
-          <Link to={href} aria-label={`Conhecer ${event.title}`}>
-            {image}
-          </Link>
-        ) : (
-          image
-        )}
-        <Badge className="absolute top-3.5 left-3.5 shadow-badge">{category.label}</Badge>
+        <Link to={href} aria-label={`Conhecer ${event.title}`}>
+          <img
+            src={event.image}
+            alt={event.imageAlt}
+            loading={priority ? undefined : 'lazy'}
+            className={cn('block w-full object-cover', compact ? 'h-32' : 'h-36')}
+          />
+        </Link>
+        <Badge className={cn('absolute bottom-3 left-3 bg-card/90 font-medium shadow-badge', category.text)}>
+          {category.label}
+        </Badge>
       </div>
 
-      <div className={compact ? 'p-5' : 'p-[22px] max-lg:p-[19px] max-sm:p-[22px]'}>
-        <h3 className="mb-[10px]">
-          {href ? (
-            <Link to={href} className="no-underline hover:underline">
-              {event.title}
-            </Link>
-          ) : (
-            event.title
-          )}
+      <div className="flex flex-1 flex-col p-5">
+        <h3 className="text-lg">
+          <Link to={href} className="no-underline hover:underline">
+            {event.title}
+          </Link>
         </h3>
-        <p className="mb-[18px] min-h-[63px] text-[13px] leading-[1.65] max-sm:min-h-0">
-          {event.description}
-        </p>
+        <p className="mt-3 line-clamp-2 text-xs">{event.description}</p>
 
-        <div className="grid gap-[7px] text-[12px]">
-          {icons ? (
-            <>
-              <p className="flex items-start gap-2">
-                <MapPin className="mt-0.5 size-4 shrink-0" />
-                {event.venue}
-              </p>
-              <p className="flex items-start gap-2">
-                <Calendar className="mt-0.5 size-4 shrink-0" />
-                {event.schedule}
-              </p>
-            </>
-          ) : (
-            <>
-              <p>{event.venue}</p>
-              <p>{event.schedule}</p>
-            </>
-          )}
+        <div className="mt-3 mb-4 grid gap-2 text-xs">
+          {info.map(({ icon: Icon, text }) => (
+            <p key={text} className="flex items-center gap-2">
+              <Icon className="size-4 shrink-0" />
+              {text}
+            </p>
+          ))}
         </div>
 
-        <div className="mt-5 flex items-center justify-between gap-[10px] border-t border-maroon/12 pt-4 text-[16px] font-[750] text-maroon">
-          <span>{event.price}</span>
-          {href ? (
-            <Link
-              to={href}
-              aria-label={`Ver detalhes do ${shortName}`}
-              className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-maroon/22 text-[19px] no-underline"
-            >
-              <ArrowUpRight className="size-5" />
-            </Link>
-          ) : (
-            <span className="text-[10px] font-normal text-ink">Evento de exemplo</span>
-          )}
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-maroon/10 pt-3">
+          <span
+            className={cn(
+              'text-base font-bold',
+              event.priceValue === 0 ? 'text-success-foreground' : 'text-maroon',
+            )}
+          >
+            {event.price}
+          </span>
+          <Link to={href} aria-label={`Ver detalhes do ${shortName(event)}`} className="text-maroon">
+            <ArrowUpRight className="size-4" />
+          </Link>
         </div>
       </div>
     </article>

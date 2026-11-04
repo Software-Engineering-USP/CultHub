@@ -12,7 +12,7 @@ interface FieldProps extends ComponentProps<'input'> {
 export default function Field({ id, label, help, ...rest }: FieldProps) {
   const helpId = `${id}-ajuda`
   return (
-    <div className="mb-4.5 grid min-w-0 gap-2">
+    <div className="mb-4.5 grid min-w-0 content-start gap-2">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} aria-describedby={help ? helpId : undefined} {...rest} />
       {help && (

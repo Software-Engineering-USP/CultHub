@@ -9,6 +9,7 @@ import Surface from '@/components/common/Surface'
 import EventCard from '@/components/events/EventCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useActiveSection } from '@/hooks/useActiveSection'
 import { useUserComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -18,13 +19,22 @@ import { peerFocusRing } from '@/lib/classes'
 import { logDemoAction } from '@/lib/demo'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { cn } from '@/lib/utils'
 import { api } from '@/services/api'
 import type { CategoryId } from '@/types'
 
 // Ordem das categorias na tela de preferências
 const preferenceOrder: CategoryId[] = ['music', 'theater', 'art', 'festival', 'sport']
 
-const menuLink = 'px-3 text-[12px] font-semibold no-underline hover:bg-[#f8f0e4]'
+const menuLink = 'px-3 text-[12px] font-semibold no-underline hover:bg-accent hover:text-maroon'
+
+const sections = [
+  { id: 'dados', label: 'Dados pessoais' },
+  { id: 'preferencias', label: 'Preferências culturais' },
+  { id: 'salvos', label: 'Eventos salvos' },
+  { id: 'comentarios', label: 'Meus comentários' },
+]
+const sectionIds = sections.map((section) => section.id)
 
 const panelHeading = 'mb-[22px] flex items-center justify-between gap-[14px] max-sm:items-start'
 const panelEyebrow = 'text-[9px] text-muted-foreground max-sm:max-w-[90px] max-sm:text-right'
@@ -33,6 +43,7 @@ export default function Account() {
   useDocumentTitle('Minha conta de exemplo | CultHub')
 
   const user = useCurrentUser()
+  const { active: activeSection, select: selectSection } = useActiveSection(sectionIds)
   const savedEvents = useSavedEvents()
 
   const [myComment] = useUserComments()
@@ -60,7 +71,7 @@ export default function Account() {
           as="aside"
           aria-label="Perfil e navegação da conta"
           padded={false}
-          className="px-[22px] py-7 text-center max-md:text-left max-sm:p-[22px] max-sm:text-center"
+          className="sticky top-6 px-[22px] py-7 text-center max-md:static max-md:text-left max-sm:p-[22px] max-sm:text-center"
         >
           <InitialsAvatar
             initials={user.initials}
@@ -79,18 +90,21 @@ export default function Account() {
             aria-label="Seções da conta"
             className="mt-[25px] grid gap-[5px] border-t border-line pt-5 text-left max-md:clear-both max-md:flex max-md:flex-wrap max-md:gap-[6px] max-sm:flex-col"
           >
-            <a href="#dados" className={`${menuLink} rounded-[10px] bg-[#f5e8d6] py-[11px] text-maroon`}>
-              Dados pessoais
-            </a>
-            <a href="#preferencias" className={`${menuLink} rounded-[10px] py-[11px]`}>
-              Preferências culturais
-            </a>
-            <a href="#salvos" className={`${menuLink} rounded-[10px] py-[11px]`}>
-              Eventos salvos
-            </a>
-            <a href="#comentarios" className={`${menuLink} rounded-[10px] py-[11px]`}>
-              Meus comentários
-            </a>
+            {sections.map((section) => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                onClick={() => selectSection(section.id)}
+                aria-current={activeSection === section.id ? 'location' : undefined}
+                className={cn(
+                  menuLink,
+                  'rounded-[10px] py-[11px] transition-colors',
+                  activeSection === section.id && 'bg-[#f5e8d6] text-maroon hover:bg-[#f5e8d6]',
+                )}
+              >
+                {section.label}
+              </a>
+            ))}
             <Link
               to={paths.signIn}
               className={`${menuLink} mt-3 rounded-none border-t border-line pt-5 pb-[11px] text-maroon max-md:m-0 max-md:rounded-[10px] max-md:border-0 max-md:py-[11px]`}
