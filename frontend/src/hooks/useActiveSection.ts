@@ -17,7 +17,7 @@ export function useActiveSection(ids: string[]) {
     function update() {
       const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
       if (atBottom) {
-        setScrolled(sectionIds[sectionIds.length - 1])
+        setScrolled(sectionIds.at(-1) ?? sectionIds[0])
         return
       }
       const line = window.innerHeight * 0.35

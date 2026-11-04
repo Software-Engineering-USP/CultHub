@@ -36,7 +36,7 @@ export default function Header() {
 
       <form
         role="search"
-        onSubmit={onFormSubmit((data) => api.events.search(text(data, 'busca')))}
+        onSubmit={onFormSubmit((data) => void api.events.search(text(data, 'busca')))}
         className="mx-auto flex w-[min(100%,500px)] items-center gap-[10px] rounded-[28px] border border-[#eae3d8] bg-[#f4f0e8] px-[18px] py-[10px] max-lg:max-w-[420px] max-md:order-3 max-md:w-full max-md:max-w-none max-sm:px-[13px]"
       >
         <Search className="size-5 shrink-0" />

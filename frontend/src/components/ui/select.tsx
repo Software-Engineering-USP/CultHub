@@ -13,7 +13,7 @@ export function SelectTrigger({
   className,
   children,
   ...props
-}: ComponentProps<typeof SelectPrimitive.Trigger>) {
+}: Readonly<ComponentProps<typeof SelectPrimitive.Trigger>>) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
@@ -32,7 +32,7 @@ export function SelectContent({
   className,
   children,
   ...props
-}: ComponentProps<typeof SelectPrimitive.Content>) {
+}: Readonly<ComponentProps<typeof SelectPrimitive.Content>>) {
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -52,7 +52,11 @@ export function SelectContent({
   )
 }
 
-export function SelectItem({ className, children, ...props }: ComponentProps<typeof SelectPrimitive.Item>) {
+export function SelectItem({
+  className,
+  children,
+  ...props
+}: Readonly<ComponentProps<typeof SelectPrimitive.Item>>) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"

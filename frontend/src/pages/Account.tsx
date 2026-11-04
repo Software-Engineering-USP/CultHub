@@ -83,7 +83,7 @@ export default function Account() {
           <p className="text-[11px]">Perfil fictício • {user.city}</p>
           <Badge variant="success" size="md" className="mt-4 max-md:mt-2.5">
             <span aria-hidden="true" className="size-2 rounded-full bg-current" />
-            Conta conectada (exemplo)
+            <span>Conta conectada (exemplo)</span>
           </Badge>
 
           <nav
@@ -131,12 +131,13 @@ export default function Account() {
               aria-label="Editar dados fictícios"
               aria-describedby="dados-aviso"
               autoComplete="off"
-              onSubmit={onFormSubmit((data) =>
-                api.profile.update({
-                  name: text(data, 'nome'),
-                  city: text(data, 'cidade'),
-                  district: text(data, 'bairro'),
-                }),
+              onSubmit={onFormSubmit(
+                (data) =>
+                  void api.profile.update({
+                    name: text(data, 'nome'),
+                    city: text(data, 'cidade'),
+                    district: text(data, 'bairro'),
+                  }),
               )}
             >
               <div className="grid grid-cols-2 gap-x-5 max-sm:grid-cols-[minmax(0,1fr)]">
@@ -199,7 +200,7 @@ export default function Account() {
               className="flex flex-wrap gap-[10px]"
               onChange={(event) => {
                 const checked = event.currentTarget.querySelectorAll<HTMLInputElement>('input:checked')
-                api.profile.updatePreferences(Array.from(checked, (input) => input.value as CategoryId))
+                void api.profile.updatePreferences(Array.from(checked, (input) => input.value as CategoryId))
               }}
             >
               <legend className="sr-only">Categorias culturais de interesse</legend>
@@ -278,7 +279,7 @@ export default function Account() {
                   <Button
                     variant="linkMuted"
                     aria-describedby="editar-aviso"
-                    onClick={() => api.comments.remove(myComment.id)}
+                    onClick={() => void api.comments.remove(myComment.id)}
                     className="mt-2"
                   >
                     Excluir

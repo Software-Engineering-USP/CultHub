@@ -8,7 +8,7 @@ export function Avatar({
   className,
   size = 'md',
   ...props
-}: ComponentProps<typeof AvatarPrimitive.Root> & { size?: 'sm' | 'md' | 'lg' }) {
+}: Readonly<ComponentProps<typeof AvatarPrimitive.Root> & { size?: 'sm' | 'md' | 'lg' }>) {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
@@ -22,7 +22,10 @@ export function Avatar({
   )
 }
 
-export function AvatarFallback({ className, ...props }: ComponentProps<typeof AvatarPrimitive.Fallback>) {
+export function AvatarFallback({
+  className,
+  ...props
+}: Readonly<ComponentProps<typeof AvatarPrimitive.Fallback>>) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"

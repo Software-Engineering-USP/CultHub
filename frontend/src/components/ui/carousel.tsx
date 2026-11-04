@@ -1,7 +1,7 @@
 import useEmblaCarousel from 'embla-carousel-react'
 import type { UseEmblaCarouselType } from 'embla-carousel-react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ComponentProps, KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -34,7 +34,7 @@ export function Carousel({
   className,
   children,
   ...props
-}: ComponentProps<'div'> & { opts?: CarouselOptions; plugins?: CarouselPlugins }) {
+}: Readonly<ComponentProps<'section'> & { opts?: CarouselOptions; plugins?: CarouselPlugins }>) {
   const [carouselRef, api] = useEmblaCarousel(opts, plugins)
   const [canScrollPrev, setCanScrollPrev] = useState(false)
   const [canScrollNext, setCanScrollNext] = useState(false)
@@ -49,7 +49,7 @@ export function Carousel({
   const scrollNext = useCallback(() => api?.scrollNext(), [api])
 
   const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
+    (event: KeyboardEvent<HTMLElement>) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
         scrollPrev()
@@ -74,23 +74,28 @@ export function Carousel({
     }
   }, [api, onSelect])
 
+  const context = useMemo(
+    () => ({ carouselRef, scrollPrev, scrollNext, canScrollPrev, canScrollNext }),
+    [carouselRef, scrollPrev, scrollNext, canScrollPrev, canScrollNext],
+  )
+
+  // <section> com nome acessível (aria-label/aria-labelledby vindo de quem usa) já tem o papel "region"
   return (
-    <CarouselContext.Provider value={{ carouselRef, scrollPrev, scrollNext, canScrollPrev, canScrollNext }}>
-      <div
+    <CarouselContext.Provider value={context}>
+      <section
         onKeyDownCapture={handleKeyDown}
         className={cn('relative', className)}
-        role="region"
         aria-roledescription="carrossel"
         data-slot="carousel"
         {...props}
       >
         {children}
-      </div>
+      </section>
     </CarouselContext.Provider>
   )
 }
 
-export function CarouselContent({ className, ...props }: ComponentProps<'div'>) {
+export function CarouselContent({ className, ...props }: Readonly<ComponentProps<'div'>>) {
   const { carouselRef } = useCarousel()
   return (
     <div ref={carouselRef} className="overflow-hidden" data-slot="carousel-content">
@@ -99,10 +104,12 @@ export function CarouselContent({ className, ...props }: ComponentProps<'div'>) 
   )
 }
 
-export function CarouselItem({ className, ...props }: ComponentProps<'div'>) {
+export function CarouselItem({ className, ...props }: Readonly<ComponentProps<'div'>>) {
   return (
+    // Padrão de carrossel do WAI-ARIA APG: cada slide é role="group" + aria-roledescription. Não há
+    // elemento nativo equivalente (<fieldset> é para campos de formulário, <details> é expansível).
     <div
-      role="group"
+      role="group" // NOSONAR: typescript:S6819 — ver comentário acima
       aria-roledescription="item"
       data-slot="carousel-item"
       className={cn('min-w-0 shrink-0 grow-0 basis-full pl-4', className)}
@@ -111,7 +118,7 @@ export function CarouselItem({ className, ...props }: ComponentProps<'div'>) {
   )
 }
 
-export function CarouselPrevious(props: ComponentProps<typeof Button>) {
+export function CarouselPrevious(props: Readonly<ComponentProps<typeof Button>>) {
   const { scrollPrev, canScrollPrev } = useCarousel()
   return (
     <Button variant="outline" size="icon" disabled={!canScrollPrev} onClick={scrollPrev} {...props}>
@@ -121,7 +128,7 @@ export function CarouselPrevious(props: ComponentProps<typeof Button>) {
   )
 }
 
-export function CarouselNext(props: ComponentProps<typeof Button>) {
+export function CarouselNext(props: Readonly<ComponentProps<typeof Button>>) {
   const { scrollNext, canScrollNext } = useCarousel()
   return (
     <Button variant="outline" size="icon" disabled={!canScrollNext} onClick={scrollNext} {...props}>

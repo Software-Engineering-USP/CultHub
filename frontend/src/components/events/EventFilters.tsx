@@ -27,7 +27,7 @@ interface EventFiltersProps {
 }
 
 /** Painel "Filtrar Eventos" (abre pelo botão Filtros do Header). */
-export default function EventFilters({ onClose }: EventFiltersProps) {
+export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
   const events = useEvents()
   const ceiling = maxPrice(events)
   const [filters, setFilters] = useState(() => defaultFilters(ceiling))
@@ -52,7 +52,7 @@ export default function EventFilters({ onClose }: EventFiltersProps) {
   }
 
   function apply() {
-    api.events.filter(filters)
+    void api.events.filter(filters)
     onClose()
   }
 
@@ -147,12 +147,12 @@ function PriceInput({
   label,
   value,
   onChange,
-}: {
+}: Readonly<{
   id: string
   label: string
   value: number
   onChange: (value: number) => void
-}) {
+}>) {
   return (
     <div className="grid min-w-0 gap-1">
       <Label htmlFor={id} className="text-xs text-muted-foreground">

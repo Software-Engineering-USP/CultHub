@@ -45,7 +45,15 @@ type ButtonProps = ComponentProps<'button'> &
     asChild?: boolean
   }
 
-export function Button({ className, variant, size, block, asChild = false, type, ...props }: ButtonProps) {
+export function Button({
+  className,
+  variant,
+  size,
+  block,
+  asChild = false,
+  type,
+  ...props
+}: Readonly<ButtonProps>) {
   const Comp = asChild ? Slot.Root : 'button'
 
   return (

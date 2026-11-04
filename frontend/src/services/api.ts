@@ -5,9 +5,11 @@ import type { CategoryId, RouteOption } from '@/types'
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
-async function request(method: Method, path: string, body?: Record<string, unknown>): Promise<void> {
+// Mock: só registra a chamada. Devolve uma Promise para manter a mesma assinatura do fetch real.
+function request(method: Method, path: string, body?: Record<string, unknown>): Promise<void> {
   const safeBody = body && 'senha' in body ? { ...body, senha: '***' } : body
   console.info(`[CultHub API mock] ${method} /api${path}`, safeBody ?? '')
+  return Promise.resolve()
 }
 
 export const api = {

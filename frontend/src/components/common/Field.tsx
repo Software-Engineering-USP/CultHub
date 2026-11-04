@@ -9,7 +9,7 @@ interface FieldProps extends ComponentProps<'input'> {
 }
 
 /** Campo de formulário com rótulo e texto de ajuda opcional. */
-export default function Field({ id, label, help, ...rest }: FieldProps) {
+export default function Field({ id, label, help, ...rest }: Readonly<FieldProps>) {
   const helpId = `${id}-ajuda`
   return (
     <div className="mb-4.5 grid min-w-0 content-start gap-2">

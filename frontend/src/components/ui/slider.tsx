@@ -8,7 +8,14 @@ export function Slider({
   value,
   thumbLabels = [],
   ...props
-}: ComponentProps<typeof SliderPrimitive.Root> & { thumbLabels?: string[] }) {
+}: Readonly<ComponentProps<typeof SliderPrimitive.Root> & { thumbLabels?: string[] }>) {
+  // Cada bolinha é identificada pela posição em `value` (a 1ª é sempre o mínimo, a 2ª o máximo...):
+  // a quantidade não muda e elas nunca trocam de lugar, então a posição é uma chave estável.
+  const thumbs = (value ?? []).map((_, position) => ({
+    key: `thumb-${position}`,
+    label: thumbLabels[position],
+  }))
+
   return (
     <SliderPrimitive.Root
       data-slot="slider"
@@ -19,10 +26,10 @@ export function Slider({
       <SliderPrimitive.Track className="relative h-1.5 grow overflow-hidden rounded-full bg-muted">
         <SliderPrimitive.Range className="absolute h-full bg-primary" />
       </SliderPrimitive.Track>
-      {value?.map((_, index) => (
+      {thumbs.map((thumb) => (
         <SliderPrimitive.Thumb
-          key={index}
-          aria-label={thumbLabels[index]}
+          key={thumb.key}
+          aria-label={thumb.label}
           className="block size-5 rounded-full border-2 border-primary bg-card shadow-badge"
         />
       ))}

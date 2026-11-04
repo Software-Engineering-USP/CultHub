@@ -7,7 +7,7 @@ interface CategoryDotProps {
   size?: 'sm' | 'md'
 }
 
-export default function CategoryDot({ id, size = 'sm' }: CategoryDotProps) {
+export default function CategoryDot({ id, size = 'sm' }: Readonly<CategoryDotProps>) {
   return (
     <span
       aria-hidden="true"

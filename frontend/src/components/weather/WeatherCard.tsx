@@ -7,7 +7,7 @@ import type { CultEvent } from '@/types'
 import WeatherStats from './WeatherStats'
 
 /** Clima do evento (página de detalhes). */
-export default function WeatherCard({ event }: { event: CultEvent }) {
+export default function WeatherCard({ event }: Readonly<{ event: CultEvent }>) {
   const weather = useWeather(event.id)
   if (!weather) return null
 

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { paths } from '@/lib/paths'
 import Surface from './Surface'
 
-export default function NotFound({ message }: { message?: string }) {
+export default function NotFound({ message }: Readonly<{ message?: string }>) {
   return (
     <Surface as="section" aria-labelledby="nao-encontrado" className="mx-auto max-w-[560px] text-center">
       <h1 id="nao-encontrado" className="text-[30px]">

@@ -8,7 +8,7 @@ interface EyebrowProps {
 }
 
 /** Texto pequeno em caixa-alta. O tamanho e a cor vêm de className. */
-export default function Eyebrow({ tight, className, children }: EyebrowProps) {
+export default function Eyebrow({ tight, className, children }: Readonly<EyebrowProps>) {
   return (
     <span className={cn('font-[750] uppercase', tight ? 'tracking-[.08em]' : 'tracking-[.12em]', className)}>
       {children}

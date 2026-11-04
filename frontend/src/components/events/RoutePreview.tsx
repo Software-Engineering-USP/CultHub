@@ -9,7 +9,7 @@ import { paths } from '@/lib/paths'
 import type { CultEvent } from '@/types'
 
 /** Resumo de rotas na página do evento. */
-export default function RoutePreview({ event }: { event: CultEvent }) {
+export default function RoutePreview({ event }: Readonly<{ event: CultEvent }>) {
   const routeOptions = useRouteOptions(event.id)
 
   return (

@@ -70,7 +70,7 @@ export default function EventDetail() {
               <Button
                 variant="outline"
                 aria-describedby="acoes-aviso"
-                onClick={() => api.events.save(event.id)}
+                onClick={() => void api.events.save(event.id)}
               >
                 <Heart />
                 Salvar
@@ -179,7 +179,7 @@ export default function EventDetail() {
             aria-label="Comentário demonstrativo"
             aria-describedby="comentario-aviso"
             onSubmit={onFormSubmit((data, form) => {
-              api.comments.create(event.id, text(data, 'comentario'))
+              void api.comments.create(event.id, text(data, 'comentario'))
               form.reset()
             })}
             className="mb-[22px]"

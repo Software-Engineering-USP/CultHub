@@ -8,7 +8,7 @@ interface CategoryListProps {
 }
 
 /** Categorias com a bolinha de cor (legenda do mapa e popover de filtros). */
-export default function CategoryList({ className, ...rest }: CategoryListProps) {
+export default function CategoryList({ className, ...rest }: Readonly<CategoryListProps>) {
   return (
     <ul className={cn('flex flex-wrap gap-3', className)} {...rest}>
       {categoryOrder.map((id) => (

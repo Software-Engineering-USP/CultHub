@@ -30,6 +30,6 @@ const badgeVariants = cva(
 
 type BadgeProps = ComponentProps<'span'> & VariantProps<typeof badgeVariants>
 
-export function Badge({ className, variant, size, ...props }: BadgeProps) {
+export function Badge({ className, variant, size, ...props }: Readonly<BadgeProps>) {
   return <span data-slot="badge" className={cn(badgeVariants({ variant, size }), className)} {...props} />
 }

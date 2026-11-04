@@ -74,12 +74,13 @@ export default function SignIn() {
             aria-label="Entrar (demonstração)"
             aria-describedby="login-aviso"
             autoComplete="off"
-            onSubmit={onFormSubmit((data) =>
-              api.auth.signIn({
-                email: text(data, 'email'),
-                password: text(data, 'senha'),
-                remember: data.has('lembrar'),
-              }),
+            onSubmit={onFormSubmit(
+              (data) =>
+                void api.auth.signIn({
+                  email: text(data, 'email'),
+                  password: text(data, 'senha'),
+                  remember: data.has('lembrar'),
+                }),
             )}
           >
             <Field
@@ -105,14 +106,14 @@ export default function SignIn() {
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="lembrar">
                 <input id="lembrar" name="lembrar" type="checkbox" className={checkboxClass} />
-                Lembrar de mim
+                <span>Lembrar de mim</span>
               </label>
               <Button
                 variant="linkMuted"
                 aria-describedby="login-aviso"
                 onClick={(event) => {
                   const form = event.currentTarget.form
-                  api.auth.forgotPassword(form ? text(new FormData(form), 'email') : '')
+                  void api.auth.forgotPassword(form ? text(new FormData(form), 'email') : '')
                 }}
               >
                 Esqueci minha senha
@@ -149,13 +150,14 @@ export default function SignIn() {
             aria-label="Criar conta (demonstração)"
             aria-describedby="cadastro-aviso"
             autoComplete="off"
-            onSubmit={onFormSubmit((data) =>
-              api.auth.signUp({
-                name: text(data, 'nome'),
-                email: text(data, 'email'),
-                password: text(data, 'senha'),
-                acceptedTerms: data.has('termos'),
-              }),
+            onSubmit={onFormSubmit(
+              (data) =>
+                void api.auth.signUp({
+                  name: text(data, 'nome'),
+                  email: text(data, 'email'),
+                  password: text(data, 'senha'),
+                  acceptedTerms: data.has('termos'),
+                }),
             )}
           >
             <Field

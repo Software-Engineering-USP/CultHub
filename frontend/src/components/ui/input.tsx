@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
 // Base: shadcn/ui (npx shadcn add input), com o estilo de campo do CultHub.
-export function Input({ className, type, ...props }: ComponentProps<'input'>) {
+export function Input({ className, type, ...props }: Readonly<ComponentProps<'input'>>) {
   return (
     <input
       type={type}

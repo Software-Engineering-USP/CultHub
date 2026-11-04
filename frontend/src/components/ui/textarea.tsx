@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
 // Base: shadcn/ui (npx shadcn add textarea), com o mesmo estilo do Input.
-export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
+export function Textarea({ className, ...props }: Readonly<ComponentProps<'textarea'>>) {
   return (
     <textarea
       data-slot="textarea"

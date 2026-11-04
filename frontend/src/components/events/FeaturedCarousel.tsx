@@ -20,7 +20,7 @@ interface FeaturedCarouselProps {
 }
 
 /** "Eventos em Destaque" da Home: título com os botões de navegação e o carrossel. */
-export default function FeaturedCarousel({ events, titleId }: FeaturedCarouselProps) {
+export default function FeaturedCarousel({ events, titleId }: Readonly<FeaturedCarouselProps>) {
   const label = `${events.length} experiências em destaque`
 
   return (

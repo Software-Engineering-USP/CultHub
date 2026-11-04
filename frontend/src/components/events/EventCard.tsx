@@ -15,7 +15,7 @@ interface EventCardProps {
   priority?: boolean
 }
 
-export default function EventCard({ event, compact = false, priority = false }: EventCardProps) {
+export default function EventCard({ event, compact = false, priority = false }: Readonly<EventCardProps>) {
   const category = categories[event.category]
   const href = paths.event(event.id)
   const info = [

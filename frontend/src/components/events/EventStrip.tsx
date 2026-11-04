@@ -3,7 +3,7 @@ import { categories } from '@/lib/categories'
 import type { CultEvent } from '@/types'
 
 /** Resumo do evento no topo das páginas de origem e rota. */
-export default function EventStrip({ event }: { event: CultEvent }) {
+export default function EventStrip({ event }: Readonly<{ event: CultEvent }>) {
   return (
     <section
       aria-label="Resumo do evento"

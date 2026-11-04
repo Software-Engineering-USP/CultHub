@@ -3,7 +3,10 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
 // Base: shadcn/ui (npx shadcn add toggle-group), no formato "abas" do CultHub.
-export function ToggleGroup({ className, ...props }: ComponentProps<typeof ToggleGroupPrimitive.Root>) {
+export function ToggleGroup({
+  className,
+  ...props
+}: Readonly<ComponentProps<typeof ToggleGroupPrimitive.Root>>) {
   return (
     <ToggleGroupPrimitive.Root
       data-slot="toggle-group"
@@ -13,7 +16,10 @@ export function ToggleGroup({ className, ...props }: ComponentProps<typeof Toggl
   )
 }
 
-export function ToggleGroupItem({ className, ...props }: ComponentProps<typeof ToggleGroupPrimitive.Item>) {
+export function ToggleGroupItem({
+  className,
+  ...props
+}: Readonly<ComponentProps<typeof ToggleGroupPrimitive.Item>>) {
   return (
     <ToggleGroupPrimitive.Item
       data-slot="toggle-group-item"

@@ -3,11 +3,11 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
 // Base: shadcn/ui (npx shadcn add popover), com o visual do CultHub.
-export function Popover(props: ComponentProps<typeof PopoverPrimitive.Root>) {
+export function Popover(props: Readonly<ComponentProps<typeof PopoverPrimitive.Root>>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />
 }
 
-export function PopoverTrigger(props: ComponentProps<typeof PopoverPrimitive.Trigger>) {
+export function PopoverTrigger(props: Readonly<ComponentProps<typeof PopoverPrimitive.Trigger>>) {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
 }
 
@@ -16,7 +16,7 @@ export function PopoverContent({
   align = 'end',
   sideOffset = 14,
   ...props
-}: ComponentProps<typeof PopoverPrimitive.Content>) {
+}: Readonly<ComponentProps<typeof PopoverPrimitive.Content>>) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content

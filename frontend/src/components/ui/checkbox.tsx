@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
 // Base: shadcn/ui (npx shadcn add checkbox). A cor de marcado pode ser trocada via className.
-export function Checkbox({ className, ...props }: ComponentProps<typeof CheckboxPrimitive.Root>) {
+export function Checkbox({ className, ...props }: Readonly<ComponentProps<typeof CheckboxPrimitive.Root>>) {
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"

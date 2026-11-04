@@ -6,7 +6,7 @@ import type { CultEvent } from '@/types'
 import WeatherStats from './WeatherStats'
 
 /** Faixa de clima no rodapé das páginas de origem e rota. */
-export default function WeatherStrip({ event }: { event: CultEvent }) {
+export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) {
   const weather = useWeather(event.id)
   if (!weather) return null
 

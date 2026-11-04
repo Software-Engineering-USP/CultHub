@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 
 /** Ícone dentro de um quadrado arredondado bege. */
-export default function IconTile({ icon: Icon }: { icon: LucideIcon }) {
+export default function IconTile({ icon: Icon }: Readonly<{ icon: LucideIcon }>) {
   return (
     <span
       aria-hidden="true"

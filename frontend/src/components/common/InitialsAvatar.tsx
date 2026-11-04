@@ -6,7 +6,7 @@ interface InitialsAvatarProps extends ComponentProps<typeof Avatar> {
 }
 
 /** Avatar com as iniciais do usuário (os perfis da demonstração não têm foto). */
-export default function InitialsAvatar({ initials, ...rest }: InitialsAvatarProps) {
+export default function InitialsAvatar({ initials, ...rest }: Readonly<InitialsAvatarProps>) {
   return (
     <Avatar {...rest}>
       <AvatarFallback>{initials}</AvatarFallback>
