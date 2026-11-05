@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Footer from './Footer'
 import Header from './Header'
@@ -23,7 +23,15 @@ export default function Layout() {
       <div className="mx-auto w-full max-w-360 px-20 max-lg:px-9 max-md:px-7 max-sm:px-4.5">
         <Header />
         <main id="conteudo" className="pt-10 pb-16 max-md:pt-7.5 max-sm:pt-7 max-sm:pb-10">
-          <Outlet />
+          <Suspense
+            fallback={
+              <p role="status" className="text-muted-foreground">
+                Carregando…
+              </p>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
         <Footer />
       </div>
