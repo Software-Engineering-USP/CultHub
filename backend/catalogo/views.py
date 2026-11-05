@@ -34,7 +34,7 @@ def _eventos():
     )
 
 
-# Corpo do 400 da listagem: `{"preco": ["Use 'gratuito' ou 'pago'."]}`.
+# Corpo do 400 da listagem: `{"categorias": ["Categoria inexistente: x."]}`.
 ERRO_DE_FILTRO = {
     "type": "object",
     "additionalProperties": {
@@ -66,8 +66,10 @@ ERRO_DE_FILTRO = {
         OpenApiParameter(
             "preco",
             str,
-            enum=["gratuito", "pago"],
-            description="Somente gratuitos ou somente pagos.",
+            description=(
+                "Situações de preço separadas por vírgula (OU): gratuito, "
+                "pago ou desconhecido (sem preço informado)."
+            ),
         ),
         OpenApiParameter(
             "de",

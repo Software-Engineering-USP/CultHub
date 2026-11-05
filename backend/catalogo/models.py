@@ -62,6 +62,12 @@ class Local(models.Model):
         return self.nome
 
 
+class SituacaoPreco(models.TextChoices):
+    GRATUITO = "gratuito", "Gratuito"
+    PAGO = "pago", "Pago"
+    DESCONHECIDO = "desconhecido", "Desconhecido"
+
+
 # Campos dos quais `inicio`/`fim` dependem (ver `Evento.save`).
 CAMPOS_DO_MOMENTO = {
     "data_inicio",
@@ -99,6 +105,8 @@ class Evento(models.Model):
     hora_fim = models.TimeField(null=True, blank=True)
     fim = models.DateTimeField(null=True, editable=False)
     fuso = models.CharField(max_length=50, default="America/Sao_Paulo")
+    # Só o cadastro manual liga; `False` não quer dizer que o evento é pago
+    # (ver `situacao_preco`).
     gratuito = models.BooleanField(default=False)
     genero = models.CharField(max_length=100, blank=True)
     classificacoes = models.JSONField(default=list, blank=True)
@@ -121,6 +129,20 @@ class Evento(models.Model):
 
     def __str__(self):
         return self.titulo
+
+    @property
+    def situacao_preco(self):
+        """Mesma regra do filtro `_preco` em `filtros.py`."""
+        if self.gratuito:
+            return SituacaoPreco.GRATUITO
+        valores = (
+            valor
+            for faixa in self.faixas_preco.all()
+            for valor in (faixa.minimo, faixa.maximo)
+        )
+        if any(valor and valor > 0 for valor in valores):
+            return SituacaoPreco.PAGO
+        return SituacaoPreco.DESCONHECIDO
 
     def clean(self):
         super().clean()

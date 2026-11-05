@@ -2,7 +2,16 @@ import unicodedata
 from datetime import datetime
 from math import isfinite
 
-from django.db.models import CharField, F, FloatField, Func, Q, Value
+from django.db.models import (
+    CharField,
+    Exists,
+    F,
+    FloatField,
+    Func,
+    OuterRef,
+    Q,
+    Value,
+)
 from django.db.models.functions import (
     ACos,
     Cast,
@@ -16,7 +25,7 @@ from django.db.models.functions import (
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from catalogo.models import CategoriaCultural
+from catalogo.models import CategoriaCultural, FaixaPreco, SituacaoPreco
 
 DATA_FIM_EFETIVA = Coalesce("data_fim", "data_inicio")
 
@@ -80,11 +89,28 @@ def _categorias(queryset, valor):
 
 
 def _preco(queryset, valor):
-    if valor == "gratuito":
-        return queryset.filter(gratuito=True)
-    if valor == "pago":
-        return queryset.filter(gratuito=False)
-    raise ValidationError({"preco": ["Use 'gratuito' ou 'pago'."]})
+    """Mesma regra de `Evento.situacao_preco`."""
+    valores = {v.strip() for v in valor.split(",") if v.strip()}
+    if not valores:
+        return queryset
+    if valores - set(SituacaoPreco.values):
+        raise ValidationError(
+            {"preco": ["Use 'gratuito', 'pago' ou 'desconhecido'."]}
+        )
+    tem_valor = Exists(
+        FaixaPreco.objects.filter(
+            Q(minimo__gt=0) | Q(maximo__gt=0), evento=OuterRef("pk")
+        )
+    )
+    condicoes = {
+        SituacaoPreco.GRATUITO: Q(gratuito=True),
+        SituacaoPreco.PAGO: Q(tem_valor, gratuito=False),
+        SituacaoPreco.DESCONHECIDO: Q(~tem_valor, gratuito=False),
+    }
+    filtro = Q()
+    for situacao in valores:
+        filtro |= condicoes[situacao]
+    return queryset.filter(filtro)
 
 
 def _data(parametro, valor):

@@ -86,6 +86,7 @@ class ContratoDaApiTest(APITestCase):
                 "longitude": -46.638,
             },
             "gratuito": True,
+            "situacao_preco": "gratuito",
             "faixas_preco": [
                 {
                     "tipo": "standard",

@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from catalogo.filtros import aplicar_filtros, visiveis
-from catalogo.models import Evento, Local, Provedor
+from catalogo.models import Evento, FaixaPreco, Local, Provedor
 from catalogo.tests.fabrica import criar_evento
 
 PONTO_E_ANTIPODA = ("4.32335", "-35.374447", "-4.32335", "144.625553")
@@ -112,15 +112,99 @@ class FiltrosBuscaTest(APITestCase):
         criar_evento(titulo="Pago", gratuito=False)
         self.assertEqual(self.titulos(preco="gratuito"), ["Free"])
 
-    def test_preco_pago_inclui_ticketmaster_sem_preco(self):
+    def criar_um_de_cada_preco(self):
         criar_evento(titulo="Free", gratuito=True)
+        pago = criar_evento(titulo="Pago")
+        FaixaPreco.objects.create(evento=pago, minimo=Decimal(50))
         criar_evento(
-            titulo="TM",
+            titulo="Sem preço",
             provedor=Provedor.TICKETMASTER,
             id_externo="tm-1",
-            gratuito=False,
         )
-        self.assertEqual(self.titulos(preco="pago"), ["TM"])
+
+    def test_preco_pago_exclui_sem_preco_informado(self):
+        self.criar_um_de_cada_preco()
+        self.assertEqual(self.titulos(preco="pago"), ["Pago"])
+
+    def test_preco_desconhecido(self):
+        self.criar_um_de_cada_preco()
+        self.assertEqual(self.titulos(preco="desconhecido"), ["Sem preço"])
+
+    def test_preco_em_lista_e_ou(self):
+        self.criar_um_de_cada_preco()
+        self.assertEqual(
+            self.titulos(preco="pago,desconhecido"), ["Pago", "Sem preço"]
+        )
+        self.assertEqual(
+            self.titulos(preco=" gratuito , pago "), ["Free", "Pago"]
+        )
+
+    def test_preco_lista_sem_valor_nao_filtra(self):
+        self.criar_um_de_cada_preco()
+        self.assertEqual(
+            self.titulos(preco=" , "), ["Free", "Pago", "Sem preço"]
+        )
+
+    def test_preco_lista_com_valor_invalido_400(self):
+        resposta = self.buscar(preco="pago,caro")
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("preco", resposta.json())
+
+    def test_faixa_so_com_maximo_e_paga(self):
+        evento = criar_evento(titulo="Até 80")
+        FaixaPreco.objects.create(evento=evento, maximo=Decimal(80))
+        self.assertEqual(self.titulos(preco="pago"), ["Até 80"])
+        self.assertEqual(self.titulos(preco="desconhecido"), [])
+
+    def test_faixa_sem_valor_positivo_e_desconhecida(self):
+        sem_valor = criar_evento(titulo="Sem valor")
+        FaixaPreco.objects.create(evento=sem_valor)
+        zerada = criar_evento(titulo="Zerada")
+        FaixaPreco.objects.create(
+            evento=zerada, minimo=Decimal(0), maximo=Decimal(0)
+        )
+        self.assertEqual(self.titulos(preco="pago"), [])
+        self.assertEqual(
+            self.titulos(preco="desconhecido"), ["Sem valor", "Zerada"]
+        )
+
+    def test_gratuito_com_faixa_conta_so_como_gratuito(self):
+        evento = criar_evento(titulo="Free", gratuito=True)
+        FaixaPreco.objects.create(evento=evento, minimo=Decimal(50))
+        self.assertEqual(self.titulos(preco="gratuito"), ["Free"])
+        self.assertEqual(self.titulos(preco="pago"), [])
+        self.assertEqual(self.titulos(preco="desconhecido"), [])
+
+    def test_varias_faixas_nao_duplicam_o_evento(self):
+        evento = criar_evento(titulo="Duas faixas")
+        FaixaPreco.objects.create(evento=evento, minimo=Decimal(50))
+        FaixaPreco.objects.create(evento=evento, minimo=Decimal(90))
+        corpo = self.buscar(preco="pago").json()
+        self.assertEqual(corpo["count"], 1)
+        self.assertEqual(len(corpo["results"]), 1)
+
+    def test_situacao_preco_na_resposta_bate_com_o_filtro(self):
+        self.criar_um_de_cada_preco()
+        zerada = criar_evento(titulo="Zerada")
+        FaixaPreco.objects.create(evento=zerada, minimo=Decimal(0))
+        so_maximo = criar_evento(titulo="Só máximo")
+        FaixaPreco.objects.create(evento=so_maximo, maximo=Decimal(80))
+        negativa = criar_evento(titulo="Negativa")
+        FaixaPreco.objects.create(evento=negativa, minimo=Decimal(-1))
+        esperado = {
+            "gratuito": ["Free"],
+            "pago": ["Pago", "Só máximo"],
+            "desconhecido": ["Negativa", "Sem preço", "Zerada"],
+        }
+        for valor, titulos in esperado.items():
+            with self.subTest(preco=valor):
+                resultados = self.buscar(preco=valor).json()["results"]
+                self.assertEqual(
+                    sorted(e["titulo"] for e in resultados), titulos
+                )
+                self.assertEqual(
+                    {e["situacao_preco"] for e in resultados}, {valor}
+                )
 
     def test_preco_invalido_400(self):
         resposta = self.buscar(preco="caro")

@@ -1,6 +1,6 @@
 import copy
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from io import StringIO
 from pathlib import Path
@@ -11,7 +11,8 @@ from django.core.management.base import CommandError
 from django.db import OperationalError
 from django.test import TestCase, override_settings
 
-from catalogo.importacao import importar
+from catalogo import importacao
+from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, ImagemEvento, Local, Provedor
 from catalogo.ticketmaster import ErroTicketmaster
 
@@ -172,14 +173,211 @@ class ImportarTest(TestCase):
             Evento.objects.filter(titulo="BTS WORLD TOUR ARIRANG").exists()
         )
 
-    def test_evento_com_erro_que_existia_e_removido(self):
+    def test_evento_com_erro_que_existia_fica_com_os_dados_antigos(self):
         importar(eventos_da_fixture(), AGORA)
         eventos = copy.deepcopy(eventos_da_fixture())
         ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
-        del ruim["dates"]["start"]["localDate"]
+        ruim["images"] = [{"ratio": "16_9"}]
+        ruim["info"] = "Novo texto"
+        resumo = importar(eventos, DEPOIS)
+        self.assertEqual(resumo.removidos, 0)
+        self.assertEqual(len(resumo.com_erro), 1)
+        evento = tm(titulo="BTS WORLD TOUR ARIRANG")
+        self.assertIsNone(evento.removido_em)
+        self.assertEqual(evento.sincronizado_em, AGORA)
+        self.assertNotEqual(evento.descricao, "Novo texto")
+
+    def test_evento_que_nao_veio_e_removido_mesmo_com_outro_com_erro(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = copy.deepcopy(eventos_da_fixture())
+        ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        ruim["images"] = [{"ratio": "16_9"}]
+        eventos.remove(achar(eventos, "Mink Slide"))
+        resumo = importar(eventos, DEPOIS)
+        self.assertEqual(resumo.removidos, 1)
+        self.assertEqual(tm(titulo="Mink Slide").removido_em, DEPOIS)
+        self.assertIsNone(tm(titulo="BTS WORLD TOUR ARIRANG").removido_em)
+
+    def test_evento_ja_removido_que_volta_com_erro_continua_removido(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = copy.deepcopy(eventos_da_fixture())
+        ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        eventos.remove(ruim)
         importar(eventos, DEPOIS)
+        ruim["images"] = [{"ratio": "16_9"}]
+        importar([*eventos, ruim], DEPOIS + timedelta(days=1))
         self.assertEqual(
             tm(titulo="BTS WORLD TOUR ARIRANG").removido_em, DEPOIS
+        )
+
+    def test_evento_com_erro_e_id_que_nao_e_texto_vai_para_com_erro(self):
+        eventos = eventos_da_fixture()
+        for id_ruim in (["x"], {"a": 1}, 7, None):
+            with self.subTest(id=id_ruim):
+                ruim = {"id": id_ruim, "name": "Sem data"}
+                resumo = importar([*eventos, ruim], AGORA)
+                self.assertEqual(len(resumo.com_erro), 1)
+
+    def test_todos_invalidos_que_ja_existiam_aborta_sem_remover(self):
+        importar(eventos_da_fixture(), AGORA)
+        ativos = Evento.objects.filter(removido_em__isnull=True).count()
+        ruim = copy.deepcopy(
+            achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        )
+        ruim["images"] = [{"ratio": "16_9"}]
+        with self.assertRaises(ErroImportacao):
+            importar([ruim], DEPOIS)
+        self.assertEqual(
+            Evento.objects.filter(removido_em__isnull=True).count(), ativos
+        )
+
+    def test_item_que_nao_e_objeto_vai_para_com_erro_e_resto_importa(self):
+        for item in (None, "texto", 7, ["x"]):
+            with self.subTest(item=item):
+                Evento.objects.all().delete()
+                resumo = importar([item, *eventos_da_fixture()], AGORA)
+                self.assertEqual(resumo.criados, 11)
+                self.assertEqual(resumo.ignorados, 1)
+                self.assertEqual(len(resumo.com_erro), 1)
+
+    def test_so_itens_que_nao_sao_objeto_aborta_sem_remover(self):
+        importar(eventos_da_fixture(), AGORA)
+        with self.assertRaises(ErroImportacao):
+            importar([None, None], DEPOIS)
+        self.assertFalse(
+            Evento.objects.filter(removido_em__isnull=False).exists()
+        )
+
+    def test_evento_ja_removido_que_segue_sem_vir_mantem_a_data(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = eventos_da_fixture()
+        eventos.remove(achar(eventos, "Mink Slide"))
+        importar(eventos, DEPOIS)
+        resumo = importar(eventos, DEPOIS + timedelta(days=1))
+        self.assertEqual(resumo.removidos, 0)
+        self.assertEqual(tm(titulo="Mink Slide").removido_em, DEPOIS)
+
+    def test_item_com_erro_sem_id_nao_remove_quem_faltou(self):
+        casos = {
+            "null": None,
+            "texto": "x",
+            "sem id": {"name": "Sem id"},
+            "id nulo": {"id": None, "name": "Id nulo"},
+            "id vazio": {"id": "", "name": "Id vazio"},
+            "id lista": {"id": ["x"], "name": "Id lista"},
+            "id número": {"id": 7, "name": "Id número"},
+        }
+        importar(eventos_da_fixture(), AGORA)
+        eventos = eventos_da_fixture()
+        faltou = eventos.pop()
+        for nome, item in casos.items():
+            with self.subTest(caso=nome):
+                resumo = importar([*eventos, item], DEPOIS)
+                self.assertEqual(resumo.atualizados, 10)
+                self.assertEqual(len(resumo.com_erro), 1)
+                self.assertEqual(resumo.removidos, 0)
+                self.assertTrue(resumo.remocao_pulada)
+                self.assertIsNone(tm(id_externo=faltou["id"]).removido_em)
+
+    def test_ignorado_sem_id_nao_impede_a_remocao(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = eventos_da_fixture()
+        eventos.pop()
+        casos = {
+            "cancelado": {"dates": {"status": {"code": "cancelled"}}},
+            "de teste": {"test": True},
+        }
+        for nome, item in casos.items():
+            with self.subTest(caso=nome):
+                resumo = importar([*eventos, item], DEPOIS)
+                self.assertEqual(resumo.com_erro, [])
+                self.assertFalse(resumo.remocao_pulada)
+                self.assertEqual(
+                    Evento.objects.filter(removido_em=DEPOIS).count(), 1
+                )
+
+    def test_erro_com_id_em_texto_nao_pula_a_remocao(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = copy.deepcopy(eventos_da_fixture())
+        achar(eventos, "BTS WORLD TOUR ARIRANG")["images"] = [{"ratio": "1"}]
+        eventos.remove(achar(eventos, "Mink Slide"))
+        resumo = importar(eventos, DEPOIS)
+        self.assertFalse(resumo.remocao_pulada)
+        self.assertEqual(resumo.removidos, 1)
+
+    def test_evento_valido_com_id_invalido_vai_para_com_erro(self):
+        for id_ruim in (["x"], {"a": 1}, 7, ""):
+            with self.subTest(id=id_ruim):
+                Evento.objects.all().delete()
+                eventos = eventos_da_fixture()
+                achar(eventos, "BTS WORLD TOUR ARIRANG")["id"] = id_ruim
+                resumo = importar(eventos, AGORA)
+                self.assertEqual(resumo.criados, 10)
+                self.assertEqual(len(resumo.com_erro), 1)
+                self.assertIn("BTS WORLD TOUR ARIRANG", resumo.com_erro[0])
+                self.assertFalse(
+                    Evento.objects.filter(
+                        titulo="BTS WORLD TOUR ARIRANG"
+                    ).exists()
+                )
+
+    def test_problema_do_banco_desfaz_o_que_ja_foi_gravado(self):
+        original = importacao._salvar_evento
+        chamadas = []
+
+        def falha_no_segundo(dados, agora):
+            chamadas.append(dados)
+            if len(chamadas) == 2:
+                raise OperationalError("database is locked")
+            return original(dados, agora)
+
+        with (
+            patch(
+                "catalogo.importacao._salvar_evento",
+                side_effect=falha_no_segundo,
+            ),
+            self.assertRaises(OperationalError),
+        ):
+            importar(eventos_da_fixture(), AGORA)
+        self.assertEqual(Evento.objects.count(), 0)
+
+    def test_todos_invalidos_aborta_sem_remover(self):
+        importar(eventos_da_fixture(), AGORA)
+        ativos = Evento.objects.filter(removido_em__isnull=True).count()
+        invalidos = [{"id": "novo-1", "name": "Sem data"}]
+        with self.assertRaises(ErroImportacao):
+            importar(invalidos, DEPOIS)
+        self.assertEqual(
+            Evento.objects.filter(removido_em__isnull=True).count(), ativos
+        )
+
+    def test_cancelados_e_invalidos_sem_validos_aborta_sem_remover(self):
+        importar(eventos_da_fixture(), AGORA)
+        ativos = Evento.objects.filter(removido_em__isnull=True).count()
+        eventos = [
+            {
+                "id": "c",
+                "name": "C",
+                "dates": {"status": {"code": "cancelled"}},
+            },
+            {"id": "novo-1", "name": "Sem data"},
+        ]
+        with self.assertRaises(ErroImportacao):
+            importar(eventos, DEPOIS)
+        self.assertEqual(
+            Evento.objects.filter(removido_em__isnull=True).count(), ativos
+        )
+
+    def test_todos_cancelados_sem_erro_continua_removendo(self):
+        importar(eventos_da_fixture(), AGORA)
+        ativos = Evento.objects.filter(removido_em__isnull=True).count()
+        cancelados = eventos_da_fixture()
+        for evento in cancelados:
+            evento["dates"]["status"]["code"] = "cancelled"
+        resumo = importar(cancelados, DEPOIS)
+        self.assertEqual(resumo.removidos, ativos)
+        self.assertFalse(
+            Evento.objects.filter(removido_em__isnull=True).exists()
         )
 
     def test_erro_nao_deixa_gravacao_parcial(self):
@@ -541,6 +739,55 @@ class ComandoTest(TestCase):
         existente.refresh_from_db()
         self.assertIsNone(existente.removido_em)
 
+    @patch("catalogo.ticketmaster.time.sleep")
+    def test_paginas_com_duplicata_nao_removem_o_que_faltou(self, _sleep):
+        eventos = eventos_da_fixture()[:3]
+        importar(eventos, AGORA)
+        a, b, c = eventos
+        primeira = _pagina(0, 2, [a, b])
+        primeira["page"]["totalElements"] = 3
+        segunda = _pagina(1, 2, [b])
+        segunda["page"]["totalElements"] = 3
+
+        with (
+            patch(
+                "catalogo.ticketmaster.buscar_pagina",
+                side_effect=[primeira, segunda],
+            ),
+            self.assertRaises(CommandError),
+        ):
+            call_command("importar_ticketmaster", stdout=StringIO())
+        self.assertIsNone(tm(id_externo=c["id"]).removido_em)
+
+    def test_item_sem_id_nao_remove_e_avisa_no_resumo(self):
+        eventos = eventos_da_fixture()[:3]
+        importar(eventos, AGORA)
+        a, b, c = eventos
+        saida = StringIO()
+        with patch(
+            "catalogo.ticketmaster.buscar_pagina",
+            return_value=_pagina(0, 1, [a, b, None]),
+        ):
+            call_command("importar_ticketmaster", stdout=saida)
+        self.assertIn("removidos: 0", saida.getvalue())
+        self.assertIn("nenhum evento foi removido", saida.getvalue())
+        self.assertIsNone(tm(id_externo=c["id"]).removido_em)
+
+    def test_resposta_sem_paginacao_nao_remove(self):
+        eventos = eventos_da_fixture()[:3]
+        importar(eventos, AGORA)
+        resposta = {"_embedded": {"events": eventos[:1]}}
+        with (
+            patch(
+                "catalogo.ticketmaster.buscar_pagina", return_value=resposta
+            ),
+            self.assertRaises(CommandError),
+        ):
+            call_command("importar_ticketmaster", stdout=StringIO())
+        self.assertEqual(
+            Evento.objects.filter(removido_em__isnull=True).count(), 3
+        )
+
     def test_busca_desde_o_comeco_do_dia_em_sp(self):
         # 22:00 de 28/10 em SP, já 29/10 em UTC.
         agora = datetime(2026, 10, 29, 1, 0, tzinfo=UTC)
@@ -571,6 +818,26 @@ class ComandoTest(TestCase):
                 return_value=_pagina(0, 1, []),
             ),
             self.assertRaisesMessage(CommandError, "nenhum evento"),
+        ):
+            call_command("importar_ticketmaster", stdout=StringIO())
+        existente.refresh_from_db()
+        self.assertIsNone(existente.removido_em)
+
+    @patch("catalogo.ticketmaster.time.sleep")
+    def test_todos_invalidos_falha_e_nao_remove(self, _sleep):
+        existente = Evento.objects.create(
+            provedor=Provedor.TICKETMASTER,
+            id_externo="velho",
+            titulo="Velho",
+            data_inicio=AGORA.date(),
+        )
+        invalidos = [{"id": "novo-1", "name": "Sem data"}]
+        with (
+            patch(
+                "catalogo.ticketmaster.buscar_pagina",
+                return_value=_pagina(0, 1, invalidos),
+            ),
+            self.assertRaises(CommandError),
         ):
             call_command("importar_ticketmaster", stdout=StringIO())
         existente.refresh_from_db()
