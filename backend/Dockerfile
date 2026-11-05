@@ -5,10 +5,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.lock ./
+RUN pip install --no-cache-dir --only-binary :all: --require-hashes -r requirements.lock
 
-COPY . .
+COPY manage.py ./
+COPY CultHubBackend ./CultHubBackend
+COPY catalogo ./catalogo
+COPY usuarios ./usuarios
+
+# UID 1000 coincide com o usuário padrão do Linux; o db.sqlite3 é criado em /app.
+RUN useradd --uid 1000 --create-home app && chown app:app /app
+USER app
 
 EXPOSE 8000
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
