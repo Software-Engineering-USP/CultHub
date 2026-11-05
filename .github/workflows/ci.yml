@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
-      - run: pip install -r requirements.txt
+      - run: "pip install --only-binary :all: --require-hashes -r requirements.lock"
       - run: ruff check .
       - run: ruff format --check .
       - run: python manage.py makemigrations --check --dry-run
@@ -49,6 +49,16 @@ jobs:
           name: cobertura-frontend
           path: frontend/coverage/lcov.info
           if-no-files-found: error
+
+  imagens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Sem bind mount, para detectar um COPY faltando nos Dockerfiles.
+      - run: docker build -t culthub-backend backend
+      - run: docker run --rm culthub-backend python manage.py check
+      - run: docker build -t culthub-frontend frontend
+      - run: docker run --rm culthub-frontend npx vite build --outDir /tmp/dist
 
   sonarqube:
     needs: [backend, frontend]
