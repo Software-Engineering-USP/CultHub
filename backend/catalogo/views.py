@@ -29,7 +29,7 @@ class CategoriaListView(ListAPIView):
     pagination_class = None
 
 
-def _eventos():
+def eventos_com_relacoes():
     return Evento.objects.select_related("local").prefetch_related(
         "categorias", "imagens", "faixas_preco"
     )
@@ -107,7 +107,7 @@ class EventoListView(ListAPIView):
     pagination_class = PaginacaoEventos
 
     def get_queryset(self):
-        eventos = anotar_marcacoes(_eventos(), self.request.user)
+        eventos = anotar_marcacoes(eventos_com_relacoes(), self.request.user)
         eventos = visiveis(eventos, timezone.now())
         eventos = aplicar_filtros(eventos, self.request.query_params)
         return eventos.order_by(
@@ -125,6 +125,6 @@ class EventoDetalheView(RetrieveAPIView):
     permission_classes = (AllowAny,)
 
     def get_queryset(self):
-        return anotar_marcacoes(_eventos(), self.request.user).annotate(
-            total_presencas=Count("presencas", distinct=True)
-        )
+        return anotar_marcacoes(
+            eventos_com_relacoes(), self.request.user
+        ).annotate(total_presencas=Count("presencas", distinct=True))

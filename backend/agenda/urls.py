@@ -1,7 +1,7 @@
 from django.urls import path
 
 from agenda.models import InteresseEmEvento, PresencaEmEvento
-from agenda.views import MarcacaoView
+from agenda.views import AgendaView, MarcacaoView, PresencasView, SalvosView
 
 urlpatterns = [
     path(
@@ -14,4 +14,7 @@ urlpatterns = [
         MarcacaoView.as_view(modelo=PresencaEmEvento, chave="presenca"),
         name="evento-presenca",
     ),
+    path("eu/salvos/", SalvosView.as_view(), name="eu-salvos"),
+    path("eu/presencas/", PresencasView.as_view(), name="eu-presencas"),
+    path("eu/agenda/", AgendaView.as_view(), name="eu-agenda"),
 ]

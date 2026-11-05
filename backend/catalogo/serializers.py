@@ -114,9 +114,20 @@ class EventoSerializer(serializers.ModelSerializer):
         return getattr(obj, "salvo_em", None) is not None
 
 
-class EventoDetalheSerializer(EventoSerializer):
+class MarcacoesMixin(serializers.Serializer):
+    """`removido` e `presenca` (do usuário) de um evento anotado."""
+
     removido = serializers.SerializerMethodField()
     presenca = serializers.SerializerMethodField()
+
+    def get_removido(self, obj) -> bool:
+        return obj.removido_em is not None
+
+    def get_presenca(self, obj) -> bool:
+        return getattr(obj, "presenca_em", None) is not None
+
+
+class EventoDetalheSerializer(MarcacoesMixin, EventoSerializer):
     total_presencas = serializers.IntegerField(read_only=True)
 
     class Meta(EventoSerializer.Meta):
@@ -128,9 +139,3 @@ class EventoDetalheSerializer(EventoSerializer):
             "presenca",
             "total_presencas",
         )
-
-    def get_removido(self, obj) -> bool:
-        return obj.removido_em is not None
-
-    def get_presenca(self, obj) -> bool:
-        return getattr(obj, "presenca_em", None) is not None

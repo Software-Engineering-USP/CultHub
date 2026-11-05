@@ -30,16 +30,22 @@ from catalogo.models import CategoriaCultural, FaixaPreco, SituacaoPreco
 DATA_FIM_EFETIVA = Coalesce("data_fim", "data_inicio")
 
 
-def visiveis(queryset, agora):
-    """Eventos não removidos e que ainda não terminaram."""
+def filtrar_terminados(queryset, agora, terminados):
+    """Só os eventos já encerrados (`terminados=True`) ou só os que não."""
     hoje = timezone.localdate(agora)
     terminou = Q(fim__lt=agora) | Q(
         fim__isnull=True, data_fim_efetiva__lt=hoje
     )
-    return (
-        queryset.filter(removido_em__isnull=True)
-        .alias(data_fim_efetiva=DATA_FIM_EFETIVA)
-        .exclude(terminou)
+    queryset = queryset.alias(data_fim_efetiva=DATA_FIM_EFETIVA)
+    if terminados:
+        return queryset.filter(terminou)
+    return queryset.exclude(terminou)
+
+
+def visiveis(queryset, agora):
+    """Eventos não removidos e que ainda não terminaram."""
+    return filtrar_terminados(
+        queryset.filter(removido_em__isnull=True), agora, terminados=False
     )
 
 
