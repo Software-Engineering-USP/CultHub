@@ -41,12 +41,12 @@ export default function Home() {
         </SectionHeading>
 
         <figure>
-          <img
-            className="block w-full rounded-[26px] border border-line max-sm:rounded-2xl"
-            src="/assets/mapa-eventos.png"
-            width={1280}
-            height={450}
-            alt="Mapa ilustrativo de São Paulo com marcadores de eventos culturais. Os elementos representados na imagem não são interativos."
+          <iframe
+            className="block h-[450px] w-full rounded-[26px] border border-line max-sm:h-[340px] max-sm:rounded-2xl"
+            title="Mapa OpenStreetMap de São Paulo"
+            src="https://www.openstreetmap.org/export/embed.html?bbox=-46.75%2C-23.65%2C-46.55%2C-23.48&layer=mapnik"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
           />
           <figcaption className="mt-[14px] flex flex-wrap items-center justify-between gap-x-6 gap-y-3 max-sm:gap-[10px]">
             <CategoryList
@@ -54,7 +54,7 @@ export default function Home() {
               className="gap-[22px] text-[11px] font-semibold max-md:gap-4 max-sm:gap-x-[14px] max-sm:gap-y-[10px] max-sm:text-[10px]"
             />
             <DemoNote className="max-sm:text-[10px]">
-              Imagem estática de referência, sem navegação ou localização em tempo real.
+              Mapa © OpenStreetMap contributors. Os pins dos eventos serão adicionados depois.
             </DemoNote>
           </figcaption>
         </figure>
