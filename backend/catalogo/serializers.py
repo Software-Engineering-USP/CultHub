@@ -7,6 +7,7 @@ from catalogo.models import (
     FaixaPreco,
     ImagemEvento,
     Local,
+    SituacaoPreco,
 )
 
 
@@ -61,6 +62,9 @@ class EventoSerializer(serializers.ModelSerializer):
         many=True, read_only=True, slug_field="codigo"
     )
     local = LocalSerializer(read_only=True, allow_null=True)
+    situacao_preco = serializers.ChoiceField(
+        choices=SituacaoPreco.choices, read_only=True
+    )
     faixas_preco = FaixaPrecoSerializer(many=True, read_only=True)
     imagens = serializers.SerializerMethodField()
     distancia_km = serializers.SerializerMethodField()
@@ -84,6 +88,7 @@ class EventoSerializer(serializers.ModelSerializer):
             "fuso",
             "local",
             "gratuito",
+            "situacao_preco",
             "faixas_preco",
             "imagens",
             "distancia_km",

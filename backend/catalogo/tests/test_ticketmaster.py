@@ -79,6 +79,101 @@ class BuscarTodosTests(SimpleTestCase):
             buscar_todos(INICIO, buscar=lambda p, i: paginas[p])
 
     @patch("catalogo.ticketmaster.time.sleep")
+    def test_duplicata_nao_conta_como_evento_recebido(self, _sleep):
+        paginas = [
+            _pagina(0, 2, [{"id": "a"}, {"id": "b"}], total=3),
+            _pagina(1, 2, [{"id": "b"}], total=3),
+        ]
+        with self.assertRaises(ErroTicketmaster) as ctx:
+            buscar_todos(INICIO, buscar=lambda p, i: paginas[p])
+        self.assertIn("2 de 3", str(ctx.exception))
+
+    @patch("catalogo.ticketmaster.time.sleep")
+    def test_duplicata_com_todos_os_eventos_passa(self, _sleep):
+        paginas = [
+            _pagina(0, 2, [{"id": "a"}, {"id": "b"}], total=3),
+            _pagina(1, 2, [{"id": "b"}, {"id": "c"}], total=3),
+        ]
+        eventos = buscar_todos(INICIO, buscar=lambda p, i: paginas[p])
+        self.assertEqual({e["id"] for e in eventos}, {"a", "b", "c"})
+
+    def test_evento_sem_id_conta_como_recebido(self):
+        # Fica para a importação registrar em `com_erro`.
+        sem_id = [{"name": "x"}, {"id": None}, {"id": ["y"]}, None]
+        eventos = buscar_todos(
+            INICIO, buscar=lambda p, i: _pagina(0, 1, sem_id)
+        )
+        self.assertEqual(eventos, sem_id)
+
+    def test_embedded_sem_eventos_com_total_zero_vira_lista_vazia(self):
+        casos = {
+            "embedded nulo": {"_embedded": None},
+            "events nulo": {"_embedded": {"events": None}},
+            "embedded sem events": {"_embedded": {}},
+        }
+        for nome, extra in casos.items():
+            resposta = {**_pagina(0, 0, [], total=0), **extra}
+            with self.subTest(caso=nome):
+                eventos = buscar_todos(
+                    INICIO, buscar=lambda p, i, r=resposta: r
+                )
+                self.assertEqual(eventos, [])
+
+    def test_embedded_nulo_com_total_positivo_falha(self):
+        resposta = {**_pagina(0, 1, [], total=2), "_embedded": None}
+        with self.assertRaises(ErroTicketmaster) as ctx:
+            buscar_todos(INICIO, buscar=lambda p, i: resposta)
+        self.assertIn("0 de 2", str(ctx.exception))
+
+    def test_embedded_ou_events_de_outro_tipo_falha(self):
+        casos = {
+            "embedded em texto": {"_embedded": "x"},
+            "embedded em lista": {"_embedded": [{"id": "a"}]},
+            "events em texto": {"_embedded": {"events": "abc"}},
+            "events em objeto": {"_embedded": {"events": {"id": "a"}}},
+        }
+        for nome, extra in casos.items():
+            resposta = {**_pagina(0, 1, [], total=3), **extra}
+            with (
+                self.subTest(caso=nome),
+                self.assertRaises(ErroTicketmaster),
+            ):
+                buscar_todos(INICIO, buscar=lambda p, i, r=resposta: r)
+
+    def test_resposta_sem_paginacao_valida_falha(self):
+        evento = {"_embedded": {"events": [{"id": "a"}]}}
+        casos = {
+            "sem page": evento,
+            "page nulo": {**evento, "page": None},
+            "page vazio": {**evento, "page": {}},
+            "sem totalPages": {**evento, "page": {"totalElements": 1}},
+            "sem totalElements": {**evento, "page": {"totalPages": 1}},
+            "total em texto": {
+                **evento,
+                "page": {"totalElements": "1", "totalPages": 1},
+            },
+            "total booleano": {
+                **evento,
+                "page": {"totalElements": True, "totalPages": 1},
+            },
+            "total negativo": {
+                **evento,
+                "page": {"totalElements": -1, "totalPages": 1},
+            },
+            "páginas nulo": {
+                **evento,
+                "page": {"totalElements": 1, "totalPages": None},
+            },
+            "lista": [],
+        }
+        for nome, resposta in casos.items():
+            with (
+                self.subTest(caso=nome),
+                self.assertRaises(ErroTicketmaster),
+            ):
+                buscar_todos(INICIO, buscar=lambda p, i, r=resposta: r)
+
+    @patch("catalogo.ticketmaster.time.sleep")
     def test_usa_buscar_pagina_resolvido_na_chamada(self, _sleep):
         with patch(
             "catalogo.ticketmaster.buscar_pagina",

@@ -20,6 +20,10 @@ from .models import (
 FUSO_PADRAO = Evento._meta.get_field("fuso").default
 
 
+class ErroImportacao(Exception):
+    """Nenhum evento válido: o catálogo não pode ser alterado."""
+
+
 @dataclass
 class ResumoImportacao:
     criados: int = 0
@@ -137,7 +141,12 @@ def _salvar_evento(dados, agora):
 def importar(eventos, agora):
     resumo = ResumoImportacao()
     vistos = set()
+    ids_com_erro = set()
     for dados in eventos:
+        if not isinstance(dados, dict):
+            resumo.ignorados += 1
+            resumo.com_erro.append(f"?: não é objeto ({type(dados).__name__})")
+            continue
         try:
             situacao = _objeto(_objeto(dados, "dates"), "status").get("code")
             if dados.get("test") is True or situacao == "cancelled":
@@ -160,6 +169,9 @@ def importar(eventos, agora):
             resumo.com_erro.append(
                 f"{dados.get('id', '?')}: {dados.get('name') or '?'}"
             )
+            # Veio na resposta: continua no catálogo com os dados antigos.
+            if isinstance(dados.get("id"), str):
+                ids_com_erro.add(dados["id"])
             continue
         vistos.add(evento.id_externo)
         if criado:
@@ -168,11 +180,16 @@ def importar(eventos, agora):
             resumo.atualizados += 1
         if not tem_categoria:
             resumo.sem_categoria.append(evento.titulo)
+    if resumo.com_erro and not vistos:
+        raise ErroImportacao(
+            f"nenhum evento válido ({len(resumo.com_erro)} com erro; "
+            f"primeiro: {resumo.com_erro[0]}); nada foi alterado."
+        )
     resumo.removidos = (
         Evento.objects.filter(
             provedor=Provedor.TICKETMASTER, removido_em__isnull=True
         )
-        .exclude(id_externo__in=vistos)
+        .exclude(id_externo__in=vistos | ids_com_erro)
         .update(removido_em=agora)
     )
     return resumo
