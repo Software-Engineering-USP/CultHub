@@ -16,7 +16,7 @@ export default function Surface({
   padded = true,
   className,
   ...rest
-}: SurfaceProps) {
+}: Readonly<SurfaceProps>) {
   return (
     <Tag
       className={cn(

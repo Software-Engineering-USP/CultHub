@@ -6,7 +6,7 @@ interface WeatherStatsProps {
   variant: 'card' | 'strip'
 }
 
-export default function WeatherStats({ weather, variant }: WeatherStatsProps) {
+export default function WeatherStats({ weather, variant }: Readonly<WeatherStatsProps>) {
   const stats = [
     { label: 'Sensação', value: weather.feelsLike },
     { label: 'Umidade', value: weather.humidity },

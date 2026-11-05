@@ -1,16 +1,17 @@
+import { ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
-import { Button } from '@/components/common/Button'
 import CategoryDot from '@/components/common/CategoryDot'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
 import Surface from '@/components/common/Surface'
-import TextButton from '@/components/common/TextButton'
-import TextLink from '@/components/common/TextLink'
+import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { checkboxClass } from '@/lib/classes'
-import { preventSubmit } from '@/lib/forms'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
 
 const panelClass = 'p-7 max-lg:p-[22px]'
 
@@ -19,7 +20,7 @@ export default function SignIn() {
 
   return (
     <>
-      <BackLink to={paths.home}>← Continuar como visitante</BackLink>
+      <BackLink to={paths.home}>Continuar como visitante</BackLink>
 
       <div className="mt-3 mb-[30px] max-sm:mt-1">
         <h1 className="max-w-[850px] max-md:text-[32px] max-sm:text-[30px]">
@@ -73,10 +74,19 @@ export default function SignIn() {
             aria-label="Entrar (demonstração)"
             aria-describedby="login-aviso"
             autoComplete="off"
-            onSubmit={preventSubmit}
+            onSubmit={onFormSubmit(
+              (data) =>
+                void api.auth.signIn({
+                  email: text(data, 'email'),
+                  password: text(data, 'senha'),
+                  remember: data.has('lembrar'),
+                }),
+            )}
           >
             <Field
               id="login-email"
+              required
+              name="email"
               label="E-mail"
               type="email"
               placeholder="voce@exemplo.com"
@@ -85,6 +95,8 @@ export default function SignIn() {
             />
             <Field
               id="login-senha"
+              required
+              name="senha"
               label="Senha"
               type="password"
               placeholder="Digite sua senha"
@@ -93,27 +105,36 @@ export default function SignIn() {
 
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="lembrar">
-                <input id="lembrar" type="checkbox" className={checkboxClass} />
-                Lembrar de mim
+                <input id="lembrar" name="lembrar" type="checkbox" className={checkboxClass} />
+                <span>Lembrar de mim</span>
               </label>
-              <TextButton disabled aria-describedby="login-aviso">
+              <Button
+                variant="linkMuted"
+                aria-describedby="login-aviso"
+                onClick={(event) => {
+                  const form = event.currentTarget.form
+                  void api.auth.forgotPassword(form ? text(new FormData(form), 'email') : '')
+                }}
+              >
                 Esqueci minha senha
-              </TextButton>
+              </Button>
             </div>
 
-            <Button type="submit" block disabled>
-              Entrar <span aria-hidden="true">→</span>
+            <Button type="submit" block>
+              Entrar <ArrowRight />
             </Button>
 
             <DemoNote id="login-aviso" className="mt-[14px]">
-              Formulário de demonstração, sem envio ou autenticação. Não use credenciais reais. Recuperação de
-              senha indisponível.
+              Formulário de demonstração, sem autenticação: os dados só aparecem no console (a senha nunca é
+              mostrada). Não use credenciais reais.
             </DemoNote>
           </form>
 
-          <TextLink to={paths.account} className="mt-[22px] inline-block">
-            Ver perfil de exemplo →
-          </TextLink>
+          <Button asChild variant="link" className="mt-[22px]">
+            <Link to={paths.account}>
+              Ver perfil de exemplo <ArrowRight />
+            </Link>
+          </Button>
           <DemoNote size="sm" className="mt-[14px] mb-6">
             Conheça a conta fictícia de Lívia Costa, sem precisar fazer login.
           </DemoNote>
@@ -129,10 +150,20 @@ export default function SignIn() {
             aria-label="Criar conta (demonstração)"
             aria-describedby="cadastro-aviso"
             autoComplete="off"
-            onSubmit={preventSubmit}
+            onSubmit={onFormSubmit(
+              (data) =>
+                void api.auth.signUp({
+                  name: text(data, 'nome'),
+                  email: text(data, 'email'),
+                  password: text(data, 'senha'),
+                  acceptedTerms: data.has('termos'),
+                }),
+            )}
           >
             <Field
               id="cadastro-nome"
+              required
+              name="nome"
               label="Nome"
               type="text"
               placeholder="Como você quer ser chamado?"
@@ -140,6 +171,8 @@ export default function SignIn() {
             />
             <Field
               id="cadastro-email"
+              required
+              name="email"
               label="E-mail"
               type="email"
               placeholder="voce@exemplo.com"
@@ -148,6 +181,8 @@ export default function SignIn() {
             />
             <Field
               id="cadastro-senha"
+              required
+              name="senha"
               label="Senha"
               type="password"
               placeholder="Crie uma senha"
@@ -158,7 +193,7 @@ export default function SignIn() {
 
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="termos">
-                <input id="termos" type="checkbox" className={checkboxClass} />
+                <input id="termos" name="termos" type="checkbox" required className={checkboxClass} />
                 <span>
                   Aceito os termos e a política de privacidade <strong>ilustrativos</strong>. Esta opção não
                   registra consentimento nem cria uma conta.
@@ -166,13 +201,13 @@ export default function SignIn() {
               </label>
             </div>
 
-            <Button type="submit" block disabled>
-              Criar conta <span aria-hidden="true">→</span>
+            <Button type="submit" block>
+              Criar conta <ArrowRight />
             </Button>
 
             <DemoNote id="cadastro-aviso" className="mt-[14px]">
-              Formulário visual de demonstração. Nenhum cadastro é realizado e nenhum dado é enviado. Não há
-              termos contratuais ativos nesta versão.
+              Formulário de demonstração: os dados só aparecem no console e nenhum cadastro é realizado. Não
+              há termos contratuais ativos nesta versão.
             </DemoNote>
           </form>
         </Surface>
@@ -189,7 +224,11 @@ export default function SignIn() {
           <strong>Entre apenas quando quiser salvar ou comentar.</strong> Nesta demonstração, esses recursos
           estão desativados.
         </p>
-        <TextLink to={paths.home}>Voltar para explorar →</TextLink>
+        <Button asChild variant="link">
+          <Link to={paths.home}>
+            Voltar para explorar <ArrowRight />
+          </Link>
+        </Button>
       </Surface>
     </>
   )

@@ -1,13 +1,13 @@
+import { Sun } from 'lucide-react'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
-import { SunIcon } from '@/components/common/Icons'
 import Surface from '@/components/common/Surface'
 import { useWeather } from '@/hooks/useWeather'
 import type { CultEvent } from '@/types'
 import WeatherStats from './WeatherStats'
 
 /** Clima do evento (página de detalhes). */
-export default function WeatherCard({ event }: { event: CultEvent }) {
+export default function WeatherCard({ event }: Readonly<{ event: CultEvent }>) {
   const weather = useWeather(event.id)
   if (!weather) return null
 
@@ -21,7 +21,7 @@ export default function WeatherCard({ event }: { event: CultEvent }) {
       </div>
 
       <div className="mt-6 mb-4 flex items-center gap-[18px]">
-        <SunIcon />
+        <Sun strokeWidth={1.5} className="size-12 shrink-0 text-sun" />
         <div>
           <p className="text-[46px] leading-[1.15] font-[650] tracking-[-.06em] text-ink">
             {weather.temperature}

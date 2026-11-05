@@ -14,7 +14,12 @@ interface DemoNoteProps extends HTMLAttributes<HTMLElement> {
 }
 
 /** Aviso discreto de que o conteúdo é demonstrativo. */
-export default function DemoNote({ as: Tag = 'p', size = 'base', className, ...rest }: DemoNoteProps) {
+export default function DemoNote({
+  as: Tag = 'p',
+  size = 'base',
+  className,
+  ...rest
+}: Readonly<DemoNoteProps>) {
   return (
     <Tag
       className={cn(

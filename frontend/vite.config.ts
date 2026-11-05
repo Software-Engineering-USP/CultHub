@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@tests': fileURLToPath(new URL('./tests', import.meta.url)),
     },
   },
   server: {
@@ -25,13 +26,13 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/test/setup.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
+    setupFiles: ['./tests/setup.ts'],
     css: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcovonly'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/test/**', 'src/**/*.test.{ts,tsx}'],
       thresholds: { lines: 80 },
     },
   },

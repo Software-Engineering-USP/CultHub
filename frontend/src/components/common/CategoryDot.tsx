@@ -7,12 +7,13 @@ interface CategoryDotProps {
   size?: 'sm' | 'md'
 }
 
-export default function CategoryDot({ id, size = 'sm' }: CategoryDotProps) {
+export default function CategoryDot({ id, size = 'sm' }: Readonly<CategoryDotProps>) {
   return (
     <span
+      aria-hidden="true"
       className={cn(
         'inline-block shrink-0 rounded-full',
-        size === 'sm' ? 'mr-[7px] h-2 w-2' : 'h-3 w-3',
+        size === 'sm' ? 'size-2' : 'size-3',
         categories[id].dot,
       )}
     />

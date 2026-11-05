@@ -1,12 +1,12 @@
+import { Sun } from 'lucide-react'
 import DemoNote from '@/components/common/DemoNote'
-import { SunIcon } from '@/components/common/Icons'
 import Surface from '@/components/common/Surface'
 import { useWeather } from '@/hooks/useWeather'
 import type { CultEvent } from '@/types'
 import WeatherStats from './WeatherStats'
 
 /** Faixa de clima no rodapé das páginas de origem e rota. */
-export default function WeatherStrip({ event }: { event: CultEvent }) {
+export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) {
   const weather = useWeather(event.id)
   if (!weather) return null
 
@@ -17,7 +17,7 @@ export default function WeatherStrip({ event }: { event: CultEvent }) {
       padded={false}
       className="mt-[26px] flex items-center gap-6 px-[26px] py-[22px] max-lg:gap-[18px] max-md:flex-wrap max-sm:gap-[14px] max-sm:p-[22px]"
     >
-      <SunIcon className="h-[38px] w-[38px] shrink-0 max-sm:h-[30px] max-sm:w-[30px]" />
+      <Sun strokeWidth={1.5} className="size-9.5 shrink-0 text-sun max-sm:size-7.5" />
       <div>
         <h2 className="text-[16px] max-sm:text-[13px]">Clima no horário do evento</h2>
         <p className="mt-1 text-[10px] text-muted-foreground">

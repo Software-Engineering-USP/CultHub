@@ -1,14 +1,18 @@
+import { MapPin, Search, SlidersHorizontal } from 'lucide-react'
+import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import CategoryDot from '@/components/common/CategoryDot'
-import { BrandMark, FiltersIcon, SearchIcon } from '@/components/common/Icons'
+import InitialsAvatar from '@/components/common/InitialsAvatar'
+import EventFilters from '@/components/events/EventFilters'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
-import { categories, categoryOrder } from '@/lib/categories'
-import { avatarClass } from '@/lib/classes'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
 
 export default function Header() {
   const { pathname } = useLocation()
   const user = useCurrentUser()
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const onAccount = pathname === paths.account
   const onSignIn = pathname === paths.signIn
 
@@ -19,7 +23,7 @@ export default function Header() {
         aria-label="CultHub São Paulo, início"
         className="inline-flex shrink-0 items-center gap-[9px] text-maroon no-underline"
       >
-        <BrandMark className="h-9 w-[30px] max-sm:w-[26px]" />
+        <MapPin strokeWidth={2.5} className="size-9 max-sm:size-7" />
         <span>
           <span className="block text-[26px] leading-[1.1] font-extrabold tracking-[-.055em] max-sm:text-[24px]">
             CultHub
@@ -30,50 +34,41 @@ export default function Header() {
         </span>
       </Link>
 
-      <div
+      <form
         role="search"
+        onSubmit={onFormSubmit((data) => void api.events.search(text(data, 'busca')))}
         className="mx-auto flex w-[min(100%,500px)] items-center gap-[10px] rounded-[28px] border border-[#eae3d8] bg-[#f4f0e8] px-[18px] py-[10px] max-lg:max-w-[420px] max-md:order-3 max-md:w-full max-md:max-w-none max-sm:px-[13px]"
       >
-        <SearchIcon className="h-[19px] w-[19px] shrink-0" />
+        <Search className="size-5 shrink-0" />
         <label className="sr-only" htmlFor="busca">
-          Buscar eventos (campo demonstrativo, sem filtragem)
+          Buscar eventos
         </label>
         <input
           id="busca"
+          name="busca"
           type="search"
           placeholder="Busque eventos, artistas ou lugares"
           aria-describedby="aviso-busca"
           className="w-full min-w-0 border-0 bg-transparent text-[13px] text-ink outline-offset-[6px] max-sm:text-[11px]"
         />
         <span className="sr-only" id="aviso-busca">
-          Busca demonstrativa, não filtra os eventos.
+          Busca demonstrativa: a pesquisa só aparece no console e não filtra os eventos.
         </span>
-      </div>
+      </form>
 
       <nav
         aria-label="Navegação principal"
         className="flex shrink-0 items-center gap-[22px] max-md:ml-auto max-sm:gap-[14px]"
       >
-        <details className="relative max-sm:static">
-          <summary className="flex min-h-11 list-none items-center gap-[9px] text-[13px] font-[650] max-sm:gap-[5px] max-sm:text-[11px] [&::-webkit-details-marker]:hidden">
-            <FiltersIcon className="h-[18px] w-[18px] max-sm:w-4" />
+        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <PopoverTrigger className="flex min-h-11 items-center gap-[9px] rounded-full px-4 text-[13px] font-[650] transition-colors hover:bg-accent data-[state=open]:bg-accent max-sm:gap-[5px] max-sm:px-3 max-sm:text-[11px]">
+            <SlidersHorizontal className="size-4.5 max-sm:size-4" />
             Filtros
-          </summary>
-          <div className="absolute top-[calc(100%+14px)] right-0 w-[280px] rounded-[20px] border border-line bg-surface p-[22px] shadow-popover max-sm:top-[calc(100%+8px)] max-sm:right-3 max-sm:w-[min(280px,calc(100vw-72px))]">
-            <strong className="mb-3 block text-maroon">Categorias culturais</strong>
-            <ul className="mb-4 grid grid-cols-2 gap-3">
-              {categoryOrder.map((id) => (
-                <li key={id}>
-                  <CategoryDot id={id} />
-                  {categories[id].label}
-                </li>
-              ))}
-            </ul>
-            <small className="block text-muted-foreground">
-              Exibição demonstrativa. As categorias e a busca não alteram os resultados.
-            </small>
-          </div>
-        </details>
+          </PopoverTrigger>
+          <PopoverContent aria-label="Filtrar eventos" className="w-80 bg-background p-5">
+            <EventFilters onClose={() => setFiltersOpen(false)} />
+          </PopoverContent>
+        </Popover>
 
         {onSignIn ? (
           <NavLink to={paths.signIn} className="font-bold text-maroon no-underline">
@@ -83,9 +78,9 @@ export default function Header() {
           <NavLink
             to={paths.account}
             aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de exemplo de ${user.name}`}
-            className={avatarClass('md')}
+            className="rounded-full"
           >
-            {user.initials}
+            <InitialsAvatar initials={user.initials} className="max-sm:size-9.5" />
           </NavLink>
         )}
       </nav>

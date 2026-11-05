@@ -1,46 +1,65 @@
 # CultHub — Frontend
 
-Feito com React 19, TypeScript, Vite, Tailwind CSS 4 e React Router.
+Interface do CultHub, desenvolvida com React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui e React Router.
 
 ## Como rodar
 
 ```bash
 npm install
-npm run dev           # abre em http://localhost:5173
-npm run build         # checa os tipos e gera o build
+npm run dev           # servidor local em http://localhost:5173
+npm run build         # verifica os tipos e gera o build
 npm run lint
-npm test              # roda os testes uma vez
-npm run test:watch    # deixa os testes rodando enquanto você edita
-npm run format        # arruma a formatação (inclusive classes Tailwind e imports)
-npm run format:check  # só confere, sem mudar nada
+npm test              # executa os testes uma vez
+npm run test:watch    # executa os testes a cada alteração salva
+npm run format        # formata o código, incluindo classes Tailwind e imports
+npm run format:check  # apenas verifica a formatação, sem alterar arquivos
 ```
 
-Rode `npm run format` antes de commitar. Melhor ainda: ative "formatar ao salvar" no seu editor e esqueça
-disso (no VS Code, instale a extensão _Prettier_ e ligue `"editor.formatOnSave": true`).
+Recomenda-se rodar `npm run format` antes de cada commit ou, de preferência, ativar a formatação automática ao salvar no editor.
 
-> As imagens dos eventos e dos mapas ainda **não estão no repositório**. Para vê-las, copie o conteúdo de
-> `foo/assets/` para `public/assets/` (ex.: `public/assets/jazz-source.png`).
+> As imagens dos eventos e dos mapas ainda **não estão no repositório**. Para visualizá-las, copie o conteúdo
+> de `foo/assets/` para `public/assets/` (por exemplo, `public/assets/jazz-source.png`).
 
-## Onde fica cada coisa
+## Estrutura
 
 ```
 src/
 ├── components/
-│   ├── ui/          componentes do shadcn/ui (gerados pelo CLI e ajustados ao visual do CultHub)
-│   ├── common/      componentes nossos usados em várias telas (Surface, SectionHeading, DemoNote...)
+│   ├── ui/          componentes base, criados a partir do shadcn/ui (Button, Badge, Select, Carousel...)
+│   ├── common/      componentes próprios usados em várias telas (Surface, SectionHeading, Field, DemoNote...)
 │   ├── layout/      Layout, Header, Footer
-│   ├── events/      EventCard, EventStrip, CommentItem, RoutePreview
+│   ├── events/      EventCard, FeaturedCarousel, EventFilters, EventSort, CommentItem...
 │   └── weather/     WeatherCard, WeatherStrip, WeatherStats
-├── pages/           uma por rota
-├── data/            dados de exemplo, separados por assunto (vão virar chamadas à API)
+├── pages/           uma página por rota
+├── data/            dados de exemplo, separados por assunto (serão substituídos pela API)
 ├── types/           tipos compartilhados (CultEvent, User, CategoryId...)
-├── hooks/           useDocumentTitle, useEvent
-├── lib/             rotas (paths), cn() e outros helpers
-└── test/            configuração dos testes e o helper renderWithRouter
+├── hooks/           leitura de dados (useEvents, useCurrentUser...), useActiveSection e useDocumentTitle
+├── lib/             rotas (paths), filtros, cn() e outras funções auxiliares
+└── services/        api.ts: chamadas ao backend (por enquanto, apenas registradas no console)
+
+tests/               testes, organizados nas mesmas pastas do src/ (além de setup.ts e do helper render.tsx)
 ```
 
-Nos imports, use `@/` (que aponta para `src/`). O `./` fica só para arquivos da mesma pasta. A ordem dos
-imports o Prettier resolve sozinho.
+Os imports usam o alias `@/` para `src/` e `@tests/` para `tests/`; o caminho relativo `./` fica reservado para arquivos da mesma pasta. A ordem dos imports é definida automaticamente pelo Prettier.
+
+## Componentes
+
+Os componentes de `components/ui/` foram criados a partir do [shadcn/ui](https://ui.shadcn.com/docs). Ao contrário de uma biblioteca comum, o shadcn/ui copia o código de cada componente para dentro do projeto, que pode então alterá-lo como precisar. Assim, o comportamento e a acessibilidade (teclado, foco, leitores de tela) vêm prontos, e o visual e os textos foram ajustados ao CultHub.
+
+Para adicionar um novo componente:
+
+1. gere o ponto de partida com `npx shadcn@latest add <nome>`;
+2. adapte o arquivo ao padrão do projeto: tokens do CultHub, imports com `@/` e textos em português;
+3. revise o `package.json`, já que o comando instala dependências.
+
+Os componentes de `ui/` devem ser usados diretamente (`import { Button } from '@/components/ui/button'`). Um componente em `common/` só se justifica quando a mesma combinação se repete em várias telas, como o `Field`, que reúne rótulo, campo e texto de ajuda. Os ícones são do [Lucide](https://lucide.dev/icons).
+
+## Ações da demonstração
+
+Como o backend ainda não está integrado, nenhuma informação é enviada: cada ação é apenas registrada no console do navegador.
+
+- **Ações que dependem do backend** (entrar, salvar evento, comentar, filtrar...) passam por `api.*`, em `src/services/api.ts`, e aparecem como `[CultHub API mock] POST /api/...`. Os endpoints de usuário já seguem os do backend; os demais estão marcados como provisórios. Senhas nunca são exibidas. Para conectar o backend, basta substituir o corpo da função `request` por um `fetch`.
+- **Ações do próprio navegador** (pedir localização, compartilhar, abrir o app de mapas...) usam `logDemoAction`, de `src/lib/demo.ts`, e aparecem como `[CultHub demo] ...`.
 
 ## Rotas
 
@@ -53,34 +72,36 @@ imports o Prettier resolve sozinho.
 | `/entrar`             | Entrar / criar conta               |
 | `/conta`              | Minha conta                        |
 
-As URLs são definidas só em `src/lib/paths.ts`. Nos links, use `paths` em vez de escrever o caminho na mão:
+As URLs são definidas apenas em `src/lib/paths.ts`. Nos links, use `paths` em vez de escrever o caminho manualmente:
 
 ```tsx
 <Link to={paths.event(event.id)}>...</Link>
 ```
 
-Por enquanto, só o evento `sp-jazz-blues-festival` tem página de detalhes (veja `details` em
-`src/data/events.ts`).
+No momento, apenas o evento `sp-jazz-blues-festival` possui página de detalhes (campo `details` em `src/data/events.ts`); os demais exibem um aviso.
 
 ## Cores, tamanhos e Tailwind
 
-Os tokens de design ficam em `src/index.css`, em duas partes:
+Os tokens de design ficam em `src/index.css`, divididos em duas camadas:
 
-- `@theme`: a paleta do CultHub (`maroon`, `ink`, `cat-*` para o fundo dos cards, `dot-*` para as bolinhas
-  da legenda...) e as sombras (`shadow-soft`, `shadow-card`, `shadow-popover`, `shadow-badge`);
-- `@theme inline`: os nomes que o shadcn/ui usa (`background`, `foreground`, `primary`, `muted-foreground`,
-  `border`, `ring`), apontando para a nossa paleta.
+- `@theme`: a paleta do CultHub (`maroon`, `ink`, `cat-*` para o fundo dos cards, `dot-*` para as bolinhas da legenda, `label-*` para o texto dos selos...) e as sombras (`shadow-soft`, `shadow-card`...);
+- `@theme inline`: os nomes usados pelo shadcn/ui (`background`, `foreground`, `primary`, `muted-foreground`, `border`, `ring`...), que apontam para a paleta.
 
-No dia a dia, prefira esses nomes do shadcn (`text-muted-foreground`, `border-border`, `bg-primary`) e deixe a
-paleta para o que é bem nosso, como `text-maroon` ou `bg-cat-music`. E prefira a escala do Tailwind
-(`text-sm`, `p-6`) a valores soltos como `text-[13px]`: ela já foi ajustada para manter o espaçamento do
-design.
+No código, dê preferência aos nomes do shadcn/ui (`text-muted-foreground`, `border-border`, `bg-primary`) e reserve a paleta para o que é específico do CultHub, como `text-maroon` ou `bg-cat-music`. Da mesma forma, prefira a escala do Tailwind (`text-sm`, `p-6`) a valores arbitrários como `text-[13px]`; a escala já foi ajustada para manter o espaçamento do design. Textos pequenos devem ter contraste mínimo de 4,5:1 com o fundo.
 
-O layout é pensado primeiro para desktop, então use `max-lg:` (até 1150px), `max-md:` (até 900px) e `max-sm:`
-(até 600px) para adaptar a telas menores.
+O layout é pensado primeiro para desktop. Para adaptá-lo a telas menores, use `max-lg:` (até 1150px), `max-md:` (até 900px) e `max-sm:` (até 600px).
 
 ## Testes
 
-Usamos Vitest + Testing Library. Cada teste fica ao lado do arquivo que ele testa (`paths.ts` →
-`paths.test.ts`). Se o componente tiver links ou depender da rota, renderize com `renderWithRouter`
-(`@/test/render`).
+Os testes usam Vitest e Testing Library e ficam em `tests/`, na mesma pasta que o arquivo testado ocupa em `src/` (por exemplo, `src/lib/paths.ts` → `tests/lib/paths.test.ts`). Componentes com links ou que dependem da rota devem ser renderizados com `renderWithRouter` (`@tests/render`).
+
+## Integração contínua
+
+A cada pull request, o CI executa `lint`, `format:check`, `build` e `npm test -- --coverage`. A cobertura de linhas do `src/` deve ser de pelo menos 80%, o que pode ser conferido localmente com `npm test -- --coverage`.
+
+## Referências
+
+- [shadcn/ui](https://ui.shadcn.com/docs): introdução e documentação de cada componente
+- [Tailwind CSS: tema](https://tailwindcss.com/docs/theme)
+- [Lucide](https://lucide.dev/icons): catálogo de ícones
+- [Vitest](https://vitest.dev/guide/) e [Testing Library](https://testing-library.com/docs/queries/about/#priority): testes e prioridade das consultas

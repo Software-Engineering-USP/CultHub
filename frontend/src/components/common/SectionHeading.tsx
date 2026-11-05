@@ -23,7 +23,7 @@ export default function SectionHeading({
   marginClass,
   titleClassName,
   children,
-}: SectionHeadingProps) {
+}: Readonly<SectionHeadingProps>) {
   return (
     <div
       className={cn(

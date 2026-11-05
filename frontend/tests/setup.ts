@@ -32,3 +32,8 @@ vi.stubGlobal(
   })),
 )
 window.scrollTo = vi.fn()
+
+// Usados pelo Select do Radix
+Element.prototype.scrollIntoView = vi.fn()
+Element.prototype.hasPointerCapture = vi.fn(() => false)
+Element.prototype.releasePointerCapture = vi.fn()

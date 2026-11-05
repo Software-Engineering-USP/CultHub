@@ -6,7 +6,8 @@
     "module": "esnext",
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@tests/*": ["./tests/*"]
     },
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
@@ -25,5 +26,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src", "tests"]
 }

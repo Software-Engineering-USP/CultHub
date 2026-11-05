@@ -1,0 +1,66 @@
+import { screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import SignIn from '@/pages/SignIn'
+import { api } from '@/services/api'
+import { renderWithRouter } from '@tests/render'
+
+describe('SignIn', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('"Esqueci minha senha" pede a recuperação com o e-mail digitado', async () => {
+    const forgot = vi.spyOn(api.auth, 'forgotPassword').mockResolvedValue()
+    const { user } = renderWithRouter(<SignIn />)
+
+    await user.type(screen.getAllByLabelText('E-mail')[0], 'voce@exemplo.com')
+    await user.click(screen.getByRole('button', { name: 'Esqueci minha senha' }))
+
+    expect(forgot).toHaveBeenCalledWith('voce@exemplo.com')
+  })
+
+  it('Entrar envia e-mail, senha e "lembrar de mim"', async () => {
+    const signIn = vi.spyOn(api.auth, 'signIn').mockResolvedValue()
+    const { user } = renderWithRouter(<SignIn />)
+    const login = screen.getByRole('form', { name: 'Entrar (demonstração)' })
+
+    await user.type(within(login).getByLabelText('E-mail'), 'voce@exemplo.com')
+    await user.type(within(login).getByLabelText('Senha'), 'segredo123')
+    await user.click(within(login).getByLabelText('Lembrar de mim'))
+    await user.click(within(login).getByRole('button', { name: 'Entrar' }))
+
+    expect(signIn).toHaveBeenCalledWith({ email: 'voce@exemplo.com', password: 'segredo123', remember: true })
+  })
+
+  it('Criar conta envia nome, e-mail, senha e o aceite dos termos', async () => {
+    const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue()
+    const { user } = renderWithRouter(<SignIn />)
+    const cadastro = screen.getByRole('form', { name: 'Criar conta (demonstração)' })
+
+    await user.type(within(cadastro).getByLabelText('Nome'), 'Você')
+    await user.type(within(cadastro).getByLabelText('E-mail'), 'voce@exemplo.com')
+    await user.type(within(cadastro).getByLabelText('Senha'), 'segredo123')
+    await user.click(within(cadastro).getByLabelText(/Aceito os termos/))
+    await user.click(within(cadastro).getByRole('button', { name: 'Criar conta' }))
+
+    expect(signUp).toHaveBeenCalledWith({
+      name: 'Você',
+      email: 'voce@exemplo.com',
+      password: 'segredo123',
+      acceptedTerms: true,
+    })
+  })
+
+  it('não cria a conta sem aceitar os termos', async () => {
+    const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue()
+    const { user } = renderWithRouter(<SignIn />)
+    const cadastro = screen.getByRole('form', { name: 'Criar conta (demonstração)' })
+
+    await user.type(within(cadastro).getByLabelText('Nome'), 'Você')
+    await user.type(within(cadastro).getByLabelText('E-mail'), 'voce@exemplo.com')
+    await user.type(within(cadastro).getByLabelText('Senha'), 'segredo123')
+    await user.click(within(cadastro).getByRole('button', { name: 'Criar conta' }))
+
+    expect(signUp).not.toHaveBeenCalled()
+  })
+})

@@ -1,28 +1,40 @@
+import { ArrowLeft, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import Avatar from '@/components/common/Avatar'
-import { Button, ButtonLink } from '@/components/common/Button'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
+import InitialsAvatar from '@/components/common/InitialsAvatar'
 import SectionHeading from '@/components/common/SectionHeading'
-import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
-import TextButton from '@/components/common/TextButton'
 import EventCard from '@/components/events/EventCard'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { useActiveSection } from '@/hooks/useActiveSection'
 import { useUserComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEventById, useSavedEvents } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
 import { peerFocusRing } from '@/lib/classes'
-import { preventSubmit } from '@/lib/forms'
+import { logDemoAction } from '@/lib/demo'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { cn } from '@/lib/utils'
+import { api } from '@/services/api'
 import type { CategoryId } from '@/types'
 
 // Ordem das categorias na tela de preferências
 const preferenceOrder: CategoryId[] = ['music', 'theater', 'art', 'festival', 'sport']
 
-const menuLink = 'px-3 text-[12px] font-semibold no-underline hover:bg-[#f8f0e4]'
+const menuLink = 'px-3 text-[12px] font-semibold no-underline hover:bg-accent hover:text-maroon'
+
+const sections = [
+  { id: 'dados', label: 'Dados pessoais' },
+  { id: 'preferencias', label: 'Preferências culturais' },
+  { id: 'salvos', label: 'Eventos salvos' },
+  { id: 'comentarios', label: 'Meus comentários' },
+]
+const sectionIds = sections.map((section) => section.id)
 
 const panelHeading = 'mb-[22px] flex items-center justify-between gap-[14px] max-sm:items-start'
 const panelEyebrow = 'text-[9px] text-muted-foreground max-sm:max-w-[90px] max-sm:text-right'
@@ -31,6 +43,7 @@ export default function Account() {
   useDocumentTitle('Minha conta de exemplo | CultHub')
 
   const user = useCurrentUser()
+  const { active: activeSection, select: selectSection } = useActiveSection(sectionIds)
   const savedEvents = useSavedEvents()
 
   const [myComment] = useUserComments()
@@ -46,9 +59,11 @@ export default function Account() {
         title="Minha conta"
         description="Seu jeito de viver a cultura de São Paulo."
       >
-        <ButtonLink to={paths.home} variant="secondary">
-          ← Voltar ao mapa
-        </ButtonLink>
+        <Button asChild variant="outline">
+          <Link to={paths.home}>
+            <ArrowLeft /> Voltar ao mapa
+          </Link>
+        </Button>
       </SectionHeading>
 
       <div className="grid grid-cols-[276px_minmax(0,1fr)] items-start gap-7 max-md:grid-cols-[minmax(0,1fr)]">
@@ -56,33 +71,40 @@ export default function Account() {
           as="aside"
           aria-label="Perfil e navegação da conta"
           padded={false}
-          className="px-[22px] py-7 text-center max-md:text-left max-sm:p-[22px] max-sm:text-center"
+          className="sticky top-6 px-[22px] py-7 text-center max-md:static max-md:text-left max-sm:p-[22px] max-sm:text-center"
         >
-          <Avatar size="lg" aria-hidden="true">
-            {user.initials}
-          </Avatar>
+          <InitialsAvatar
+            initials={user.initials}
+            size="lg"
+            aria-hidden="true"
+            className="mb-4 max-md:float-left max-md:mr-4.5 max-md:size-16 max-sm:float-none max-sm:mr-0 max-sm:mb-3.5"
+          />
           <h2 className="mb-[6px] text-[21px]">{user.name}</h2>
           <p className="text-[11px]">Perfil fictício • {user.city}</p>
-          <StatusBadge tone="green" size="sm" className="mt-4 max-md:mt-[10px]">
-            ● Conta conectada (exemplo)
-          </StatusBadge>
+          <Badge variant="success" size="md" className="mt-4 max-md:mt-2.5">
+            <span aria-hidden="true" className="size-2 rounded-full bg-current" />
+            <span>Conta conectada (exemplo)</span>
+          </Badge>
 
           <nav
             aria-label="Seções da conta"
             className="mt-[25px] grid gap-[5px] border-t border-line pt-5 text-left max-md:clear-both max-md:flex max-md:flex-wrap max-md:gap-[6px] max-sm:flex-col"
           >
-            <a href="#dados" className={`${menuLink} rounded-[10px] bg-[#f5e8d6] py-[11px] text-maroon`}>
-              Dados pessoais
-            </a>
-            <a href="#preferencias" className={`${menuLink} rounded-[10px] py-[11px]`}>
-              Preferências culturais
-            </a>
-            <a href="#salvos" className={`${menuLink} rounded-[10px] py-[11px]`}>
-              Eventos salvos
-            </a>
-            <a href="#comentarios" className={`${menuLink} rounded-[10px] py-[11px]`}>
-              Meus comentários
-            </a>
+            {sections.map((section) => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                onClick={() => selectSection(section.id)}
+                aria-current={activeSection === section.id ? 'location' : undefined}
+                className={cn(
+                  menuLink,
+                  'rounded-[10px] py-[11px] transition-colors',
+                  activeSection === section.id && 'bg-[#f5e8d6] text-maroon hover:bg-[#f5e8d6]',
+                )}
+              >
+                {section.label}
+              </a>
+            ))}
             <Link
               to={paths.signIn}
               className={`${menuLink} mt-3 rounded-none border-t border-line pt-5 pb-[11px] text-maroon max-md:m-0 max-md:rounded-[10px] max-md:border-0 max-md:py-[11px]`}
@@ -109,20 +131,43 @@ export default function Account() {
               aria-label="Editar dados fictícios"
               aria-describedby="dados-aviso"
               autoComplete="off"
-              onSubmit={preventSubmit}
+              onSubmit={onFormSubmit(
+                (data) =>
+                  void api.profile.update({
+                    name: text(data, 'nome'),
+                    city: text(data, 'cidade'),
+                    district: text(data, 'bairro'),
+                  }),
+              )}
             >
               <div className="grid grid-cols-2 gap-x-5 max-sm:grid-cols-[minmax(0,1fr)]">
                 <Field
                   id="nome"
+                  name="nome"
                   label="Nome completo"
                   type="text"
                   defaultValue={user.name}
                   autoComplete="off"
                 />
-                <Field id="email" label="E-mail" type="email" defaultValue={user.email} autoComplete="off" />
-                <Field id="cidade" label="Cidade" type="text" defaultValue={user.city} autoComplete="off" />
+                <Field
+                  id="email"
+                  label="E-mail"
+                  type="email"
+                  defaultValue={user.email}
+                  readOnly
+                  help="O e-mail não pode ser alterado."
+                />
+                <Field
+                  id="cidade"
+                  name="cidade"
+                  label="Cidade"
+                  type="text"
+                  defaultValue={user.city}
+                  autoComplete="off"
+                />
                 <Field
                   id="bairro"
+                  name="bairro"
                   label="Bairro"
                   type="text"
                   defaultValue={user.district}
@@ -132,12 +177,10 @@ export default function Account() {
 
               <div className="mt-1 flex items-center justify-between gap-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-[14px]">
                 <DemoNote id="dados-aviso" className="max-w-[410px]">
-                  Sua privacidade importa. Este perfil é fictício: os campos são editáveis, mas não são
-                  enviados ou salvos. Não insira dados pessoais reais.
+                  Sua privacidade importa. Este perfil é fictício: ao salvar, os dados só aparecem no console
+                  e não são guardados. Não insira dados pessoais reais.
                 </DemoNote>
-                <Button type="submit" disabled>
-                  Salvar alterações
-                </Button>
+                <Button type="submit">Salvar alterações</Button>
               </div>
             </form>
           </Surface>
@@ -152,13 +195,21 @@ export default function Account() {
               Categorias que você gosta de acompanhar. {selectedLabels} selecionadas.
             </p>
 
-            <fieldset aria-describedby="preferencias-aviso" className="flex flex-wrap gap-[10px]">
+            <fieldset
+              aria-describedby="preferencias-aviso"
+              className="flex flex-wrap gap-[10px]"
+              onChange={(event) => {
+                const checked = event.currentTarget.querySelectorAll<HTMLInputElement>('input:checked')
+                void api.profile.updatePreferences(Array.from(checked, (input) => input.value as CategoryId))
+              }}
+            >
               <legend className="sr-only">Categorias culturais de interesse</legend>
               {preferenceOrder.map((id) => (
                 <div key={id} className="relative">
                   <input
                     id={`pref-${id}`}
                     type="checkbox"
+                    value={id}
                     defaultChecked={user.preferences.includes(id)}
                     className="peer absolute top-3 left-[15px] mt-[2px] h-4 w-4 accent-maroon"
                   />
@@ -173,8 +224,8 @@ export default function Account() {
             </fieldset>
 
             <DemoNote id="preferencias-aviso" className="mt-4">
-              Seleção visual em CSS. Você pode marcar categorias, mas as escolhas não são salvas e não filtram
-              eventos. A seleção inicial acima descreve apenas o exemplo.
+              Demonstração: cada mudança aparece no console, mas não é salva e não filtra eventos. A seleção
+              inicial acima descreve apenas o exemplo.
             </DemoNote>
           </Surface>
 
@@ -210,25 +261,35 @@ export default function Account() {
                   to={paths.event(commentEvent.id)}
                   className="mb-[10px] block text-[13px] font-bold text-maroon underline"
                 >
-                  {commentEvent.title} ↗
+                  {commentEvent.title} <ArrowUpRight className="inline size-4" />
                 </Link>
                 <p className="text-[13px] leading-[1.8] text-muted-foreground">
                   {myComment.author} • Perfil fictício • comentário de exemplo
                 </p>
                 <p className="mt-[10px] text-[13px] leading-[1.8]">{myComment.text}</p>
                 <div className="mt-[10px] flex gap-[18px]">
-                  <TextButton disabled aria-describedby="editar-aviso" className="mt-2">
+                  <Button
+                    variant="linkMuted"
+                    aria-describedby="editar-aviso"
+                    onClick={() => logDemoAction('Abrir edição do comentário', { commentId: myComment.id })}
+                    className="mt-2"
+                  >
                     Editar
-                  </TextButton>
-                  <TextButton disabled aria-describedby="editar-aviso" className="mt-2">
+                  </Button>
+                  <Button
+                    variant="linkMuted"
+                    aria-describedby="editar-aviso"
+                    onClick={() => void api.comments.remove(myComment.id)}
+                    className="mt-2"
+                  >
                     Excluir
-                  </TextButton>
+                  </Button>
                 </div>
               </article>
             )}
 
             <DemoNote id="editar-aviso" className="mt-[14px]">
-              Comentário demonstrativo. Edição e exclusão estão desativadas.
+              Comentário demonstrativo. Editar e excluir só registram a ação no console.
             </DemoNote>
           </Surface>
         </div>

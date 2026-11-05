@@ -1,26 +1,29 @@
-import Avatar from '@/components/common/Avatar'
+import { ArrowRight, Calendar, Heart, MapPin, Share2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
-import { Button, ButtonLink } from '@/components/common/Button'
-import CategoryBadge from '@/components/common/CategoryBadge'
 import DemoNote from '@/components/common/DemoNote'
-import { CalendarIcon, PinIcon } from '@/components/common/Icons'
 import IconTile from '@/components/common/IconTile'
+import InitialsAvatar from '@/components/common/InitialsAvatar'
 import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
-import TextLink from '@/components/common/TextLink'
 import CommentItem from '@/components/events/CommentItem'
 import RoutePreview from '@/components/events/RoutePreview'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import WeatherCard from '@/components/weather/WeatherCard'
 import { useComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEvent } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
-import { inputClass } from '@/lib/classes'
-import { preventSubmit } from '@/lib/forms'
+import { logDemoAction } from '@/lib/demo'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
 
 export default function EventDetail() {
   const event = useEvent()
@@ -37,7 +40,7 @@ export default function EventDetail() {
 
   return (
     <>
-      <BackLink to={paths.home}>← Voltar para explorar</BackLink>
+      <BackLink to={paths.home}>Voltar para explorar</BackLink>
       <Breadcrumbs
         items={[{ label: 'Explorar', to: paths.home }, { label: category.label }, { label: shortName }]}
       />
@@ -48,12 +51,9 @@ export default function EventDetail() {
           alt={event.imageAlt}
           className="block h-[400px] w-full object-cover object-[center_47%] max-md:h-[330px] max-sm:h-[235px]"
         />
-        <CategoryBadge
-          size="lg"
-          className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4"
-        >
+        <Badge size="lg" className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4">
           {category.label} • {shortName}
-        </CategoryBadge>
+        </Badge>
       </div>
 
       <div className="space-y-12 max-sm:space-y-[34px]">
@@ -67,15 +67,25 @@ export default function EventDetail() {
             </h1>
 
             <div className="mt-[22px] mb-2 flex flex-wrap gap-[10px]">
-              <Button variant="secondary" disabled aria-describedby="acoes-aviso">
-                ♡ Salvar
+              <Button
+                variant="outline"
+                aria-describedby="acoes-aviso"
+                onClick={() => void api.events.save(event.id)}
+              >
+                <Heart />
+                Salvar
               </Button>
-              <Button variant="secondary" disabled aria-describedby="acoes-aviso">
-                ↗ Compartilhar
+              <Button
+                variant="outline"
+                aria-describedby="acoes-aviso"
+                onClick={() => logDemoAction('Compartilhar evento', { eventId: event.id })}
+              >
+                <Share2 />
+                Compartilhar
               </Button>
             </div>
             <DemoNote id="acoes-aviso">
-              Demonstração visual: salvar e compartilhar não estão disponíveis.
+              Demonstração: salvar e compartilhar só registram a ação no console.
             </DemoNote>
 
             <div className="mt-[30px]">
@@ -92,9 +102,7 @@ export default function EventDetail() {
               aria-labelledby="local-titulo"
               className="mt-[26px] flex gap-[17px] max-sm:flex-col max-sm:gap-3"
             >
-              <IconTile>
-                <PinIcon className="h-[23px] w-[23px]" />
-              </IconTile>
+              <IconTile icon={MapPin} />
               <div>
                 <h2 id="local-titulo" className="text-[22px]">
                   Onde acontece
@@ -104,13 +112,17 @@ export default function EventDetail() {
                   O local aparece no mapa ilustrativo do CultHub. Consulte os canais oficiais do espaço para
                   endereço de acesso, acessibilidade e orientações de chegada.
                 </p>
-                <TextLink to={paths.eventOrigin(event.id)}>Ver local no mapa →</TextLink>
+                <Button asChild variant="link">
+                  <Link to={paths.eventOrigin(event.id)}>
+                    Ver local no mapa <ArrowRight />
+                  </Link>
+                </Button>
               </div>
             </Surface>
           </div>
 
           <Surface as="aside" aria-label="Preço e planejamento da visita" bg="bg-[#fff0d9]">
-            <CategoryBadge>{category.label}</CategoryBadge>
+            <Badge>{category.label}</Badge>
             <p className="mt-[22px] text-[36px] leading-[1.2] font-[750] tracking-[-.04em] text-maroon max-md:mt-[14px] max-sm:text-[32px]">
               {event.price}
             </p>
@@ -118,7 +130,7 @@ export default function EventDetail() {
 
             <div className="my-6 grid gap-4 border-y border-[#e8d8bf] py-6 text-[13px] max-md:my-[18px] max-md:flex max-md:flex-wrap max-md:gap-x-8 max-md:gap-y-[18px] max-md:py-[18px]">
               <p className="flex items-start gap-2">
-                <CalendarIcon />
+                <Calendar className="mt-0.5 size-4 shrink-0" />
                 <span>
                   <strong>{event.schedule}</strong>
                   <br />
@@ -126,14 +138,16 @@ export default function EventDetail() {
                 </span>
               </p>
               <p className="flex items-start gap-2">
-                <PinIcon />
+                <MapPin className="mt-0.5 size-4 shrink-0" />
                 <strong>{event.venue}</strong>
               </p>
             </div>
 
-            <ButtonLink to={paths.eventOrigin(event.id)} block>
-              Planejar minha visita <span aria-hidden="true">→</span>
-            </ButtonLink>
+            <Button asChild block>
+              <Link to={paths.eventOrigin(event.id)}>
+                Planejar minha visita <ArrowRight />
+              </Link>
+            </Button>
             <DemoNote className="mt-4">
               Conteúdo demonstrativo. Não há venda de ingressos aqui. Confirme programação e valores nos
               canais oficiais antes da visita.
@@ -164,34 +178,36 @@ export default function EventDetail() {
             as="form"
             aria-label="Comentário demonstrativo"
             aria-describedby="comentario-aviso"
-            onSubmit={preventSubmit}
+            onSubmit={onFormSubmit((data, form) => {
+              void api.comments.create(event.id, text(data, 'comentario'))
+              form.reset()
+            })}
             className="mb-[22px]"
           >
             <div className="mb-[18px] flex items-center gap-3 text-[12px]">
-              <Avatar size="sm" aria-hidden="true">
-                {user.initials}
-              </Avatar>
+              <InitialsAvatar initials={user.initials} size="sm" aria-hidden="true" />
               <p>
                 Comentando como <strong>{user.name}</strong> • perfil fictício
               </p>
             </div>
 
-            <label className="sr-only" htmlFor="comentario">
+            <Label className="sr-only" htmlFor="comentario">
               Seu comentário sobre o evento
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id="comentario"
+              name="comentario"
+              required
               placeholder="Escreva seu comentário sobre o evento..."
-              className={`${inputClass} block min-h-[112px] w-full resize-y`}
             />
 
             <div className="mt-[14px] flex items-center justify-between gap-[18px] max-sm:flex-col max-sm:items-start max-sm:gap-3">
               <DemoNote id="comentario-aviso">
                 Compartilhe ideias com respeito.
                 <br />
-                Demonstração: o texto não é enviado nem publicado.
+                Demonstração: o texto só aparece no console, não é publicado.
               </DemoNote>
-              <Button type="submit" disabled className="max-sm:w-full">
+              <Button type="submit" className="max-sm:w-full">
                 Publicar comentário
               </Button>
             </div>
@@ -202,7 +218,7 @@ export default function EventDetail() {
               <CommentItem key={comment.id} comment={comment} />
             ))}
             <DemoNote className="mt-5">
-              Comentários ilustrativos. Respostas e publicação estão desativadas.
+              Comentários ilustrativos. Responder e publicar só registram a ação no console.
             </DemoNote>
           </Surface>
         </section>

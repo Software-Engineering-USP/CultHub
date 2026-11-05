@@ -1,26 +1,30 @@
+import { ArrowRight, LocateFixed } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import Breadcrumbs from '@/components/common/Breadcrumbs'
-import { Button } from '@/components/common/Button'
 import DemoNote from '@/components/common/DemoNote'
 import Field from '@/components/common/Field'
-import { LocateIcon } from '@/components/common/Icons'
 import IconTile from '@/components/common/IconTile'
 import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
-import StatusBadge from '@/components/common/StatusBadge'
 import Surface from '@/components/common/Surface'
-import TextLink from '@/components/common/TextLink'
 import EventStrip from '@/components/events/EventStrip'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import WeatherStrip from '@/components/weather/WeatherStrip'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEvent } from '@/hooks/useEvents'
 import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { peerFocusRing } from '@/lib/classes'
-import { preventSubmit } from '@/lib/forms'
+import { logDemoAction } from '@/lib/demo'
+import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
+import type { RouteOption } from '@/types'
 
 export default function Origin() {
   const event = useEvent()
+  const navigate = useNavigate()
   const routeOptions = useRouteOptions(event?.id)
   useDocumentTitle('Defina sua origem | CultHub')
 
@@ -30,7 +34,7 @@ export default function Origin() {
 
   return (
     <>
-      <BackLink to={paths.event(event.id)}>← Voltar para o evento</BackLink>
+      <BackLink to={paths.event(event.id)}>Voltar para o evento</BackLink>
       <Breadcrumbs
         items={[
           { label: 'Explorar', to: paths.home },
@@ -45,7 +49,10 @@ export default function Origin() {
         title="Como chegar"
         description="Seu próximo encontro com a música começa com um ponto de partida."
       >
-        <StatusBadge>◎ Defina sua origem para começar</StatusBadge>
+        <Badge variant="muted" size="md">
+          <LocateFixed className="size-3.5" />
+          Defina sua origem para começar
+        </Badge>
       </SectionHeading>
 
       <EventStrip event={event} />
@@ -58,9 +65,7 @@ export default function Origin() {
           className="p-6 max-md:p-7 max-sm:p-[21px]"
         >
           <div className="mb-5 flex items-center gap-3">
-            <IconTile>
-              <LocateIcon className="h-[23px] w-[23px]" />
-            </IconTile>
+            <IconTile icon={LocateFixed} />
             <h2 id="origem-titulo" className="text-[20px] max-sm:text-[18px]">
               De onde você vai sair?
             </h2>
@@ -74,11 +79,16 @@ export default function Origin() {
             </p>
           </div>
 
-          <Button block disabled aria-describedby="geolocalizacao-aviso">
-            ◎ Usar minha localização (demo)
+          <Button
+            block
+            aria-describedby="geolocalizacao-aviso"
+            onClick={() => logDemoAction('Pedir localização do usuário')}
+          >
+            <LocateFixed />
+            Usar minha localização (demo)
           </Button>
           <DemoNote id="geolocalizacao-aviso" size="xs" className="mt-[10px]">
-            Demonstração visual: nenhuma localização é solicitada ou coletada.
+            Demonstração: o pedido só aparece no console; nenhuma localização é solicitada ou coletada.
           </DemoNote>
 
           <div className="my-[17px] flex items-center gap-[10px] text-[10px] text-muted-foreground before:h-px before:flex-1 before:bg-line before:content-[''] after:h-px after:flex-1 after:bg-line after:content-['']">
@@ -89,10 +99,19 @@ export default function Origin() {
             aria-label="Definir partida (demonstração)"
             aria-describedby="planejamento-aviso"
             autoComplete="off"
-            onSubmit={preventSubmit}
+            onSubmit={onFormSubmit(async (data) => {
+              await api.routes.plan({
+                eventId: event.id,
+                origin: text(data, 'endereco'),
+                mode: text(data, 'transporte') as RouteOption['id'],
+              })
+              navigate(paths.eventRoute(event.id))
+            })}
           >
             <Field
               id="endereco"
+              required
+              name="endereco"
               label="Endereço de partida"
               type="text"
               placeholder="Digite um endereço de partida"
@@ -133,20 +152,20 @@ export default function Origin() {
               A escolha é apenas visual e não altera o mapa.
             </DemoNote>
 
-            <Button type="submit" block disabled>
-              Traçar rota <span aria-hidden="true">→</span>
+            <Button type="submit" block>
+              Traçar rota <ArrowRight />
             </Button>
             <DemoNote id="planejamento-aviso" size="xs" className="mt-[10px]">
-              Defina a partida para habilitar o planejamento.
-              <br />
-              Nesta versão estática, o planejamento permanece desativado mesmo após preencher o campo. Nenhum
-              endereço é enviado.
+              Demonstração: o pedido de rota só aparece no console e abre a rota de exemplo. Nenhum endereço é
+              enviado.
             </DemoNote>
           </form>
 
-          <TextLink to={paths.eventRoute(event.id)} className="mt-4 block text-center">
-            Ver rota de exemplo →
-          </TextLink>
+          <Button asChild variant="link" className="mt-4 flex">
+            <Link to={paths.eventRoute(event.id)}>
+              Ver rota de exemplo <ArrowRight />
+            </Link>
+          </Button>
 
           <DemoNote size="xs" className="mt-[18px] border-t border-line pt-[15px]">
             Sua localização só deverá ser usada com seu consentimento em uma versão integrada. Aqui não há
