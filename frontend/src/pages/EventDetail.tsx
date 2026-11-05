@@ -1,16 +1,22 @@
 import { ArrowRight, Calendar, Heart, MapPin, Share2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
-import Breadcrumbs from '@/components/common/Breadcrumbs'
 import DemoNote from '@/components/common/DemoNote'
 import IconTile from '@/components/common/IconTile'
 import InitialsAvatar from '@/components/common/InitialsAvatar'
-import NotFound from '@/components/common/NotFound'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
 import CommentItem from '@/components/events/CommentItem'
 import RoutePreview from '@/components/events/RoutePreview'
 import { Badge } from '@/components/ui/badge'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,55 +24,62 @@ import WeatherCard from '@/components/weather/WeatherCard'
 import { useComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEvent } from '@/hooks/useEvents'
 import { categories } from '@/lib/categories'
 import { logDemoAction } from '@/lib/demo'
+import { shortName } from '@/lib/events'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { api } from '@/services/api'
+import type { EventWithDetails } from '@/types'
 
-export default function EventDetail() {
-  const event = useEvent()
+export default function EventDetail({ event }: { event: EventWithDetails }) {
   const user = useCurrentUser()
-  const comments = useComments(event?.id)
-  useDocumentTitle(event ? `${event.title} | CultHub` : 'Evento não encontrado | CultHub')
-
-  if (!event?.details) {
-    return <NotFound message="Este evento não possui uma página de detalhes nesta demonstração." />
-  }
+  const comments = useComments(event.id)
+  useDocumentTitle(`${event.title} | CultHub`)
 
   const category = categories[event.category]
-  const shortName = event.shortTitle ?? event.title
 
   return (
     <>
       <BackLink to={paths.home}>Voltar para explorar</BackLink>
-      <Breadcrumbs
-        items={[{ label: 'Explorar', to: paths.home }, { label: category.label }, { label: shortName }]}
-      />
+      <Breadcrumb className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to={paths.home}>Explorar</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>{category.label}</BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{shortName(event)}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
-      <div className="relative mb-8 overflow-hidden rounded-[32px] bg-[#2b2522] after:pointer-events-none after:absolute after:inset-x-0 after:top-[55%] after:bottom-0 after:bg-linear-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-[22px]">
+      <div className="relative mb-8 overflow-hidden rounded-4xl bg-stone-800 after:pointer-events-none after:absolute after:inset-x-0 after:top-11/20 after:bottom-0 after:bg-linear-to-b after:from-transparent after:to-black/40 after:content-[''] max-sm:mb-6 max-sm:rounded-3xl">
         <img
           src={event.image}
           alt={event.imageAlt}
-          className="block h-[400px] w-full object-cover object-[center_47%] max-md:h-[330px] max-sm:h-[235px]"
+          className="block h-100 w-full object-cover max-md:h-84 max-sm:h-60"
         />
-        <Badge size="lg" className="absolute bottom-[25px] left-[30px] z-1 max-sm:bottom-4 max-sm:left-4">
-          {category.label} • {shortName}
+        <Badge size="lg" className="absolute bottom-6 left-7.5 z-1 max-sm:bottom-4 max-sm:left-4">
+          {category.label} • {shortName(event)}
         </Badge>
       </div>
 
-      <div className="space-y-12 max-sm:space-y-[34px]">
+      <div className="space-y-12 max-sm:space-y-8.5">
         <section
           aria-labelledby="evento-titulo"
-          className="grid grid-cols-[minmax(0,2fr)_minmax(285px,.85fr)] items-start gap-[34px] max-lg:gap-[26px] max-md:grid-cols-[minmax(0,1fr)]"
+          className="grid grid-cols-[minmax(0,2fr)_minmax(285px,.85fr)] items-start gap-8.5 max-lg:gap-6.5 max-md:grid-cols-1"
         >
           <div>
-            <h1 id="evento-titulo" className="max-w-[700px] text-[40px] text-ink max-sm:text-[32px]">
+            <h1 id="evento-titulo" className="max-w-175 text-foreground">
               {event.title}
             </h1>
 
-            <div className="mt-[22px] mb-2 flex flex-wrap gap-[10px]">
+            <div className="mt-5.5 mb-2 flex flex-wrap gap-2.5">
               <Button
                 variant="outline"
                 aria-describedby="acoes-aviso"
@@ -88,27 +101,27 @@ export default function EventDetail() {
               Demonstração: salvar e compartilhar só registram a ação no console.
             </DemoNote>
 
-            <div className="mt-[30px]">
-              <h2 className="mb-4 text-[23px]">Sobre esta experiência</h2>
-              {event.details.about.map((paragraph, index) => (
-                <p key={paragraph} className={index > 0 ? 'mt-[14px] leading-[1.8]' : 'leading-[1.8]'}>
-                  {paragraph}
-                </p>
-              ))}
+            <div className="mt-7.5">
+              <h2 className="mb-4 text-2xl">Sobre esta experiência</h2>
+              <div className="space-y-3.5 leading-relaxed">
+                {event.details.about.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
             </div>
 
             <Surface
               as="section"
               aria-labelledby="local-titulo"
-              className="mt-[26px] flex gap-[17px] max-sm:flex-col max-sm:gap-3"
+              className="mt-6.5 flex gap-4 max-sm:flex-col max-sm:gap-3"
             >
               <IconTile icon={MapPin} />
               <div>
-                <h2 id="local-titulo" className="text-[22px]">
+                <h2 id="local-titulo" className="text-2xl">
                   Onde acontece
                 </h2>
-                <strong className="mt-[10px] block">{event.venue}</strong>
-                <p className="mt-[9px] mb-[13px] text-[13px]">
+                <strong className="mt-2.5 block">{event.venue}</strong>
+                <p className="mt-2 mb-3 text-sm">
                   O local aparece no mapa ilustrativo do CultHub. Consulte os canais oficiais do espaço para
                   endereço de acesso, acessibilidade e orientações de chegada.
                 </p>
@@ -121,14 +134,14 @@ export default function EventDetail() {
             </Surface>
           </div>
 
-          <Surface as="aside" aria-label="Preço e planejamento da visita" bg="bg-[#fff0d9]">
+          <Surface as="aside" aria-label="Preço e planejamento da visita" className="bg-cream">
             <Badge>{category.label}</Badge>
-            <p className="mt-[22px] text-[36px] leading-[1.2] font-[750] tracking-[-.04em] text-maroon max-md:mt-[14px] max-sm:text-[32px]">
+            <p className="mt-5.5 text-4xl font-bold tracking-tighter text-maroon max-md:mt-3.5 max-sm:text-3xl">
               {event.price}
             </p>
-            <p className="text-[12px] text-muted-foreground">Preço informado no exemplo</p>
+            <p className="text-xs text-muted-foreground">Preço informado no exemplo</p>
 
-            <div className="my-6 grid gap-4 border-y border-[#e8d8bf] py-6 text-[13px] max-md:my-[18px] max-md:flex max-md:flex-wrap max-md:gap-x-8 max-md:gap-y-[18px] max-md:py-[18px]">
+            <div className="my-6 grid gap-4 border-y border-maroon/10 py-6 text-sm max-md:my-4.5 max-md:flex max-md:flex-wrap max-md:gap-x-8 max-md:gap-y-4.5 max-md:py-4.5">
               <p className="flex items-start gap-2">
                 <Calendar className="mt-0.5 size-4 shrink-0" />
                 <span>
@@ -182,9 +195,9 @@ export default function EventDetail() {
               void api.comments.create(event.id, text(data, 'comentario'))
               form.reset()
             })}
-            className="mb-[22px]"
+            className="mb-5.5"
           >
-            <div className="mb-[18px] flex items-center gap-3 text-[12px]">
+            <div className="mb-4.5 flex items-center gap-3 text-xs">
               <InitialsAvatar initials={user.initials} size="sm" aria-hidden="true" />
               <p>
                 Comentando como <strong>{user.name}</strong> • perfil fictício
@@ -201,7 +214,7 @@ export default function EventDetail() {
               placeholder="Escreva seu comentário sobre o evento..."
             />
 
-            <div className="mt-[14px] flex items-center justify-between gap-[18px] max-sm:flex-col max-sm:items-start max-sm:gap-3">
+            <div className="mt-3.5 flex items-center justify-between gap-4.5 max-sm:flex-col max-sm:items-start max-sm:gap-3">
               <DemoNote id="comentario-aviso">
                 Compartilhe ideias com respeito.
                 <br />

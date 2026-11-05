@@ -25,6 +25,9 @@ export interface CultEvent {
   details?: EventDetails
 }
 
+/** Evento com página própria (detalhes, origem e rota). */
+export type EventWithDetails = CultEvent & { details: EventDetails }
+
 export interface User {
   id: string
   name: string

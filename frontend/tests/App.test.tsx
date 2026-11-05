@@ -27,4 +27,14 @@ describe('rotas', () => {
     renderAt(route)
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument()
   })
+
+  it.each([
+    [paths.event('derby-paulista'), 'Este evento não possui uma página de detalhes nesta demonstração.'],
+    [paths.eventOrigin('nao-existe'), 'Não encontramos o evento para planejar a visita.'],
+    [paths.eventRoute('nao-existe'), 'Não encontramos o evento para exibir a rota.'],
+  ])('%s sem página própria mostra o aviso da página', (route, message) => {
+    renderAt(route)
+    expect(screen.getByRole('heading', { level: 1, name: 'Página não encontrada' })).toBeInTheDocument()
+    expect(screen.getByText(message)).toBeInTheDocument()
+  })
 })

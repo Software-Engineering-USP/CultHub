@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { events, findEvent } from '@/data/events'
-import { shortName } from '@/lib/events'
+import { hasDetails, shortName } from '@/lib/events'
 
 const jazz = findEvent('sp-jazz-blues-festival')!
 const semDetalhes = findEvent('derby-paulista')!
@@ -14,6 +14,12 @@ describe('lib/events', () => {
   it('shortName usa shortTitle e cai para o título', () => {
     expect(shortName(jazz)).toBe('Jazz & Blues')
     expect(shortName(semDetalhes)).toBe(semDetalhes.title)
+  })
+
+  it('hasDetails só aceita eventos com página própria', () => {
+    expect(hasDetails(jazz)).toBe(true)
+    expect(hasDetails(semDetalhes)).toBe(false)
+    expect(hasDetails(undefined)).toBe(false)
   })
 
   it('ids dos eventos são únicos', () => {

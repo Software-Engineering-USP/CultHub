@@ -1,28 +1,19 @@
 import type { ElementType, HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
-interface SurfaceProps extends HTMLAttributes<HTMLElement> {
+export interface SurfaceProps extends HTMLAttributes<HTMLElement> {
   as?: ElementType
-  /** Classe de fundo (padrão: bg-surface) */
-  bg?: string
-  /** Aplica o padding padrão (28px, 22px no mobile) */
+  /** @deprecated Não tem mais efeito (o padding vem de className). Sai quando Entrar e Minha conta migrarem. */
   padded?: boolean
 }
 
-/** Painel branco com borda, raio e sombra suave. */
-export default function Surface({
-  as: Tag = 'div',
-  bg = 'bg-surface',
-  padded = true,
-  className,
-  ...rest
-}: Readonly<SurfaceProps>) {
+/** Painel claro com borda, raio e sombra suave. Fundo e padding podem ser trocados por className. */
+export default function Surface({ as: Tag = 'div', padded, className, ...rest }: Readonly<SurfaceProps>) {
+  void padded
   return (
     <Tag
       className={cn(
-        'rounded-3xl border border-line shadow-soft max-sm:rounded-[20px]',
-        bg,
-        padded && 'p-7 max-sm:p-[22px]',
+        'rounded-3xl border border-border bg-card p-7 shadow-soft max-sm:rounded-2xl max-sm:p-5.5',
         className,
       )}
       {...rest}

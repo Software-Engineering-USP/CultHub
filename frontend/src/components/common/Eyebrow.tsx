@@ -2,16 +2,11 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 interface EyebrowProps {
-  tight?: boolean
   className?: string
   children: ReactNode
 }
 
 /** Texto pequeno em caixa-alta. O tamanho e a cor vêm de className. */
-export default function Eyebrow({ tight, className, children }: Readonly<EyebrowProps>) {
-  return (
-    <span className={cn('font-[750] uppercase', tight ? 'tracking-[.08em]' : 'tracking-[.12em]', className)}>
-      {children}
-    </span>
-  )
+export default function Eyebrow({ className, children }: Readonly<EyebrowProps>) {
+  return <span className={cn('font-bold tracking-widest uppercase', className)}>{children}</span>
 }
