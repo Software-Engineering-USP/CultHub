@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from clima.servicos import ErroOpenMeteo, buscar_localidades, buscar_previsao
 
+
 class BuscaLocalidadeSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=100, trim_whitespace=True)
     pais = serializers.RegexField(r"^[A-Za-z]{2}$", required=False)

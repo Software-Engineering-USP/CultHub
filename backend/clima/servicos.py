@@ -4,6 +4,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+
 class ErroOpenMeteo(Exception):
     """Erro controlado ao consultar o Open-Meteo."""
 
