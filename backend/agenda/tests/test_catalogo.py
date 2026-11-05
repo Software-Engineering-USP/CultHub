@@ -49,6 +49,14 @@ class CatalogoComMarcacoesTest(APITestCase):
         itens = self.client.get("/api/eventos/").json()["results"]
         self.assertEqual([i["salvo"] for i in itens], [False])
 
+    def test_presenca_de_outro_usuario_nao_aparece(self):
+        evento = criar_evento()
+        PresencaEmEvento.objects.create(usuario=self.beto, evento=evento)
+        self.client.force_login(self.ana)
+        corpo = self.detalhe(evento).json()
+        self.assertIs(corpo["presenca"], False)
+        self.assertEqual(corpo["total_presencas"], 1)
+
     def test_listagem_tem_salvo_e_nao_tem_contagem(self):
         salvo = criar_evento(titulo="Salvo")
         criar_evento(titulo="Outro")

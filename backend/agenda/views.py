@@ -6,8 +6,9 @@ from drf_spectacular.utils import (
     OpenApiParameter,
     OpenApiResponse,
     extend_schema,
+    inline_serializer,
 )
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,22 +19,17 @@ from agenda.serializers import (
     PeriodoSerializer,
     QuandoSerializer,
 )
+from catalogo.consultas import eventos_com_relacoes
 from catalogo.filtros import DATA_FIM_EFETIVA, filtrar_terminados
 from catalogo.models import Evento
 from catalogo.paginacao import PaginacaoEventos
-from catalogo.views import eventos_com_relacoes
+from catalogo.views import ERRO_DE_FILTRO
 
-
-@extend_schema(
-    request=None,
-    responses={
-        200: OpenApiResponse(description="Marcação já existia."),
-        201: OpenApiResponse(description="Marcação criada."),
-        204: OpenApiResponse(description="Marcação removida (ou ausente)."),
-        404: OpenApiResponse(description="Evento inexistente."),
-        409: OpenApiResponse(description="Evento removido do catálogo."),
-    },
+_CORPO_MARCACAO = inline_serializer(
+    "CorpoMarcacao", {"salvo": serializers.BooleanField(required=False)}
 )
+
+
 class MarcacaoView(APIView):
     """Marca (POST) ou desmarca (DELETE) um evento para o usuário logado.
 
@@ -44,6 +40,19 @@ class MarcacaoView(APIView):
     modelo = None
     chave = None
 
+    @extend_schema(
+        request=None,
+        responses={
+            (200, "application/json"): _CORPO_MARCACAO,
+            (201, "application/json"): _CORPO_MARCACAO,
+            404: OpenApiResponse(description="Evento inexistente."),
+            409: OpenApiResponse(description="Evento removido do catálogo."),
+        },
+        description=(
+            "Marca o evento. 201 se criou, 200 se já existia. O corpo traz "
+            "`salvo` (rota de salvos) ou `presenca` (rota de presença)."
+        ),
+    )
     def post(self, request, pk):
         evento = get_object_or_404(Evento, pk=pk)
         marcacao = self.modelo.objects.filter(
@@ -62,6 +71,15 @@ class MarcacaoView(APIView):
             status=status.HTTP_201_CREATED if criada else status.HTTP_200_OK,
         )
 
+    @extend_schema(
+        request=None,
+        responses={
+            204: OpenApiResponse(
+                description="Marcação removida (ou ausente)."
+            ),
+            404: OpenApiResponse(description="Evento inexistente."),
+        },
+    )
     def delete(self, request, pk):
         evento = get_object_or_404(Evento, pk=pk)
         self.modelo.objects.filter(
@@ -103,7 +121,13 @@ class SalvosView(ListaDoUsuarioView):
             "encerrados.",
         )
     ],
-    responses=EventoDaAgendaSerializer(many=True),
+    responses={
+        200: EventoDaAgendaSerializer(many=True),
+        400: OpenApiResponse(
+            response=ERRO_DE_FILTRO,
+            description="Parâmetros inválidos; mensagens por parâmetro.",
+        ),
+    },
 )
 class PresencasView(ListaDoUsuarioView):
     """Eventos com presença marcada, futuros ou passados."""
@@ -147,7 +171,13 @@ class PresencasView(ListaDoUsuarioView):
             description="Fim do período (AAAA-MM-DD), até 366 dias.",
         ),
     ],
-    responses=EventoDaAgendaSerializer(many=True),
+    responses={
+        200: EventoDaAgendaSerializer(many=True),
+        400: OpenApiResponse(
+            response=ERRO_DE_FILTRO,
+            description="Parâmetros inválidos; mensagens por parâmetro.",
+        ),
+    },
 )
 class AgendaView(ListaDoUsuarioView):
     """Salvos e presenças que cruzam o período, uma vez cada."""

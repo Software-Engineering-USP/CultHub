@@ -11,12 +11,15 @@ def _marcado_em(modelo, usuario):
     )
 
 
-def anotar_marcacoes(eventos, usuario):
-    """Anota `salvo_em` e `presenca_em` (marcado_em do usuário ou None)."""
+def anotar_marcacoes(eventos, usuario, *, presenca=True):
+    """Anota `salvo_em` e, se `presenca`, `presenca_em` (ou None)."""
     if not usuario.is_authenticated:
         nulo = Value(None, output_field=DateTimeField())
-        return eventos.annotate(salvo_em=nulo, presenca_em=nulo)
-    return eventos.annotate(
-        salvo_em=_marcado_em(InteresseEmEvento, usuario),
-        presenca_em=_marcado_em(PresencaEmEvento, usuario),
-    )
+        anotacoes = {"salvo_em": nulo}
+        if presenca:
+            anotacoes["presenca_em"] = nulo
+        return eventos.annotate(**anotacoes)
+    anotacoes = {"salvo_em": _marcado_em(InteresseEmEvento, usuario)}
+    if presenca:
+        anotacoes["presenca_em"] = _marcado_em(PresencaEmEvento, usuario)
+    return eventos.annotate(**anotacoes)
