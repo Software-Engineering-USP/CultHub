@@ -18,14 +18,14 @@ export default function WeatherStats({ weather, variant }: Readonly<WeatherStats
       className={cn(
         'grid grid-cols-3',
         variant === 'card'
-          ? 'mt-6 mb-4 gap-3 border-t border-line pt-5'
-          : 'm-0 gap-6 border-x border-line px-6 max-lg:gap-[14px] max-lg:px-4 max-md:flex-1 max-md:border-0 max-md:pl-0 max-sm:w-full max-sm:basis-full max-sm:border-t max-sm:pt-[15px]',
+          ? 'mt-6 mb-4 gap-3 border-t border-border pt-5'
+          : 'm-0 gap-6 border-x border-border px-6 max-lg:gap-3.5 max-lg:px-4 max-md:flex-1 max-md:border-0 max-md:pl-0 max-sm:w-full max-sm:basis-full max-sm:border-t max-sm:pt-4',
       )}
     >
       {stats.map((stat) => (
         <div key={stat.label}>
-          <dt className="text-[11px] text-muted-foreground">{stat.label}</dt>
-          <dd className="mt-1 text-[15px] font-[650]">{stat.value}</dd>
+          <dt className="text-xs text-muted-foreground">{stat.label}</dt>
+          <dd className="mt-1 text-base font-semibold">{stat.value}</dd>
         </div>
       ))}
     </dl>
