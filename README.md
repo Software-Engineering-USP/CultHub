@@ -17,11 +17,13 @@ O backend fica em http://localhost:8000 e o frontend em http://localhost:5173. A
 
 | Quando | O que acontece | O que fazer |
 |---|---|---|
-| O `package-lock.json` mudou | `GET /` responde 200, mas a aplicação quebra com `Failed to resolve import` | `docker compose up --build -V` |
-| O `node_modules` foi criado como root | Frontend falha com `EACCES` | `docker compose up --build -V` |
+| O `package-lock.json` mudou | `GET /` responde 200, mas a aplicação quebra com `Failed to resolve import` | `docker compose down -v` e depois `docker compose up --build` |
+| O `node_modules` foi criado como root | Frontend falha com `EACCES` | `docker compose down -v` e depois `docker compose up --build` |
 | O `db.sqlite3` foi criado como root | Backend falha com `attempt to write a readonly database` | `docker compose run --rm --no-deps --user root backend chown app:app /app/db.sqlite3` |
 
-O `node_modules` fica em um volume anônimo, que sobrevive ao `--build`. A opção `-V` recria esse volume a partir da imagem.
+O `node_modules` fica em um volume anônimo, que sobrevive ao `--build`. O `down -v` apaga esse volume, e o `up` seguinte o recria a partir da imagem. O `db.sqlite3` fica no bind mount e não é afetado.
+
+Se o `up --build` já tiver rodado depois da mudança, o volume antigo pode ficar no disco, sem uso. Isso não afeta o app. O `docker volume prune` libera esse espaço, mas apaga os volumes anônimos sem uso de todos os projetos da máquina.
 
 ### Ao mudar dependências ou arquivos
 
