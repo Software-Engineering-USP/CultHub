@@ -8,6 +8,7 @@ import urllib.request
 class ErroOpenMeteo(Exception):
     """Erro controlado ao consultar o Open-Meteo."""
 
+
 def _get_json(base_url, parametros):
     url = f"{base_url}?{urllib.parse.urlencode(parametros)}"
     try:
@@ -32,6 +33,7 @@ def _get_json(base_url, parametros):
         raise ErroOpenMeteo("resposta inválida")
     return dados
 
+
 def buscar_localidades(nome, pais=None):
     parametros = {"name": nome, "count": 10, "language": "pt"}
     if pais:
@@ -40,6 +42,7 @@ def buscar_localidades(nome, pais=None):
         "https://geocoding-api.open-meteo.com/v1/search", parametros
     )
     return dados.get("results", [])
+
 
 def buscar_previsao(latitude, longitude, dias=1):
     parametros = {

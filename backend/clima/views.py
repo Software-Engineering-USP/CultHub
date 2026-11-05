@@ -18,12 +18,15 @@ class BuscaLocalidadeSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=100, trim_whitespace=True)
     pais = serializers.RegexField(r"^[A-Za-z]{2}$", required=False)
 
+
 class ConsultaPrevisaoSerializer(serializers.Serializer):
     latitude = serializers.FloatField(min_value=-90, max_value=90)
     longitude = serializers.FloatField(min_value=-180, max_value=180)
     dias = serializers.IntegerField(min_value=1, max_value=16, default=7)
 
+
 ERRO_UPSTREAM = {"detail": "Não foi possível consultar o serviço de clima."}
+
 
 @extend_schema(
     parameters=[
@@ -66,6 +69,7 @@ class LocalidadeListView(APIView):
             return Response(ERRO_UPSTREAM, status=502)
         return Response({"resultados": dados})
 
+
 @extend_schema(
     parameters=[
         OpenApiParameter(
@@ -95,7 +99,6 @@ class LocalidadeListView(APIView):
         502: OpenApiResponse(description="Falha no serviço de clima."),
     },
 )
-
 class PrevisaoView(APIView):
     """Condições atuais e previsão diária para coordenadas WGS84."""
 
