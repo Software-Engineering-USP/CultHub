@@ -29,6 +29,11 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 
+# Importação de eventos da Ticketmaster: a chave vem do ambiente (ver
+# backend/.env.example) e nunca deve ir para o git.
+TICKETMASTER_API_KEY = os.environ.get("TICKETMASTER_API_KEY", "")
+TICKETMASTER_PAIS = os.environ.get("TICKETMASTER_PAIS", "BR")
+
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
 
 
