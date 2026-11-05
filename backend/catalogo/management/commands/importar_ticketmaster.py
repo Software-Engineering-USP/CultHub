@@ -49,3 +49,8 @@ class Command(BaseCommand):
             self.stdout.write(f"com erro: {len(resumo.com_erro)}")
             for item in resumo.com_erro:
                 self.stdout.write(f"  - {item}")
+        if resumo.remocao_pulada:
+            self.stdout.write(
+                "remoção pulada: há item com erro e sem id; nenhum evento "
+                "foi removido."
+            )

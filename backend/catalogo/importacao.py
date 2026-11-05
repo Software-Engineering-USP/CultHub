@@ -19,6 +19,18 @@ from .models import (
 
 FUSO_PADRAO = Evento._meta.get_field("fuso").default
 
+# Dado ruim em um evento não derruba a importação inteira. Falha do próprio
+# banco (ex.: OperationalError) continua interrompendo.
+ERROS_DE_DADO = (
+    KeyError,
+    ValueError,
+    TypeError,
+    AttributeError,
+    ArithmeticError,
+    IntegrityError,
+    ValidationError,
+)
+
 
 class ErroImportacao(Exception):
     """Nenhum evento válido: o catálogo não pode ser alterado."""
@@ -32,6 +44,7 @@ class ResumoImportacao:
     ignorados: int = 0
     sem_categoria: list[str] = field(default_factory=list)
     com_erro: list[str] = field(default_factory=list)
+    remocao_pulada: bool = False
 
 
 def _objeto(dados, chave):
@@ -80,7 +93,16 @@ def _hora(inicio):
     return time.fromisoformat(hora) if hora else None
 
 
+def _id_externo(dados):
+    """`id` do evento em texto; `None` se não der para identificá-lo."""
+    valor = dados.get("id") if isinstance(dados, dict) else None
+    return valor if isinstance(valor, str) and valor else None
+
+
 def _salvar_evento(dados, agora):
+    id_externo = _id_externo(dados)
+    if id_externo is None:
+        raise ValueError("evento sem id")
     titulo = _texto(dados, "name").strip()
     if not titulo:
         raise ValueError("evento sem título")
@@ -90,7 +112,7 @@ def _salvar_evento(dados, agora):
     classificacoes = dados.get("classifications") or []
     evento, criado = Evento.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
-        id_externo=dados["id"],
+        id_externo=id_externo,
         defaults={
             "titulo": titulo,
             "descricao": _texto(dados, "info"),
@@ -137,16 +159,37 @@ def _salvar_evento(dados, agora):
     return evento, criado, bool(codigos)
 
 
+def _descrever_erro(dados):
+    if not isinstance(dados, dict):
+        return f"?: não é objeto ({type(dados).__name__})"
+    return f"{dados.get('id', '?')}: {dados.get('name') or '?'}"
+
+
+def _contabilizar(resumo, evento, criado, tem_categoria):
+    if criado:
+        resumo.criados += 1
+    else:
+        resumo.atualizados += 1
+    if not tem_categoria:
+        resumo.sem_categoria.append(evento.titulo)
+
+
+def _remover_ausentes(presentes, agora):
+    return (
+        Evento.objects.filter(
+            provedor=Provedor.TICKETMASTER, removido_em__isnull=True
+        )
+        .exclude(id_externo__in=presentes)
+        .update(removido_em=agora)
+    )
+
+
 @transaction.atomic
 def importar(eventos, agora):
     resumo = ResumoImportacao()
     vistos = set()
     ids_com_erro = set()
     for dados in eventos:
-        if not isinstance(dados, dict):
-            resumo.ignorados += 1
-            resumo.com_erro.append(f"?: não é objeto ({type(dados).__name__})")
-            continue
         try:
             situacao = _objeto(_objeto(dados, "dates"), "status").get("code")
             if dados.get("test") is True or situacao == "cancelled":
@@ -154,42 +197,23 @@ def importar(eventos, agora):
                 continue
             with transaction.atomic():
                 evento, criado, tem_categoria = _salvar_evento(dados, agora)
-        except (
-            KeyError,
-            ValueError,
-            TypeError,
-            AttributeError,
-            ArithmeticError,
-            IntegrityError,
-            ValidationError,
-        ):
-            # Dado ruim em um evento não derruba a importação inteira. Falha
-            # do próprio banco (ex.: OperationalError) continua interrompendo.
+        except ERROS_DE_DADO:
             resumo.ignorados += 1
-            resumo.com_erro.append(
-                f"{dados.get('id', '?')}: {dados.get('name') or '?'}"
-            )
-            # Veio na resposta: continua no catálogo com os dados antigos.
-            if isinstance(dados.get("id"), str):
-                ids_com_erro.add(dados["id"])
+            resumo.com_erro.append(_descrever_erro(dados))
+            ids_com_erro.add(_id_externo(dados))
             continue
         vistos.add(evento.id_externo)
-        if criado:
-            resumo.criados += 1
-        else:
-            resumo.atualizados += 1
-        if not tem_categoria:
-            resumo.sem_categoria.append(evento.titulo)
+        _contabilizar(resumo, evento, criado, tem_categoria)
     if resumo.com_erro and not vistos:
         raise ErroImportacao(
             f"nenhum evento válido ({len(resumo.com_erro)} com erro; "
             f"primeiro: {resumo.com_erro[0]}); nada foi alterado."
         )
-    resumo.removidos = (
-        Evento.objects.filter(
-            provedor=Provedor.TICKETMASTER, removido_em__isnull=True
-        )
-        .exclude(id_externo__in=vistos | ids_com_erro)
-        .update(removido_em=agora)
-    )
+    # Item com erro e sem id pode ser qualquer evento do catálogo: sem saber
+    # qual, nada é removido. Com id, o evento veio na resposta e continua no
+    # catálogo com os dados antigos.
+    if None in ids_com_erro:
+        resumo.remocao_pulada = True
+    else:
+        resumo.removidos = _remover_ausentes(vistos | ids_com_erro, agora)
     return resumo
