@@ -1,4 +1,4 @@
-from django.db.models import F
+from django.db.models import Count, F
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -9,6 +9,7 @@ from drf_spectacular.utils import (
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
 
+from agenda.consultas import anotar_marcacoes
 from catalogo.filtros import aplicar_filtros, visiveis
 from catalogo.models import CategoriaCultural, Evento
 from catalogo.paginacao import PaginacaoEventos
@@ -106,7 +107,8 @@ class EventoListView(ListAPIView):
     pagination_class = PaginacaoEventos
 
     def get_queryset(self):
-        eventos = visiveis(_eventos(), timezone.now())
+        eventos = anotar_marcacoes(_eventos(), self.request.user)
+        eventos = visiveis(eventos, timezone.now())
         eventos = aplicar_filtros(eventos, self.request.query_params)
         return eventos.order_by(
             "data_inicio",
@@ -119,6 +121,10 @@ class EventoListView(ListAPIView):
 class EventoDetalheView(RetrieveAPIView):
     """Detalhe de um evento (também removidos e já encerrados)."""
 
-    queryset = _eventos()
     serializer_class = EventoDetalheSerializer
     permission_classes = (AllowAny,)
+
+    def get_queryset(self):
+        return anotar_marcacoes(_eventos(), self.request.user).annotate(
+            total_presencas=Count("presencas", distinct=True)
+        )

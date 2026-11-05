@@ -68,6 +68,7 @@ class EventoSerializer(serializers.ModelSerializer):
     faixas_preco = FaixaPrecoSerializer(many=True, read_only=True)
     imagens = serializers.SerializerMethodField()
     distancia_km = serializers.SerializerMethodField()
+    salvo = serializers.SerializerMethodField()
 
     class Meta:
         model = Evento
@@ -92,6 +93,7 @@ class EventoSerializer(serializers.ModelSerializer):
             "faixas_preco",
             "imagens",
             "distancia_km",
+            "salvo",
         )
 
     @extend_schema_field(ImagemSerializer(many=True))
@@ -108,9 +110,14 @@ class EventoSerializer(serializers.ModelSerializer):
         distancia = getattr(obj, "distancia_km", None)
         return None if distancia is None else round(distancia, 1)
 
+    def get_salvo(self, obj) -> bool:
+        return getattr(obj, "salvo_em", None) is not None
+
 
 class EventoDetalheSerializer(EventoSerializer):
     removido = serializers.SerializerMethodField()
+    presenca = serializers.SerializerMethodField()
+    total_presencas = serializers.IntegerField(read_only=True)
 
     class Meta(EventoSerializer.Meta):
         fields = (
@@ -118,7 +125,12 @@ class EventoDetalheSerializer(EventoSerializer):
             "avisos",
             "situacao",
             "removido",
+            "presenca",
+            "total_presencas",
         )
 
     def get_removido(self, obj) -> bool:
         return obj.removido_em is not None
+
+    def get_presenca(self, obj) -> bool:
+        return getattr(obj, "presenca_em", None) is not None
