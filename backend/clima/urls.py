@@ -1,5 +1,4 @@
 from django.urls import path
-
 from clima.views import LocalidadeListView, PrevisaoView
 
 urlpatterns = [
