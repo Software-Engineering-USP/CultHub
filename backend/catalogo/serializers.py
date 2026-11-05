@@ -111,7 +111,7 @@ class EventoSerializer(serializers.ModelSerializer):
         return None if distancia is None else round(distancia, 1)
 
     def get_salvo(self, obj) -> bool:
-        return getattr(obj, "salvo_em", None) is not None
+        return obj.salvo_em is not None
 
 
 class MarcacoesMixin(serializers.Serializer):
@@ -124,7 +124,7 @@ class MarcacoesMixin(serializers.Serializer):
         return obj.removido_em is not None
 
     def get_presenca(self, obj) -> bool:
-        return getattr(obj, "presenca_em", None) is not None
+        return obj.presenca_em is not None
 
 
 class EventoDetalheSerializer(MarcacoesMixin, EventoSerializer):

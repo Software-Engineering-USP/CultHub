@@ -76,7 +76,7 @@ class CatalogoComMarcacoesTest(APITestCase):
             InteresseEmEvento.objects.create(usuario=self.ana, evento=evento)
         self.client.force_login(self.ana)
         # sessão e usuário, depois as mesmas 5 da listagem anônima: contagem,
-        # eventos (com as subqueries de salvo/presença) e os prefetch de
+        # eventos (com a subquery de salvo) e os prefetch de
         # categorias, imagens e preços.
         with self.assertNumQueries(7):
             self.assertEqual(self.client.get("/api/eventos/").status_code, 200)

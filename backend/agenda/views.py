@@ -30,6 +30,11 @@ _CORPO_MARCACAO = inline_serializer(
 )
 
 
+_ERRO_DETALHE = inline_serializer(
+    "ErroDetalhe", {"detail": serializers.CharField()}
+)
+
+
 class MarcacaoView(APIView):
     """Marca (POST) ou desmarca (DELETE) um evento para o usuário logado.
 
@@ -46,7 +51,10 @@ class MarcacaoView(APIView):
             (200, "application/json"): _CORPO_MARCACAO,
             (201, "application/json"): _CORPO_MARCACAO,
             404: OpenApiResponse(description="Evento inexistente."),
-            409: OpenApiResponse(description="Evento removido do catálogo."),
+            409: OpenApiResponse(
+                response=_ERRO_DETALHE,
+                description="Evento removido do catálogo.",
+            ),
         },
         description=(
             "Marca o evento. 201 se criou, 200 se já existia. O corpo traz "
@@ -79,6 +87,10 @@ class MarcacaoView(APIView):
             ),
             404: OpenApiResponse(description="Evento inexistente."),
         },
+        description=(
+            "Desmarca o evento para o usuário; 204 mesmo se não estava "
+            "marcado."
+        ),
     )
     def delete(self, request, pk):
         evento = get_object_or_404(Evento, pk=pk)
