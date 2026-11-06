@@ -66,14 +66,14 @@ export default function Header() {
           </PopoverContent>
         </Popover>
 
-        {onSignIn ? (
+        {onSignIn || !user ? (
           <NavLink to={paths.signIn} className="font-bold text-maroon no-underline">
             Entrar
           </NavLink>
         ) : (
           <NavLink
             to={paths.account}
-            aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de exemplo de ${user.name}`}
+            aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de ${user.name}`}
             className="rounded-full"
           >
             <InitialsAvatar initials={user.initials} className="max-sm:size-9.5" />

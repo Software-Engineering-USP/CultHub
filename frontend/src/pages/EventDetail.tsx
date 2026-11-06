@@ -198,10 +198,14 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
             className="mb-5.5"
           >
             <div className="mb-4.5 flex items-center gap-3 text-xs">
-              <InitialsAvatar initials={user.initials} size="sm" aria-hidden="true" />
-              <p>
-                Comentando como <strong>{user.name}</strong> • perfil fictício
-              </p>
+              {user ? (
+                <>
+                  <InitialsAvatar initials={user.initials} size="sm" aria-hidden="true" />
+                  <p>Comentando como <strong>{user.name}</strong></p>
+                </>
+              ) : (
+                <p>Entre na sua conta para comentar.</p>
+              )}
             </div>
 
             <Label className="sr-only" htmlFor="comentario">
