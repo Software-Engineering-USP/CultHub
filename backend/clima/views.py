@@ -22,7 +22,7 @@ class BuscaLocalidadeSerializer(serializers.Serializer):
 class ConsultaPrevisaoSerializer(serializers.Serializer):
     latitude = serializers.FloatField(min_value=-90, max_value=90)
     longitude = serializers.FloatField(min_value=-180, max_value=180)
-    dias = serializers.IntegerField(min_value=1, max_value=16, default=7)
+    dias = serializers.IntegerField(min_value=1, max_value=16, default=1)
 
 
 ERRO_UPSTREAM = {"detail": "Não foi possível consultar o serviço de clima."}
@@ -88,7 +88,7 @@ class LocalidadeListView(APIView):
             "dias",
             int,
             required=False,
-            description="Dias de previsão, entre 1 e 16 (padrão 7).",
+            description="Dias de previsão, entre 1 e 16 (padrão 1).",
         ),
     ],
     responses={

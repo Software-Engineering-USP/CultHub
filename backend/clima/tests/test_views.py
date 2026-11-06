@@ -80,7 +80,7 @@ class PrevisaoApiTest(APITestCase):
         buscar.assert_called_once_with(-23.55, -46.63, 5)
 
     @patch("clima.views.buscar_previsao")
-    def test_dias_padrao_e_sete(self, buscar):
+    def test_dias_padrao_e_um(self, buscar):
         buscar.return_value = {"daily": {"time": []}}
 
         resposta = self.client.get(
@@ -88,7 +88,7 @@ class PrevisaoApiTest(APITestCase):
         )
 
         self.assertEqual(resposta.status_code, 200)
-        buscar.assert_called_once_with(-23.55, -46.63, 7)
+        buscar.assert_called_once_with(-23.55, -46.63, 1)
 
     def test_coordenadas_obrigatorias(self):
         resposta = self.client.get("/api/clima/previsao/")

@@ -26,7 +26,7 @@ def _get_json(base_url, parametros):
         raise ErroOpenMeteo(
             f"falha de transporte ({type(erro).__name__})"
         ) from None
-    except (ValueError, json.JSONDecodeError):
+    except ValueError:
         raise ErroOpenMeteo("resposta inválida") from None
 
     if not isinstance(dados, dict) or dados.get("error"):
