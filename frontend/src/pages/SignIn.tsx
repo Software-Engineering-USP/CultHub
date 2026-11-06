@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { ArrowRight } from 'lucide-react'
+import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import CategoryDot from '@/components/common/CategoryDot'
@@ -71,7 +71,9 @@ export default function SignIn() {
         </aside>
 
         <Surface as="section" aria-labelledby="login-titulo" padded={false} className={panelClass}>
-          <h2 id="login-titulo" className="text-[23px]">Bem-vindo de volta</h2>
+          <h2 id="login-titulo" className="text-[23px]">
+            Bem-vindo de volta
+          </h2>
           <p className="mt-[7px] mb-6 text-[12px]">Entre na sua conta CultHub.</p>
           <form
             aria-label="Entrar"
@@ -93,8 +95,25 @@ export default function SignIn() {
               }
             })}
           >
-            <Field id="login-email" required name="email" label="E-mail" type="email" placeholder="voce@exemplo.com" inputMode="email" autoComplete="username" />
-            <Field id="login-senha" required name="senha" label="Senha" type="password" placeholder="Digite sua senha" autoComplete="current-password" />
+            <Field
+              id="login-email"
+              required
+              name="email"
+              label="E-mail"
+              type="email"
+              placeholder="voce@exemplo.com"
+              inputMode="email"
+              autoComplete="username"
+            />
+            <Field
+              id="login-senha"
+              required
+              name="senha"
+              label="Senha"
+              type="password"
+              placeholder="Digite sua senha"
+              autoComplete="current-password"
+            />
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="lembrar">
                 <input id="lembrar" name="lembrar" type="checkbox" className={checkboxClass} />
@@ -105,14 +124,20 @@ export default function SignIn() {
             <Button type="submit" block disabled={submitting}>
               Entrar <ArrowRight />
             </Button>
-            <p role={loginMessage ? 'alert' : undefined} aria-live="polite" className="mt-[14px] text-xs text-muted-foreground">
+            <p
+              role={loginMessage ? 'alert' : undefined}
+              aria-live="polite"
+              className="mt-[14px] text-xs text-muted-foreground"
+            >
               {loginMessage || 'A sessão será mantida conforme a opção “Lembrar de mim”.'}
             </p>
           </form>
         </Surface>
 
         <Surface as="section" aria-labelledby="cadastro-titulo" padded={false} className={panelClass}>
-          <h2 id="cadastro-titulo" className="text-[23px]">Primeira vez por aqui?</h2>
+          <h2 id="cadastro-titulo" className="text-[23px]">
+            Primeira vez por aqui?
+          </h2>
           <p className="mt-[7px] mb-6 text-[12px]">Crie sua conta CultHub.</p>
           <form
             aria-label="Criar conta"
@@ -135,9 +160,36 @@ export default function SignIn() {
               }
             })}
           >
-            <Field id="cadastro-nome" required name="nome" label="Nome" type="text" placeholder="Como você quer ser chamado?" autoComplete="name" />
-            <Field id="cadastro-email" required name="email" label="E-mail" type="email" placeholder="voce@exemplo.com" inputMode="email" autoComplete="email" />
-            <Field id="cadastro-senha" required name="senha" label="Senha" type="password" placeholder="Crie uma senha" minLength={8} autoComplete="new-password" help="Use pelo menos 8 caracteres." />
+            <Field
+              id="cadastro-nome"
+              required
+              name="nome"
+              label="Nome"
+              type="text"
+              placeholder="Como você quer ser chamado?"
+              autoComplete="name"
+            />
+            <Field
+              id="cadastro-email"
+              required
+              name="email"
+              label="E-mail"
+              type="email"
+              placeholder="voce@exemplo.com"
+              inputMode="email"
+              autoComplete="email"
+            />
+            <Field
+              id="cadastro-senha"
+              required
+              name="senha"
+              label="Senha"
+              type="password"
+              placeholder="Crie uma senha"
+              minLength={8}
+              autoComplete="new-password"
+              help="Use pelo menos 8 caracteres."
+            />
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="termos">
                 <input id="termos" name="termos" type="checkbox" required className={checkboxClass} />
@@ -147,19 +199,32 @@ export default function SignIn() {
             <Button type="submit" block disabled={submitting}>
               Criar conta <ArrowRight />
             </Button>
-            <p role={signupMessage ? 'alert' : undefined} aria-live="polite" className="mt-[14px] text-xs text-muted-foreground">
+            <p
+              role={signupMessage ? 'alert' : undefined}
+              aria-live="polite"
+              className="mt-[14px] text-xs text-muted-foreground"
+            >
               {signupMessage || 'Ao criar a conta, você entrará automaticamente.'}
             </p>
           </form>
         </Surface>
       </div>
 
-      <Surface as="aside" padded={false} className="mt-6 flex items-center justify-between gap-6 px-[26px] py-5 max-sm:flex-col max-sm:items-start max-sm:gap-[14px] max-sm:p-[22px]">
+      <Surface
+        as="aside"
+        padded={false}
+        className="mt-6 flex items-center justify-between gap-6 px-[26px] py-5 max-sm:flex-col max-sm:items-start max-sm:gap-[14px] max-sm:p-[22px]"
+      >
         <p className="text-[12px]">
-          Não precisa de conta para descobrir eventos no mapa.<br />
+          Não precisa de conta para descobrir eventos no mapa.
+          <br />
           <strong>Crie uma conta para consultar e editar seu perfil.</strong>
         </p>
-        <Button asChild variant="link"><Link to={paths.home}>Voltar para explorar <ArrowRight /></Link></Button>
+        <Button asChild variant="link">
+          <Link to={paths.home}>
+            Voltar para explorar <ArrowRight />
+          </Link>
+        </Button>
       </Surface>
     </>
   )

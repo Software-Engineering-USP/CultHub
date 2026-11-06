@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AuthContext } from '@/contexts/auth-context'
 import type { AuthContextValue } from '@/contexts/auth-context'
-import { ApiError, api } from '@/services/api'
+import { api, ApiError } from '@/services/api'
 import type { ProfileResponse } from '@/services/api'
 import type { User } from '@/types'
 

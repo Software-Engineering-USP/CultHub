@@ -1,7 +1,6 @@
 import { createContext } from 'react'
-import type { ProfileResponse } from '@/services/api'
+import type { api, ProfileResponse } from '@/services/api'
 import type { User } from '@/types'
-import type { api } from '@/services/api'
 
 export interface AuthContextValue {
   user: User | null

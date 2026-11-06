@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
@@ -21,7 +21,7 @@ import { logDemoAction } from '@/lib/demo'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
-import { ApiError, api } from '@/services/api'
+import { api, ApiError } from '@/services/api'
 import type { CategoryId, User } from '@/types'
 
 // Ordem das categorias na tela de preferências
@@ -127,7 +127,9 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
                   await signOut()
                   navigate(paths.signIn, { replace: true })
                 } catch (error) {
-                  setLogoutMessage(error instanceof ApiError ? error.message : 'Não foi possível sair. Tente novamente.')
+                  setLogoutMessage(
+                    error instanceof ApiError ? error.message : 'Não foi possível sair. Tente novamente.',
+                  )
                 }
               }}
               className={`${menuLink} mt-3 rounded-none border-t border-line pt-5 pb-[11px] text-left text-maroon max-md:m-0 max-md:rounded-[10px] max-md:border-0 max-md:py-[11px]`}
@@ -135,7 +137,11 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
               Sair da conta
             </button>
           </nav>
-          {logoutMessage && <p role="alert" className="mt-3 text-xs text-maroon">{logoutMessage}</p>}
+          {logoutMessage && (
+            <p role="alert" className="mt-3 text-xs text-maroon">
+              {logoutMessage}
+            </p>
+          )}
         </Surface>
 
         <div className="grid min-w-0 gap-[26px]">
@@ -163,7 +169,9 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
                   updateUser(profile)
                   setProfileMessage('Dados atualizados.')
                 } catch (error) {
-                  setProfileMessage(error instanceof ApiError ? error.message : 'Não foi possível salvar. Tente novamente.')
+                  setProfileMessage(
+                    error instanceof ApiError ? error.message : 'Não foi possível salvar. Tente novamente.',
+                  )
                 } finally {
                   setSaving(false)
                 }
@@ -205,10 +213,17 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
               </div>
 
               <div className="mt-1 flex items-center justify-between gap-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-[14px]">
-                <p id="dados-aviso" role={profileMessage && profileMessage !== 'Dados atualizados.' ? 'alert' : 'status'} aria-live="polite" className="max-w-[410px] text-xs text-muted-foreground">
+                <p
+                  id="dados-aviso"
+                  role={profileMessage && profileMessage !== 'Dados atualizados.' ? 'alert' : 'status'}
+                  aria-live="polite"
+                  className="max-w-[410px] text-xs text-muted-foreground"
+                >
                   {profileMessage || 'Seus dados são salvos na sua conta.'}
                 </p>
-                <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar alterações'}</Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? 'Salvando...' : 'Salvar alterações'}
+                </Button>
               </div>
             </form>
           </Surface>
@@ -224,10 +239,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
               {selectedLabels ? `${selectedLabels} selecionadas.` : 'Nenhuma selecionada.'}
             </p>
 
-            <fieldset
-              aria-describedby="preferencias-aviso"
-              className="flex flex-wrap gap-[10px]"
-            >
+            <fieldset aria-describedby="preferencias-aviso" className="flex flex-wrap gap-[10px]">
               <legend className="sr-only">Categorias culturais de interesse</legend>
               {preferenceOrder.map((id) => (
                 <div key={id} className="relative">
@@ -254,7 +266,16 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
             </fieldset>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-              <p id="preferencias-aviso" role={preferencesMessage && preferencesMessage !== 'Preferências atualizadas.' ? 'alert' : 'status'} aria-live="polite" className="text-xs text-muted-foreground">
+              <p
+                id="preferencias-aviso"
+                role={
+                  preferencesMessage && preferencesMessage !== 'Preferências atualizadas.'
+                    ? 'alert'
+                    : 'status'
+                }
+                aria-live="polite"
+                className="text-xs text-muted-foreground"
+              >
                 {preferencesMessage || 'Salve suas categorias preferidas.'}
               </p>
               <Button
@@ -269,7 +290,9 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
                     setPreferences(profile.preferencias)
                     setPreferencesMessage('Preferências atualizadas.')
                   } catch (error) {
-                    setPreferencesMessage(error instanceof ApiError ? error.message : 'Não foi possível salvar. Tente novamente.')
+                    setPreferencesMessage(
+                      error instanceof ApiError ? error.message : 'Não foi possível salvar. Tente novamente.',
+                    )
                   } finally {
                     setSaving(false)
                   }

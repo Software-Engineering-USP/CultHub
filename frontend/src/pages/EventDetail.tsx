@@ -201,7 +201,9 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
               {user ? (
                 <>
                   <InitialsAvatar initials={user.initials} size="sm" aria-hidden="true" />
-                  <p>Comentando como <strong>{user.name}</strong></p>
+                  <p>
+                    Comentando como <strong>{user.name}</strong>
+                  </p>
                 </>
               ) : (
                 <p>Entre na sua conta para comentar.</p>
