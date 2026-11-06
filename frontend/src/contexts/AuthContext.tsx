@@ -1,19 +1,10 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { AuthContext } from '@/contexts/auth-context'
+import type { AuthContextValue } from '@/contexts/auth-context'
 import { ApiError, api } from '@/services/api'
 import type { ProfileResponse } from '@/services/api'
 import type { User } from '@/types'
-
-interface AuthContextValue {
-  user: User | null
-  loading: boolean
-  signUp: typeof api.auth.signUp
-  signIn: typeof api.auth.signIn
-  signOut: () => Promise<void>
-  updateUser: (profile: ProfileResponse) => void
-}
-
-export const AuthContext = createContext<AuthContextValue | null>(null)
 
 function toUser(profile: ProfileResponse): User {
   return {
