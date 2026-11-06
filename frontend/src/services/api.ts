@@ -91,8 +91,6 @@ export const api = {
       }),
     signOut: () => apiRequest<void>('/auth/sair/', 'POST'),
     currentUser: () => apiRequest<ProfileResponse>('/eu/'),
-    /** Provisório: o backend ainda não oferece recuperação de senha. */
-    forgotPassword: (email: string) => request('POST', '/auth/recuperar-senha/', { email }),
   },
 
   profile: {

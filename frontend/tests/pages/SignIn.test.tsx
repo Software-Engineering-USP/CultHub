@@ -20,20 +20,15 @@ describe('SignIn', () => {
     vi.restoreAllMocks()
   })
 
-  it('"Esqueci minha senha" pede a recuperação com o e-mail digitado', async () => {
-    const forgot = vi.spyOn(api.auth, 'forgotPassword').mockResolvedValue()
-    const { user } = renderWithRouter(<SignIn />)
-
-    await user.type(screen.getAllByLabelText('E-mail')[0], 'voce@exemplo.com')
-    await user.click(screen.getByRole('button', { name: 'Esqueci minha senha' }))
-
-    expect(forgot).toHaveBeenCalledWith('voce@exemplo.com')
+  it('informa que recuperação de senha ainda não está disponível', () => {
+    renderWithRouter(<SignIn />, { authUser: null })
+    expect(screen.getByText('Recuperação de senha indisponível')).toBeInTheDocument()
   })
 
   it('Entrar envia e-mail, senha e "lembrar de mim"', async () => {
     const signIn = vi.spyOn(api.auth, 'signIn').mockResolvedValue(profile)
-    const { user } = renderWithRouter(<SignIn />)
-    const login = screen.getByRole('form', { name: 'Entrar (demonstração)' })
+    const { user } = renderWithRouter(<SignIn />, { authUser: null })
+    const login = screen.getByRole('form', { name: 'Entrar' })
 
     await user.type(within(login).getByLabelText('E-mail'), 'voce@exemplo.com')
     await user.type(within(login).getByLabelText('Senha'), 'segredo123')
@@ -45,8 +40,8 @@ describe('SignIn', () => {
 
   it('Criar conta envia nome, e-mail, senha e o aceite dos termos', async () => {
     const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue(profile)
-    const { user } = renderWithRouter(<SignIn />)
-    const cadastro = screen.getByRole('form', { name: 'Criar conta (demonstração)' })
+    const { user } = renderWithRouter(<SignIn />, { authUser: null })
+    const cadastro = screen.getByRole('form', { name: 'Criar conta' })
 
     await user.type(within(cadastro).getByLabelText('Nome'), 'Você')
     await user.type(within(cadastro).getByLabelText('E-mail'), 'voce@exemplo.com')
@@ -64,8 +59,8 @@ describe('SignIn', () => {
 
   it('não cria a conta sem aceitar os termos', async () => {
     const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue(profile)
-    const { user } = renderWithRouter(<SignIn />)
-    const cadastro = screen.getByRole('form', { name: 'Criar conta (demonstração)' })
+    const { user } = renderWithRouter(<SignIn />, { authUser: null })
+    const cadastro = screen.getByRole('form', { name: 'Criar conta' })
 
     await user.type(within(cadastro).getByLabelText('Nome'), 'Você')
     await user.type(within(cadastro).getByLabelText('E-mail'), 'voce@exemplo.com')

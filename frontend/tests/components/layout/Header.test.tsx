@@ -14,7 +14,7 @@ describe('Header', () => {
 
   it('mostra o avatar do usuário com link para a conta', () => {
     renderWithRouter(<Header />)
-    const link = screen.getByRole('link', { name: `Ver conta de exemplo de ${currentUser.name}` })
+    const link = screen.getByRole('link', { name: `Ver conta de ${currentUser.name}` })
     expect(link).toHaveAttribute('href', paths.account)
     expect(within(link).getByText(currentUser.initials)).toBeInTheDocument()
   })

@@ -48,13 +48,14 @@ describe('Account', () => {
     expect(update).toHaveBeenCalledWith({ name: 'Lívia Costa', city: 'São Paulo, SP', district: 'Pinheiros' })
   })
 
-  it('marcar uma preferência envia a lista atualizada', async () => {
+  it('salvar preferências envia a lista atualizada', async () => {
     const updatePreferences = vi.spyOn(api.profile, 'updatePreferences').mockResolvedValue(profile)
     const { user } = renderWithRouter(<Account />)
 
     await user.click(screen.getByLabelText('Teatro'))
+    await user.click(screen.getByRole('button', { name: 'Salvar preferências' }))
 
-    expect(updatePreferences).toHaveBeenCalledWith(['music', 'theater', 'art'])
+    expect(updatePreferences).toHaveBeenCalledWith(['music', 'art', 'theater'])
   })
 
   it('o menu lateral marca a seção atual', () => {
