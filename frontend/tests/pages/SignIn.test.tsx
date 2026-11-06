@@ -2,7 +2,18 @@ import { screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import SignIn from '@/pages/SignIn'
 import { api } from '@/services/api'
+import type { ProfileResponse } from '@/services/api'
 import { renderWithRouter } from '@tests/render'
+
+const profile: ProfileResponse = {
+  id: 'livia-costa',
+  nome: 'Lívia Costa',
+  email: 'livia.costa@exemplo.com',
+  cidade: 'São Paulo, SP',
+  bairro: 'Vila Mariana',
+  preferencias: ['music', 'art'],
+  iniciais: 'LC',
+}
 
 describe('SignIn', () => {
   afterEach(() => {
@@ -20,7 +31,7 @@ describe('SignIn', () => {
   })
 
   it('Entrar envia e-mail, senha e "lembrar de mim"', async () => {
-    const signIn = vi.spyOn(api.auth, 'signIn').mockResolvedValue()
+    const signIn = vi.spyOn(api.auth, 'signIn').mockResolvedValue(profile)
     const { user } = renderWithRouter(<SignIn />)
     const login = screen.getByRole('form', { name: 'Entrar (demonstração)' })
 
@@ -33,7 +44,7 @@ describe('SignIn', () => {
   })
 
   it('Criar conta envia nome, e-mail, senha e o aceite dos termos', async () => {
-    const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue()
+    const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue(profile)
     const { user } = renderWithRouter(<SignIn />)
     const cadastro = screen.getByRole('form', { name: 'Criar conta (demonstração)' })
 
@@ -52,7 +63,7 @@ describe('SignIn', () => {
   })
 
   it('não cria a conta sem aceitar os termos', async () => {
-    const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue()
+    const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue(profile)
     const { user } = renderWithRouter(<SignIn />)
     const cadastro = screen.getByRole('form', { name: 'Criar conta (demonstração)' })
 

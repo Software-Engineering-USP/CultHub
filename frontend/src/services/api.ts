@@ -16,12 +16,12 @@ export interface ProfileResponse {
 }
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
+  readonly status: number
+
+  constructor(message: string, status: number) {
     super(message)
     this.name = 'ApiError'
+    this.status = status
   }
 }
 
@@ -91,6 +91,8 @@ export const api = {
       }),
     signOut: () => apiRequest<void>('/auth/sair/', 'POST'),
     currentUser: () => apiRequest<ProfileResponse>('/eu/'),
+    /** Provisório: o backend ainda não oferece recuperação de senha. */
+    forgotPassword: (email: string) => request('POST', '/auth/recuperar-senha/', { email }),
   },
 
   profile: {

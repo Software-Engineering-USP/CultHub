@@ -3,7 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as demo from '@/lib/demo'
 import Account from '@/pages/Account'
 import { api } from '@/services/api'
+import type { ProfileResponse } from '@/services/api'
 import { renderWithRouter } from '@tests/render'
+
+const profile: ProfileResponse = {
+  id: 'livia-costa',
+  nome: 'Lívia Costa',
+  email: 'livia.costa@exemplo.com',
+  cidade: 'São Paulo, SP',
+  bairro: 'Vila Mariana',
+  preferencias: ['music', 'art'],
+  iniciais: 'LC',
+}
 
 describe('Account', () => {
   afterEach(() => {
@@ -25,7 +36,7 @@ describe('Account', () => {
   })
 
   it('Salvar alterações envia nome, cidade e bairro (o e-mail não é editável)', async () => {
-    const update = vi.spyOn(api.profile, 'update').mockResolvedValue()
+    const update = vi.spyOn(api.profile, 'update').mockResolvedValue(profile)
     const { user } = renderWithRouter(<Account />)
 
     expect(screen.getByLabelText('E-mail')).toHaveAttribute('readonly')
@@ -38,7 +49,7 @@ describe('Account', () => {
   })
 
   it('marcar uma preferência envia a lista atualizada', async () => {
-    const updatePreferences = vi.spyOn(api.profile, 'updatePreferences').mockResolvedValue()
+    const updatePreferences = vi.spyOn(api.profile, 'updatePreferences').mockResolvedValue(profile)
     const { user } = renderWithRouter(<Account />)
 
     await user.click(screen.getByLabelText('Teatro'))
