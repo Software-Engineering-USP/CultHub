@@ -23,8 +23,20 @@ describe('rotas', () => {
     [paths.signIn, 'Seu próximo encontro com a cultura começa aqui.'],
     [paths.account, 'Minha conta'],
     ['/nao-existe', 'Página não encontrada'],
-  ])('%s abre a página certa', (route, title) => {
+  ])('%s abre a página certa', async (route, title) => {
     renderAt(route)
-    expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument()
+  })
+
+  it.each([
+    [paths.event('derby-paulista'), 'Este evento não possui uma página de detalhes nesta demonstração.'],
+    [paths.eventOrigin('nao-existe'), 'Não encontramos o evento para planejar a visita.'],
+    [paths.eventRoute('nao-existe'), 'Não encontramos o evento para exibir a rota.'],
+  ])('%s sem página própria mostra o aviso da página', async (route, message) => {
+    renderAt(route)
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Página não encontrada' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(message)).toBeInTheDocument()
   })
 })

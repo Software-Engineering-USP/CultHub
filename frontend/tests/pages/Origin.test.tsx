@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import EventPage from '@/components/events/EventPage'
 import * as demo from '@/lib/demo'
 import { paths, routes } from '@/lib/paths'
 import Origin from '@/pages/Origin'
@@ -12,7 +13,10 @@ const id = 'sp-jazz-blues-festival'
 function renderOrigin() {
   return renderWithRouter(
     <Routes>
-      <Route path={routes.eventOrigin} element={<Origin />} />
+      <Route
+        path={routes.eventOrigin}
+        element={<EventPage page={Origin} notFoundMessage="Evento não encontrado." />}
+      />
       <Route path={routes.eventRoute} element={<h1>Página da rota</h1>} />
     </Routes>,
     { route: paths.eventOrigin(id) },
@@ -22,6 +26,38 @@ function renderOrigin() {
 describe('Origin', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('mostra o caminho até "Como chegar", o destino e o link para a rota de exemplo', () => {
+    renderOrigin()
+    expect(screen.getByRole('heading', { level: 1, name: 'Como chegar' })).toBeInTheDocument()
+    expect(document.title).toBe('Defina sua origem | CultHub')
+    expect(screen.getByRole('link', { name: 'Voltar para o evento' })).toHaveAttribute(
+      'href',
+      paths.event(id),
+    )
+    expect(screen.getByRole('region', { name: 'De onde você vai sair?' })).toHaveTextContent(
+      'Auditório Ibirapuera',
+    )
+    expect(screen.getByLabelText('Carro')).toBeChecked()
+    expect(screen.getByRole('link', { name: /Ver rota de exemplo/ })).toHaveAttribute(
+      'href',
+      paths.eventRoute(id),
+    )
+    expect(screen.getByRole('img', { name: /Mapa ilustrativo da região do Ibirapuera/ })).toBeInTheDocument()
+  })
+
+  it('mostra o aviso quando o evento não existe', () => {
+    renderWithRouter(
+      <Routes>
+        <Route
+          path={routes.eventOrigin}
+          element={<EventPage page={Origin} notFoundMessage="Evento não encontrado." />}
+        />
+      </Routes>,
+      { route: paths.eventOrigin('nao-existe') },
+    )
+    expect(screen.getByRole('heading', { level: 1, name: 'Página não encontrada' })).toBeInTheDocument()
   })
 
   it('"Usar minha localização" registra o pedido no console', async () => {

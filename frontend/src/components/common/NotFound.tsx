@@ -5,8 +5,8 @@ import Surface from './Surface'
 
 export default function NotFound({ message }: Readonly<{ message?: string }>) {
   return (
-    <Surface as="section" aria-labelledby="nao-encontrado" className="mx-auto max-w-[560px] text-center">
-      <h1 id="nao-encontrado" className="text-[30px]">
+    <Surface as="section" aria-labelledby="nao-encontrado" className="mx-auto max-w-xl text-center">
+      <h1 id="nao-encontrado" className="text-3xl">
         Página não encontrada
       </h1>
       <p className="mt-3 text-muted-foreground">

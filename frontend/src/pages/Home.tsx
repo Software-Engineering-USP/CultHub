@@ -16,7 +16,7 @@ export default function Home() {
   const featured = events.filter((event) => event.featured)
 
   return (
-    <div className="space-y-12 max-sm:space-y-[34px]">
+    <div className="space-y-12 max-sm:space-y-8.5">
       <section aria-labelledby="mapa-titulo">
         <SectionHeading
           as="h1"
@@ -24,17 +24,17 @@ export default function Home() {
           title="Mapa de Eventos"
           description="Explore atividades e shows acontecendo ao seu redor em São Paulo"
         >
-          <div className="max-w-[245px] text-right max-sm:max-w-none max-sm:text-left">
+          <div className="max-w-61 text-right max-sm:max-w-none max-sm:text-left">
             <Button
               variant="outline"
               aria-describedby="localizacao-aviso"
               onClick={() => logDemoAction('Pedir localização do usuário')}
-              className="max-sm:min-h-10 max-sm:px-[14px] max-sm:py-[9px]"
+              className="max-sm:min-h-10 max-sm:px-3.5 max-sm:py-2"
             >
               <LocateFixed />
               Minha Localização
             </Button>
-            <DemoNote id="localizacao-aviso" className="mt-[5px]">
+            <DemoNote id="localizacao-aviso" className="mt-1">
               Mapa ilustrativo. Nesta demonstração, o pedido de localização só aparece no console.
             </DemoNote>
           </div>
@@ -42,18 +42,18 @@ export default function Home() {
 
         <figure>
           <iframe
-            className="block h-[450px] w-full rounded-[26px] border border-line max-sm:h-[340px] max-sm:rounded-2xl"
+            className="block h-112.5 w-full rounded-3xl border border-border max-sm:h-85 max-sm:rounded-2xl"
             title="Mapa OpenStreetMap de São Paulo"
             src="https://www.openstreetmap.org/export/embed.html?bbox=-46.75%2C-23.65%2C-46.55%2C-23.48&layer=mapnik"
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
           />
-          <figcaption className="mt-[14px] flex flex-wrap items-center justify-between gap-x-6 gap-y-3 max-sm:gap-[10px]">
+          <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 max-sm:gap-2.5">
             <CategoryList
               aria-label="Legenda de categorias"
-              className="gap-[22px] text-[11px] font-semibold max-md:gap-4 max-sm:gap-x-[14px] max-sm:gap-y-[10px] max-sm:text-[10px]"
+              className="gap-5.5 text-xs font-semibold max-md:gap-4 max-sm:gap-x-3.5 max-sm:gap-y-2.5 max-sm:text-2xs"
             />
-            <DemoNote className="max-sm:text-[10px]">
+            <DemoNote>
               Mapa © OpenStreetMap contributors. Os pins dos eventos serão adicionados depois.
             </DemoNote>
           </figcaption>
@@ -73,7 +73,7 @@ export default function Home() {
           <EventSort />
         </SectionHeading>
 
-        <div className="grid grid-cols-3 gap-6 max-lg:gap-[18px] max-md:grid-cols-2 max-sm:grid-cols-1 max-sm:gap-5">
+        <div className="grid grid-cols-3 gap-6 max-lg:gap-4.5 max-md:grid-cols-2 max-sm:grid-cols-1 max-sm:gap-5">
           {events.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}

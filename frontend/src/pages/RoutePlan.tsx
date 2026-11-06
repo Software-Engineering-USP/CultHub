@@ -1,34 +1,23 @@
 import { ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import BackLink from '@/components/common/BackLink'
-import Breadcrumbs from '@/components/common/Breadcrumbs'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
-import NotFound from '@/components/common/NotFound'
-import SectionHeading from '@/components/common/SectionHeading'
-import Surface from '@/components/common/Surface'
-import EventStrip from '@/components/events/EventStrip'
+import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import WeatherStrip from '@/components/weather/WeatherStrip'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEvent } from '@/hooks/useEvents'
 import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { logDemoAction } from '@/lib/demo'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
+import type { EventWithDetails } from '@/types'
 
 const dotBase =
-  "relative pl-[22px] before:absolute before:left-0 before:top-2 before:h-2 before:w-2 before:rounded-full before:border-2 before:border-maroon before:content-['']"
+  "relative pl-5.5 before:absolute before:top-2 before:left-0 before:size-2 before:rounded-full before:border-2 before:border-maroon before:content-['']"
 
-export default function RoutePlan() {
-  const event = useEvent()
-  const routeOptions = useRouteOptions(event?.id)
+export default function RoutePlan({ event }: { event: EventWithDetails }) {
+  const routeOptions = useRouteOptions(event.id)
   useDocumentTitle('Rota de exemplo | CultHub')
-
-  if (!event?.details) {
-    return <NotFound message="Não encontramos o evento para exibir a rota." />
-  }
 
   const selected = routeOptions[0]
   const itinerary = [
@@ -38,150 +27,115 @@ export default function RoutePlan() {
   ]
 
   return (
-    <>
-      <BackLink to={paths.event(event.id)}>Voltar para o evento</BackLink>
-      <Breadcrumbs
-        items={[
-          { label: 'Explorar', to: paths.home },
-          { label: event.shortTitle ?? event.title, to: paths.event(event.id) },
-          { label: 'Como chegar' },
-        ]}
-      />
-
-      <SectionHeading
-        as="h1"
-        variant="page"
-        title="Como chegar"
-        description="Planeje seu caminho até a música. Compare as opções neste trajeto demonstrativo."
-      >
+    <PlanVisitLayout
+      event={event}
+      description="Planeje seu caminho até a música. Compare as opções neste trajeto demonstrativo."
+      status={
         <Badge variant="muted" size="md">
           Rota ilustrativa • origem fictícia
         </Badge>
-      </SectionHeading>
+      }
+      map={{
+        src: '/assets/mapa-rota.png',
+        width: 856,
+        height: 690,
+        alt: 'Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real.',
+        caption:
+          'Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um serviço de mapas atualizado.',
+      }}
+    >
+      <PlanVisitPanel aria-labelledby="trajeto-titulo" className="bg-cream">
+        <div className="mb-5 flex items-start justify-between gap-3.5">
+          <h2 id="trajeto-titulo" className="text-xl">
+            Seu trajeto
+          </h2>
+          <Eyebrow className="max-w-24 text-right text-2xs text-muted-foreground">
+            EXEMPLO ILUSTRATIVO
+          </Eyebrow>
+        </div>
 
-      <EventStrip event={event} />
+        <div className="mb-5.5 grid gap-4">
+          <div className={dotBase}>
+            <Link to={paths.eventOrigin(event.id)} className="float-right text-2xs text-maroon underline">
+              Alterar
+            </Link>
+            <small className="block text-2xs text-muted-foreground">Partida</small>
+            <strong className="block text-xs">Sua localização • exemplo</strong>
+          </div>
+          <div className={cn(dotBase, 'before:bg-maroon')}>
+            <small className="block text-2xs text-muted-foreground">Destino</small>
+            <strong className="block text-xs">{event.venue}</strong>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-[minmax(300px,400fr)_minmax(0,856fr)] items-start gap-6 max-lg:grid-cols-[minmax(300px,.9fr)_minmax(0,1.5fr)] max-md:grid-cols-[minmax(0,1fr)]">
-        <Surface
-          as="section"
-          aria-labelledby="trajeto-titulo"
-          bg="bg-[#f9eddb]"
-          padded={false}
-          className="p-6 max-md:p-7 max-sm:p-[21px]"
+        <ul
+          aria-label="Comparação ilustrativa de transportes, sem seleção interativa"
+          className="mb-5.5 grid grid-cols-3 gap-2"
         >
-          <div className="mb-5 flex items-start justify-between gap-[14px]">
-            <h2 id="trajeto-titulo" className="text-[21px]">
-              Seu trajeto
-            </h2>
-            <Eyebrow tight className="max-w-[85px] text-right text-[8px] text-muted-foreground">
-              EXEMPLO ILUSTRATIVO
-            </Eyebrow>
-          </div>
+          {routeOptions.map((route, index) => (
+            <li
+              key={route.id}
+              className={cn(
+                'rounded-xl border px-1 py-3 text-center max-md:px-2.5 max-md:py-3.5',
+                index === 0 ? 'border-sun/70 bg-primary/30' : 'border-border bg-card',
+              )}
+            >
+              <strong className="block text-2xs">{route.label}</strong>
+              <span className="mt-1 block text-lg font-bold text-maroon">{route.time}</span>
+              <small className="block text-2xs text-muted-foreground">
+                {route.detail}
+                {index === 0 && ' • em destaque'}
+              </small>
+            </li>
+          ))}
+        </ul>
 
-          <div className="mb-[22px] grid gap-4">
-            <div className={dotBase}>
-              <Link
-                to={paths.eventOrigin(event.id)}
-                className="float-right text-[10px] text-maroon underline"
-              >
-                Alterar
-              </Link>
-              <small className="block text-[10px] text-muted-foreground">Partida</small>
-              <strong className="block text-[12px]">Sua localização • exemplo</strong>
-            </div>
-            <div className={cn(dotBase, 'before:bg-maroon')}>
-              <small className="block text-[10px] text-muted-foreground">Destino</small>
-              <strong className="block text-[12px]">{event.venue}</strong>
-            </div>
+        <div className="mb-6 flex items-center justify-between gap-3.5 border-t border-maroon/10 pt-5">
+          <div>
+            <strong className="block text-3xl tracking-tighter text-maroon">{selected.time}</strong>
+            <small className="text-2xs">{selected.detail} • de carro</small>
           </div>
+          <span className="max-w-24 rounded-lg bg-muted px-2 py-1 text-center text-2xs text-muted-foreground">
+            Mais rápido no exemplo
+          </span>
+        </div>
 
-          <ul
-            aria-label="Comparação ilustrativa de transportes, sem seleção interativa"
-            className="mb-[22px] grid grid-cols-3 gap-2"
-          >
-            {routeOptions.map((route, index) => (
-              <li
-                key={route.id}
-                className={cn(
-                  'rounded-xl border px-[5px] py-3 text-center max-md:px-[10px] max-md:py-[14px]',
-                  index === 0 ? 'border-[#b97e42] bg-[#ffdfb2]' : 'border-line bg-surface',
-                )}
-              >
-                <strong className="block text-[10px]">{route.label}</strong>
-                <span className="mt-1 block text-[17px] font-[750] text-maroon">{route.time}</span>
-                <small className="block text-[9px] text-muted-foreground">
-                  {route.detail}
-                  {index === 0 && ' • em destaque'}
-                </small>
+        <div>
+          <h3 className="text-sm">Itinerário demonstrativo</h3>
+          <ol className="mt-4 mb-5.5">
+            {itinerary.map((step, index) => (
+              <li key={step.title} className="relative pb-5 pl-8 text-xs last:pb-0">
+                <span
+                  aria-hidden="true"
+                  className="absolute top-px left-0 grid size-5.5 place-items-center rounded-full bg-muted text-2xs font-bold text-maroon"
+                >
+                  {index + 1}
+                </span>
+                <strong className="block">{step.title}</strong>
+                <span className="mt-1 block text-2xs text-muted-foreground">{step.detail}</span>
               </li>
             ))}
-          </ul>
+          </ol>
+        </div>
 
-          <div className="mb-[23px] flex items-center justify-between gap-[14px] border-t border-[#e5d5bc] pt-[19px]">
-            <div>
-              <strong className="block text-[29px] leading-[1.2] tracking-tighter text-maroon">
-                {selected.time}
-              </strong>
-              <small className="text-[10px]">{selected.detail} • de carro</small>
-            </div>
-            <span className="max-w-[90px] rounded-lg bg-[#eee3cf] px-2 py-[5px] text-center text-[9px] text-[#67503a]">
-              Mais rápido no exemplo
-            </span>
-          </div>
+        <Button
+          block
+          aria-describedby="navegacao-aviso"
+          onClick={() => logDemoAction('Abrir rota no app de mapas', { eventId: event.id })}
+        >
+          Abrir no app de mapas <ArrowUpRight />
+        </Button>
+        <DemoNote id="navegacao-aviso" size="xs" className="mt-2.5">
+          Navegação real exige um serviço externo e consentimento de localização. Nesta demonstração, o botão
+          só registra a ação no console.
+        </DemoNote>
 
-          <div>
-            <h3 className="text-[13px]">Itinerário demonstrativo</h3>
-            <ol className="mt-4 mb-[22px]">
-              {itinerary.map((step, index) => (
-                <li key={step.title} className="relative pb-[19px] pl-8 text-[11px] last:pb-0">
-                  <span
-                    aria-hidden="true"
-                    className="absolute top-px left-0 grid h-[22px] w-[22px] place-items-center rounded-full bg-[#ede0c9] text-[10px] font-bold text-maroon"
-                  >
-                    {index + 1}
-                  </span>
-                  <strong className="block">{step.title}</strong>
-                  <span className="mt-1 block text-[10px] text-muted-foreground">{step.detail}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <Button
-            block
-            aria-describedby="navegacao-aviso"
-            onClick={() => logDemoAction('Abrir rota no app de mapas', { eventId: event.id })}
-          >
-            Abrir no app de mapas <ArrowUpRight />
-          </Button>
-          <DemoNote id="navegacao-aviso" size="xs" className="mt-[10px]">
-            Navegação real exige um serviço externo e consentimento de localização. Nesta demonstração, o
-            botão só registra a ação no console.
-          </DemoNote>
-
-          <DemoNote size="xs" className="mt-[18px] border-t border-line pt-[15px]">
-            Origem, distâncias e tempos são fictícios. Não há consulta de trânsito, cálculo de percurso ou
-            compartilhamento de localização.{' '}
-            <Link to={paths.eventOrigin(event.id)}>Voltar à definição de origem</Link>.
-          </DemoNote>
-        </Surface>
-
-        <figure>
-          <img
-            className="block w-full rounded-3xl border border-line"
-            src="/assets/mapa-rota.png"
-            width={856}
-            height={690}
-            alt="Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real."
-          />
-          <DemoNote as="figcaption" className="mt-[10px]">
-            Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um
-            serviço de mapas atualizado.
-          </DemoNote>
-        </figure>
-      </div>
-
-      <WeatherStrip event={event} />
-    </>
+        <DemoNote size="xs" className="mt-4.5 border-t border-border pt-4">
+          Origem, distâncias e tempos são fictícios. Não há consulta de trânsito, cálculo de percurso ou
+          compartilhamento de localização.{' '}
+          <Link to={paths.eventOrigin(event.id)}>Voltar à definição de origem</Link>.
+        </DemoNote>
+      </PlanVisitPanel>
+    </PlanVisitLayout>
   )
 }
