@@ -1,33 +1,46 @@
+import { useState } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import CategoryDot from '@/components/common/CategoryDot'
-import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
 import Surface from '@/components/common/Surface'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/useAuth'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { checkboxClass } from '@/lib/classes'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
-import { api } from '@/services/api'
+import { ApiError } from '@/services/api'
 
 const panelClass = 'p-7 max-lg:p-[22px]'
 
+function errorText(error: unknown): string {
+  return error instanceof ApiError
+    ? error.message
+    : 'Não foi possível conectar ao CultHub. Confira se o servidor está ativo e tente novamente.'
+}
+
 export default function SignIn() {
   useDocumentTitle('Entrar ou criar conta | CultHub')
+  const { signIn, signUp, user } = useAuth()
+  const navigate = useNavigate()
+  const [loginMessage, setLoginMessage] = useState('')
+  const [signupMessage, setSignupMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  if (user) return <Navigate to={paths.account} replace />
 
   return (
     <>
       <BackLink to={paths.home}>Continuar como visitante</BackLink>
-
       <div className="mt-3 mb-[30px] max-sm:mt-1">
         <h1 className="max-w-[850px] max-md:text-[32px] max-sm:text-[30px]">
           Seu próximo encontro com a cultura começa aqui.
         </h1>
         <p className="mt-3 text-muted-foreground max-sm:text-[13px]">
-          Entre para salvar eventos, organizar suas preferências e participar dos comentários.
+          Entre ou crie uma conta para manter seus dados e preferências culturais.
         </p>
       </div>
 
@@ -46,10 +59,7 @@ export default function SignIn() {
             <h2 id="radar-titulo" className="my-4 text-[27px]">
               São Paulo tem muito para descobrir.
             </h2>
-            <p className="text-[13px]">
-              Música, teatro, arte e encontros. Guarde o que te inspira e encontre tudo de novo na sua conta.
-            </p>
-
+            <p className="text-[13px]">Música, teatro, arte e encontros. Crie sua conta para começar.</p>
             <div aria-hidden="true" className="mt-[25px] flex gap-[9px]">
               <CategoryDot id="music" size="md" />
               <CategoryDot id="theater" size="md" />
@@ -57,178 +67,99 @@ export default function SignIn() {
               <CategoryDot id="sport" size="md" />
               <CategoryDot id="festival" size="md" />
             </div>
-
-            <DemoNote size="md" className="mt-6">
-              Um convite para explorar a cidade. Os recursos de conta são apenas visuais nesta versão.
-            </DemoNote>
           </div>
         </aside>
 
         <Surface as="section" aria-labelledby="login-titulo" padded={false} className={panelClass}>
-          <h2 id="login-titulo" className="text-[23px]">
-            Bem-vindo de volta
-          </h2>
+          <h2 id="login-titulo" className="text-[23px]">Bem-vindo de volta</h2>
           <p className="mt-[7px] mb-6 text-[12px]">Entre na sua conta CultHub.</p>
-
           <form
-            aria-label="Entrar (demonstração)"
-            aria-describedby="login-aviso"
-            autoComplete="off"
-            onSubmit={onFormSubmit(
-              (data) =>
-                void api.auth.signIn({
+            aria-label="Entrar"
+            autoComplete="on"
+            onSubmit={onFormSubmit(async (data) => {
+              setSubmitting(true)
+              setLoginMessage('')
+              try {
+                await signIn({
                   email: text(data, 'email'),
                   password: text(data, 'senha'),
                   remember: data.has('lembrar'),
-                }),
-            )}
+                })
+                navigate(paths.account, { replace: true })
+              } catch (error) {
+                setLoginMessage(errorText(error))
+              } finally {
+                setSubmitting(false)
+              }
+            })}
           >
-            <Field
-              id="login-email"
-              required
-              name="email"
-              label="E-mail"
-              type="email"
-              placeholder="voce@exemplo.com"
-              inputMode="email"
-              autoComplete="off"
-            />
-            <Field
-              id="login-senha"
-              required
-              name="senha"
-              label="Senha"
-              type="password"
-              placeholder="Digite sua senha"
-              autoComplete="off"
-            />
-
+            <Field id="login-email" required name="email" label="E-mail" type="email" placeholder="voce@exemplo.com" inputMode="email" autoComplete="username" />
+            <Field id="login-senha" required name="senha" label="Senha" type="password" placeholder="Digite sua senha" autoComplete="current-password" />
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="lembrar">
                 <input id="lembrar" name="lembrar" type="checkbox" className={checkboxClass} />
                 <span>Lembrar de mim</span>
               </label>
-              <Button
-                variant="linkMuted"
-                aria-describedby="login-aviso"
-                onClick={(event) => {
-                  const form = event.currentTarget.form
-                  void api.auth.forgotPassword(form ? text(new FormData(form), 'email') : '')
-                }}
-              >
-                Esqueci minha senha
-              </Button>
+              <span className="text-xs text-muted-foreground">Recuperação de senha indisponível</span>
             </div>
-
-            <Button type="submit" block>
+            <Button type="submit" block disabled={submitting}>
               Entrar <ArrowRight />
             </Button>
-
-            <DemoNote id="login-aviso" className="mt-[14px]">
-              Formulário de demonstração, sem autenticação: os dados só aparecem no console (a senha nunca é
-              mostrada). Não use credenciais reais.
-            </DemoNote>
+            <p role={loginMessage ? 'alert' : undefined} aria-live="polite" className="mt-[14px] text-xs text-muted-foreground">
+              {loginMessage || 'A sessão será mantida conforme a opção “Lembrar de mim”.'}
+            </p>
           </form>
-
-          <Button asChild variant="link" className="mt-[22px]">
-            <Link to={paths.account}>
-              Ver perfil de exemplo <ArrowRight />
-            </Link>
-          </Button>
-          <DemoNote size="sm" className="mt-[14px] mb-6">
-            Conheça a conta fictícia de Lívia Costa, sem precisar fazer login.
-          </DemoNote>
         </Surface>
 
         <Surface as="section" aria-labelledby="cadastro-titulo" padded={false} className={panelClass}>
-          <h2 id="cadastro-titulo" className="text-[23px]">
-            Primeira vez por aqui?
-          </h2>
-          <p className="mt-[7px] mb-6 text-[12px]">Crie sua conta e monte seu radar cultural.</p>
-
+          <h2 id="cadastro-titulo" className="text-[23px]">Primeira vez por aqui?</h2>
+          <p className="mt-[7px] mb-6 text-[12px]">Crie sua conta CultHub.</p>
           <form
-            aria-label="Criar conta (demonstração)"
-            aria-describedby="cadastro-aviso"
-            autoComplete="off"
-            onSubmit={onFormSubmit(
-              (data) =>
-                void api.auth.signUp({
+            aria-label="Criar conta"
+            autoComplete="on"
+            onSubmit={onFormSubmit(async (data) => {
+              setSubmitting(true)
+              setSignupMessage('')
+              try {
+                await signUp({
                   name: text(data, 'nome'),
                   email: text(data, 'email'),
                   password: text(data, 'senha'),
                   acceptedTerms: data.has('termos'),
-                }),
-            )}
+                })
+                navigate(paths.account, { replace: true })
+              } catch (error) {
+                setSignupMessage(errorText(error))
+              } finally {
+                setSubmitting(false)
+              }
+            })}
           >
-            <Field
-              id="cadastro-nome"
-              required
-              name="nome"
-              label="Nome"
-              type="text"
-              placeholder="Como você quer ser chamado?"
-              autoComplete="off"
-            />
-            <Field
-              id="cadastro-email"
-              required
-              name="email"
-              label="E-mail"
-              type="email"
-              placeholder="voce@exemplo.com"
-              inputMode="email"
-              autoComplete="off"
-            />
-            <Field
-              id="cadastro-senha"
-              required
-              name="senha"
-              label="Senha"
-              type="password"
-              placeholder="Crie uma senha"
-              minLength={8}
-              autoComplete="off"
-              help="Use pelo menos 8 caracteres. Apenas um exemplo, não insira uma senha real."
-            />
-
+            <Field id="cadastro-nome" required name="nome" label="Nome" type="text" placeholder="Como você quer ser chamado?" autoComplete="name" />
+            <Field id="cadastro-email" required name="email" label="E-mail" type="email" placeholder="voce@exemplo.com" inputMode="email" autoComplete="email" />
+            <Field id="cadastro-senha" required name="senha" label="Senha" type="password" placeholder="Crie uma senha" minLength={8} autoComplete="new-password" help="Use pelo menos 8 caracteres." />
             <div className="mt-1 mb-5 flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-start gap-2 text-[11px]" htmlFor="termos">
                 <input id="termos" name="termos" type="checkbox" required className={checkboxClass} />
-                <span>
-                  Aceito os termos e a política de privacidade <strong>ilustrativos</strong>. Esta opção não
-                  registra consentimento nem cria uma conta.
-                </span>
+                <span>Aceito os termos de uso e a política de privacidade.</span>
               </label>
             </div>
-
-            <Button type="submit" block>
+            <Button type="submit" block disabled={submitting}>
               Criar conta <ArrowRight />
             </Button>
-
-            <DemoNote id="cadastro-aviso" className="mt-[14px]">
-              Formulário de demonstração: os dados só aparecem no console e nenhum cadastro é realizado. Não
-              há termos contratuais ativos nesta versão.
-            </DemoNote>
+            <p role={signupMessage ? 'alert' : undefined} aria-live="polite" className="mt-[14px] text-xs text-muted-foreground">
+              {signupMessage || 'Ao criar a conta, você entrará automaticamente.'}
+            </p>
           </form>
         </Surface>
       </div>
 
-      <Surface
-        as="aside"
-        padded={false}
-        className="mt-6 flex items-center justify-between gap-6 px-[26px] py-5 max-sm:flex-col max-sm:items-start max-sm:gap-[14px] max-sm:p-[22px]"
-      >
+      <Surface as="aside" padded={false} className="mt-6 flex items-center justify-between gap-6 px-[26px] py-5 max-sm:flex-col max-sm:items-start max-sm:gap-[14px] max-sm:p-[22px]">
         <p className="text-[12px]">
-          Não precisa de conta para descobrir eventos no mapa.
-          <br />
-          <strong>Entre apenas quando quiser salvar ou comentar.</strong> Nesta demonstração, esses recursos
-          estão desativados.
+          Não precisa de conta para descobrir eventos no mapa.<br />
+          <strong>Crie uma conta para consultar e editar seu perfil.</strong>
         </p>
-        <Button asChild variant="link">
-          <Link to={paths.home}>
-            Voltar para explorar <ArrowRight />
-          </Link>
-        </Button>
+        <Button asChild variant="link"><Link to={paths.home}>Voltar para explorar <ArrowRight /></Link></Button>
       </Surface>
     </>
   )
