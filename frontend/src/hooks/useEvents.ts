@@ -22,5 +22,5 @@ export function useEvent(): CultEvent | undefined {
 /** Eventos salvos pelo usuário atual, na ordem em que foram salvos. */
 export function useSavedEvents(): CultEvent[] {
   const user = useCurrentUser()
-  return user.savedEventIds.map((id) => findEvent(id)).filter((event) => event !== undefined)
+  return user?.savedEventIds.map((id) => findEvent(id)).filter((event) => event !== undefined) ?? []
 }

@@ -2,12 +2,16 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import App from '@/App'
+import { currentUser } from '@/data/user'
 import { paths } from '@/lib/paths'
+import { AuthTestProvider } from './auth'
 
 function renderAt(route: string) {
   render(
     <MemoryRouter initialEntries={[route]}>
-      <App />
+      <AuthTestProvider initialUser={route === paths.signIn ? null : currentUser}>
+        <App />
+      </AuthTestProvider>
     </MemoryRouter>,
   )
 }
