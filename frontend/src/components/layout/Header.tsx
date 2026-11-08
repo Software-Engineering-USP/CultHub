@@ -1,16 +1,17 @@
 import { MapPin, Search, SlidersHorizontal } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import InitialsAvatar from '@/components/common/InitialsAvatar'
 import EventFilters from '@/components/events/EventFilters'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
-import { api } from '@/services/api'
 
 export default function Header() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = useCurrentUser()
   const [filtersOpen, setFiltersOpen] = useState(false)
   const onAccount = pathname === paths.account
@@ -32,7 +33,13 @@ export default function Header() {
 
       <form
         role="search"
-        onSubmit={onFormSubmit((data) => void api.events.search(text(data, 'busca')))}
+        onSubmit={onFormSubmit((data) => {
+          const params = new URLSearchParams(searchParams)
+          const query = text(data, 'busca').trim()
+          if (query) params.set('q', query)
+          else params.delete('q')
+          navigate({ pathname: '/', search: params.toString() })
+        })}
         className="mx-auto flex w-full max-w-125 items-center gap-2.5 rounded-full border border-border bg-background px-4.5 py-2.5 max-lg:max-w-105 max-md:order-3 max-md:w-full max-md:max-w-none max-sm:px-3"
       >
         <Search className="size-5 shrink-0" />
@@ -40,16 +47,15 @@ export default function Header() {
           Buscar eventos
         </label>
         <input
+          key={searchParams.get('q') ?? ''}
           id="busca"
           name="busca"
           type="search"
+          defaultValue={searchParams.get('q') ?? ''}
           placeholder="Busque eventos, artistas ou lugares"
-          aria-describedby="aviso-busca"
+          aria-label="Buscar eventos"
           className="w-full min-w-0 border-0 bg-transparent text-sm text-foreground outline-offset-6 max-sm:text-xs"
         />
-        <span className="sr-only" id="aviso-busca">
-          Busca demonstrativa: a pesquisa só aparece no console e não filtra os eventos.
-        </span>
       </form>
 
       <nav
@@ -62,7 +68,7 @@ export default function Header() {
             Filtros
           </PopoverTrigger>
           <PopoverContent aria-label="Filtrar eventos" className="w-80 bg-background p-5">
-            <EventFilters onClose={() => setFiltersOpen(false)} />
+            <EventFilters key={searchParams.toString()} onClose={() => setFiltersOpen(false)} />
           </PopoverContent>
         </Popover>
 

@@ -1,4 +1,3 @@
-import type { EventFilters } from '@/lib/filters'
 import type { CategoryId, RouteOption } from '@/types'
 
 // Endpoints marcados como "provisório" ainda não existem no backend.
@@ -35,15 +34,8 @@ export const api = {
     updatePreferences: (categories: CategoryId[]) => request('PATCH', '/eu/', { preferencias: categories }),
   },
 
-  /** Provisório */
+  /** Ainda demonstrativo: favoritos ainda não têm endpoint no backend. */
   events: {
-    search: (query: string) => request('GET', `/eventos/?busca=${encodeURIComponent(query)}`),
-    filter: (filters: EventFilters) =>
-      request('GET', '/eventos/', {
-        categorias: filters.categories,
-        preco: filters.price,
-        ...(filters.price !== 'free' && { preco_min: filters.minPrice, preco_max: filters.maxPrice }),
-      }),
     save: (eventId: string) => request('POST', `/eventos/${encodeURIComponent(eventId)}/salvar/`),
   },
 

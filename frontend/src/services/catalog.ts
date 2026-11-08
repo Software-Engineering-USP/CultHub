@@ -1,5 +1,7 @@
 import type { CategoryId, CultEvent, EventWithDetails } from '@/types'
 
+const knownCategories: CategoryId[] = ['music', 'festival', 'theater', 'sport', 'art']
+
 export interface ApiCategory {
   codigo: CategoryId
   nome: string
@@ -40,8 +42,8 @@ export interface CatalogQuery {
   page?: number
 }
 
-async function get<T>(path: string): Promise<T> {
-  const response = await fetch(`/api${path}`, { credentials: 'include' })
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`/api${path}`, { credentials: 'include', signal })
   if (!response.ok) {
     let message = `Falha ao carregar o catálogo (${response.status}).`
     try {
@@ -50,23 +52,23 @@ async function get<T>(path: string): Promise<T> {
     } catch {
       // Mantém a mensagem HTTP quando a resposta não contém JSON.
     }
-    throw new Error(message)
+    throw new Error(`${message} (${response.status})`)
   }
   return response.json() as Promise<T>
 }
 
 export const catalogApi = {
   categories: () => get<ApiCategory[]>('/categorias/'),
-  events: (query: CatalogQuery = {}) => {
+  events: (query: CatalogQuery = {}, signal?: AbortSignal) => {
     const params = new URLSearchParams()
     if (query.q?.trim()) params.set('q', query.q.trim())
     if (query.categorias?.length) params.set('categorias', query.categorias.join(','))
     if (query.preco) params.set('preco', query.preco)
     if (query.page && query.page > 1) params.set('page', String(query.page))
     const suffix = params.size ? `?${params.toString()}` : ''
-    return get<Paginated<ApiEvent>>(`/eventos/${suffix}`)
+    return get<Paginated<ApiEvent>>(`/eventos/${suffix}`, signal)
   },
-  event: (id: string) => get<ApiEvent>(`/eventos/${encodeURIComponent(id)}/`),
+  event: (id: string, signal?: AbortSignal) => get<ApiEvent>(`/eventos/${encodeURIComponent(id)}/`, signal),
 }
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -95,7 +97,7 @@ function formatSchedule(event: ApiEvent): string {
 }
 
 export function toCultEvent(event: ApiEvent): EventWithDetails {
-  const category = event.categorias[0] ?? 'art'
+  const category = event.categorias.find((value) => knownCategories.includes(value)) ?? 'art'
   const image = event.imagens[0]
   const venue = event.local?.nome || 'Local a confirmar'
   const { price, priceValue } = formatPrice(event)
