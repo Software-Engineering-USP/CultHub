@@ -6,11 +6,20 @@ import * as demo from '@/lib/demo'
 import { paths, routes } from '@/lib/paths'
 import Origin from '@/pages/Origin'
 import { api } from '@/services/api'
+import { catalogApi } from '@/services/catalog'
+import { apiEvent } from '@tests/fixtures/catalog'
 import { renderWithRouter } from '@tests/render'
 
 const id = 'sp-jazz-blues-festival'
 
 function renderOrigin() {
+  vi.spyOn(catalogApi, 'event').mockResolvedValue(
+    apiEvent({
+      id,
+      titulo: 'Jazz no Parque',
+      local: { nome: 'Auditório Ibirapuera', endereco: '', cidade: 'São Paulo', estado: 'SP' },
+    }),
+  )
   return renderWithRouter(
     <Routes>
       <Route
@@ -28,9 +37,9 @@ describe('Origin', () => {
     vi.restoreAllMocks()
   })
 
-  it('mostra o caminho até "Como chegar", o destino e o link para a rota de exemplo', () => {
+  it('mostra o caminho até "Como chegar", o destino e o link para a rota de exemplo', async () => {
     renderOrigin()
-    expect(screen.getByRole('heading', { level: 1, name: 'Como chegar' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Como chegar' })).toBeInTheDocument()
     expect(document.title).toBe('Defina sua origem | CultHub')
     expect(screen.getByRole('link', { name: 'Voltar para o evento' })).toHaveAttribute(
       'href',
@@ -47,7 +56,8 @@ describe('Origin', () => {
     expect(screen.getByRole('img', { name: /Mapa ilustrativo da região do Ibirapuera/ })).toBeInTheDocument()
   })
 
-  it('mostra o aviso quando o evento não existe', () => {
+  it('mostra o aviso quando a API responde que o evento não existe', async () => {
+    vi.spyOn(catalogApi, 'event').mockRejectedValue(new Error('Não encontrado. (404)'))
     renderWithRouter(
       <Routes>
         <Route
@@ -57,13 +67,15 @@ describe('Origin', () => {
       </Routes>,
       { route: paths.eventOrigin('nao-existe') },
     )
-    expect(screen.getByRole('heading', { level: 1, name: 'Página não encontrada' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Página não encontrada' }),
+    ).toBeInTheDocument()
   })
 
   it('"Usar minha localização" registra o pedido no console', async () => {
     const log = vi.spyOn(demo, 'logDemoAction').mockImplementation(() => {})
     const { user } = renderOrigin()
-    await user.click(screen.getByRole('button', { name: /Usar minha localização/ }))
+    await user.click(await screen.findByRole('button', { name: /Usar minha localização/ }))
     expect(log).toHaveBeenCalledWith('Pedir localização do usuário')
   })
 
@@ -71,9 +83,9 @@ describe('Origin', () => {
     const plan = vi.spyOn(api.routes, 'plan').mockResolvedValue()
     const { user } = renderOrigin()
 
-    await user.type(screen.getByLabelText('Endereço de partida'), 'Rua Augusta, 100')
+    await user.type(await screen.findByLabelText('Endereço de partida'), 'Rua Augusta, 100')
     await user.click(screen.getByLabelText('Ônibus'))
-    await user.click(screen.getByRole('button', { name: 'Traçar rota' }))
+    await user.click(await screen.findByRole('button', { name: 'Traçar rota' }))
 
     expect(plan).toHaveBeenCalledWith({ eventId: id, origin: 'Rua Augusta, 100', mode: 'onibus' })
     expect(await screen.findByRole('heading', { name: 'Página da rota' })).toBeInTheDocument()
@@ -82,7 +94,7 @@ describe('Origin', () => {
   it('não traça a rota sem endereço de partida', async () => {
     const plan = vi.spyOn(api.routes, 'plan').mockResolvedValue()
     const { user } = renderOrigin()
-    await user.click(screen.getByRole('button', { name: 'Traçar rota' }))
+    await user.click(await screen.findByRole('button', { name: 'Traçar rota' }))
     expect(plan).not.toHaveBeenCalled()
   })
 })

@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 import { paths } from '@/lib/paths'
+import { catalogApi } from '@/services/catalog'
+import { apiEvent, apiPage } from '@tests/fixtures/catalog'
 
 function renderAt(route: string) {
   render(
@@ -15,9 +17,19 @@ function renderAt(route: string) {
 const id = 'sp-jazz-blues-festival'
 
 describe('rotas', () => {
+  beforeEach(() => {
+    vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([apiEvent()]))
+    vi.spyOn(catalogApi, 'event').mockImplementation(async (id) => {
+      if (id === 'nao-existe') throw new Error('Não encontrado. (404)')
+      return apiEvent({ id, titulo: id === 'derby-paulista' ? 'Evento encontrado' : 'Jazz no Parque' })
+    })
+  })
+
+  afterEach(() => vi.restoreAllMocks())
+
   it.each([
     [paths.home, 'Mapa de Eventos'],
-    [paths.event(id), 'São Paulo Jazz & Blues Festival'],
+    [paths.event(id), 'Jazz no Parque'],
     [paths.eventOrigin(id), 'Como chegar'],
     [paths.eventRoute(id), 'Como chegar'],
     [paths.signIn, 'Seu próximo encontro com a cultura começa aqui.'],
@@ -28,11 +40,15 @@ describe('rotas', () => {
     expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument()
   })
 
+  it('abre detalhe de evento cadastrado, independente do id ser da demonstração', async () => {
+    renderAt(paths.event('derby-paulista'))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Evento encontrado' })).toBeInTheDocument()
+  })
+
   it.each([
-    [paths.event('derby-paulista'), 'Este evento não possui uma página de detalhes nesta demonstração.'],
     [paths.eventOrigin('nao-existe'), 'Não encontramos o evento para planejar a visita.'],
     [paths.eventRoute('nao-existe'), 'Não encontramos o evento para exibir a rota.'],
-  ])('%s sem página própria mostra o aviso da página', async (route, message) => {
+  ])('%s para evento inexistente mostra o aviso da página', async (route, message) => {
     renderAt(route)
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Página não encontrada' }),

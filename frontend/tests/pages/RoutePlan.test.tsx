@@ -5,11 +5,20 @@ import EventPage from '@/components/events/EventPage'
 import * as demo from '@/lib/demo'
 import { paths, routes } from '@/lib/paths'
 import RoutePlan from '@/pages/RoutePlan'
+import { catalogApi } from '@/services/catalog'
+import { apiEvent } from '@tests/fixtures/catalog'
 import { renderWithRouter } from '@tests/render'
 
 const id = 'sp-jazz-blues-festival'
 
 function renderRoutePlan() {
+  vi.spyOn(catalogApi, 'event').mockResolvedValue(
+    apiEvent({
+      id,
+      titulo: 'Jazz no Parque',
+      local: { nome: 'Auditório Ibirapuera', endereco: '', cidade: 'São Paulo', estado: 'SP' },
+    }),
+  )
   return renderWithRouter(
     <Routes>
       <Route
@@ -26,9 +35,9 @@ describe('RoutePlan', () => {
     vi.restoreAllMocks()
   })
 
-  it('mostra o trajeto, as opções de transporte e os links de volta à origem', () => {
+  it('mostra o trajeto, as opções de transporte e os links de volta à origem', async () => {
     renderRoutePlan()
-    expect(screen.getByRole('heading', { level: 1, name: 'Como chegar' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Como chegar' })).toBeInTheDocument()
     expect(document.title).toBe('Rota de exemplo | CultHub')
 
     const panel = within(screen.getByRole('region', { name: 'Seu trajeto' }))
@@ -48,7 +57,7 @@ describe('RoutePlan', () => {
   it('"Abrir no app de mapas" registra a ação com o id do evento', async () => {
     const log = vi.spyOn(demo, 'logDemoAction').mockImplementation(() => {})
     const { user } = renderRoutePlan()
-    await user.click(screen.getByRole('button', { name: /Abrir no app de mapas/ }))
+    await user.click(await screen.findByRole('button', { name: /Abrir no app de mapas/ }))
     expect(log).toHaveBeenCalledWith('Abrir rota no app de mapas', { eventId: id })
   })
 })
