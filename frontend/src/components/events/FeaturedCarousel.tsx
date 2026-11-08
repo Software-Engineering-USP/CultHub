@@ -21,14 +21,14 @@ interface FeaturedCarouselProps {
 
 /** "Eventos em Destaque" da Home: título com os botões de navegação e o carrossel. */
 export default function FeaturedCarousel({ events, titleId }: Readonly<FeaturedCarouselProps>) {
-  const label = `${events.length} experiências em destaque`
+  const label = `${events.length} próximos eventos`
 
   return (
     <Carousel opts={{ align: 'start' }} plugins={plugins} aria-label={label}>
       <SectionHeading
         id={titleId}
-        title="Eventos em Destaque"
-        description="As experiências mais recomendadas da semana"
+        title="Próximos eventos"
+        description="Alguns dos próximos eventos cadastrados no catálogo"
       >
         <div className="flex gap-2">
           <CarouselPrevious />

@@ -73,8 +73,8 @@ export default function Home() {
       </section>
 
       {featured.length > 0 && (
-        <section aria-labelledby="destaques-titulo">
-          <FeaturedCarousel events={featured} titleId="destaques-titulo" />
+        <section aria-labelledby="proximos-eventos-titulo">
+          <FeaturedCarousel events={featured} titleId="proximos-eventos-titulo" />
         </section>
       )}
 
