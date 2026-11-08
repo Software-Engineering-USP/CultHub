@@ -4,8 +4,8 @@ import NotFound from '@/components/common/NotFound'
 import { Button } from '@/components/ui/button'
 import { useCatalogEvent } from '@/hooks/useCatalog'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import type { EventWithDetails } from '@/types'
 import { paths } from '@/lib/paths'
+import type { EventWithDetails } from '@/types'
 
 interface EventPageProps {
   /** Tela exibida depois que o evento da URL é carregado. */
@@ -21,7 +21,11 @@ export default function EventPage({ page: Page, notFoundMessage }: Readonly<Even
   const { id } = useParams()
   const { event, loading, error } = useCatalogEvent(id)
   if (loading) {
-    return <p role="status" className="py-12 text-center text-muted-foreground">Carregando evento…</p>
+    return (
+      <p role="status" className="py-12 text-center text-muted-foreground">
+        Carregando evento…
+      </p>
+    )
   }
   if (!event) {
     if (error?.includes('(404)')) return <EventNotFound message={notFoundMessage} />

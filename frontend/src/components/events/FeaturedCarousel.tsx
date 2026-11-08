@@ -19,7 +19,7 @@ interface FeaturedCarouselProps {
   titleId: string
 }
 
-/** "Eventos em Destaque" da Home: título com os botões de navegação e o carrossel. */
+/** Próximos eventos da Home, com controles de navegação do carrossel. */
 export default function FeaturedCarousel({ events, titleId }: Readonly<FeaturedCarouselProps>) {
   const label = `${events.length} próximos eventos`
 

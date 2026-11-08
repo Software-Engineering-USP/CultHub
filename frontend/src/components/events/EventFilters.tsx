@@ -30,7 +30,9 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
     fromUrl?.length ? categoryOrder.filter((category) => fromUrl.includes(category)) : [...categoryOrder],
   )
   const initialPrice = searchParams.get('preco')
-  const [price, setPrice] = useState<PriceMode>(initialPrice === 'gratuito' ? 'free' : initialPrice === 'pago' ? 'paid' : 'all')
+  const [price, setPrice] = useState<PriceMode>(
+    initialPrice === 'gratuito' ? 'free' : initialPrice === 'pago' ? 'paid' : 'all',
+  )
 
   function toggleCategory(id: CategoryId, checked: boolean) {
     setSelected((current) => {
@@ -97,7 +99,15 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
       </fieldset>
 
       <div className="mt-5 flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => { setSelected([...categoryOrder]); setPrice('all') }} className="border-maroon/30 text-maroon">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setSelected([...categoryOrder])
+            setPrice('all')
+          }}
+          className="border-maroon/30 text-maroon"
+        >
           Limpar
         </Button>
         <Button size="sm" onClick={apply} className="flex-1">

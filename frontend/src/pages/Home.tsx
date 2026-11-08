@@ -8,8 +8,8 @@ import FeaturedCarousel from '@/components/events/FeaturedCarousel'
 import { Button } from '@/components/ui/button'
 import { useCatalog } from '@/hooks/useCatalog'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { logDemoAction } from '@/lib/demo'
 import { categoryOrder } from '@/lib/categories'
+import { logDemoAction } from '@/lib/demo'
 import type { CatalogQuery } from '@/services/catalog'
 
 export default function Home() {
@@ -21,7 +21,9 @@ export default function Home() {
   const query: CatalogQuery = {
     q: searchParams.get('q') || undefined,
     categorias: categories.length ? categories : undefined,
-    preco: (['gratuito', 'pago', 'desconhecido'] as const).find((value) => value === searchParams.get('preco')),
+    preco: (['gratuito', 'pago', 'desconhecido'] as const).find(
+      (value) => value === searchParams.get('preco'),
+    ),
   }
   const { events, count, loading, error, hasMore, loadMore } = useCatalog(query)
   useDocumentTitle('CultHub | Explore São Paulo')
@@ -82,13 +84,20 @@ export default function Home() {
         <SectionHeading
           id="eventos-titulo"
           title="Todos os Eventos Encontrados"
-          description={loading && events.length === 0 ? 'Carregando eventos…' : `Exibindo ${events.length} de ${count} evento(s)`}
+          description={
+            loading && events.length === 0
+              ? 'Carregando eventos…'
+              : `Exibindo ${events.length} de ${count} evento(s)`
+          }
         >
           <span className="text-xs text-muted-foreground">Ordenados por data</span>
         </SectionHeading>
 
         {error && (
-          <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <p
+            role="alert"
+            className="border-destructive/30 bg-destructive/5 mb-4 rounded-xl border p-4 text-sm"
+          >
             {error}
           </p>
         )}
@@ -98,10 +107,14 @@ export default function Home() {
           ))}
         </div>
         {!loading && events.length === 0 && !error && (
-          <p className="py-8 text-center text-muted-foreground">Nenhum evento encontrado com esses filtros.</p>
+          <p className="py-8 text-center text-muted-foreground">
+            Nenhum evento encontrado com esses filtros.
+          </p>
         )}
         {loading && events.length === 0 && (
-          <p role="status" className="py-8 text-center text-muted-foreground">Carregando eventos…</p>
+          <p role="status" className="py-8 text-center text-muted-foreground">
+            Carregando eventos…
+          </p>
         )}
         {hasMore && (
           <div className="mt-6 text-center">

@@ -65,7 +65,7 @@ export default function EventCard({ event, compact = false, priority = false }: 
           <span
             className={cn(
               'text-base font-bold',
-              event.priceValue === 0 ? 'text-success-foreground' : 'text-maroon',
+              event.price === 'Gratuito' ? 'text-success-foreground' : 'text-maroon',
             )}
           >
             {event.price}

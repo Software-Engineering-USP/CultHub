@@ -1,4 +1,4 @@
-import type { CategoryId, CultEvent, EventWithDetails } from '@/types'
+import type { CategoryId, EventWithDetails } from '@/types'
 
 const knownCategories: CategoryId[] = ['music', 'festival', 'theater', 'sport', 'art']
 
@@ -45,7 +45,7 @@ export interface CatalogQuery {
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`/api${path}`, { credentials: 'include', signal })
   if (!response.ok) {
-    let message = `Falha ao carregar o catálogo (${response.status}).`
+    let message = 'Falha ao carregar o catálogo.'
     try {
       const body: unknown = await response.json()
       if (body && typeof body === 'object') message = Object.values(body).flat().join(' ')
@@ -75,7 +75,8 @@ const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: '
 
 function formatPrice(event: ApiEvent): { price: string; priceValue: number } {
   if (event.situacao_preco === 'gratuito') return { price: 'Gratuito', priceValue: 0 }
-  const values = event.faixas_preco.flatMap((range) => [range.minimo, range.maximo])
+  const values = event.faixas_preco
+    .flatMap((range) => [range.minimo, range.maximo])
     .filter((value): value is number => value !== null)
   if (event.situacao_preco === 'desconhecido' || !values.length) {
     return { price: 'Preço não informado', priceValue: 0 }
@@ -91,7 +92,11 @@ function formatPrice(event: ApiEvent): { price: string; priceValue: number } {
 function formatSchedule(event: ApiEvent): string {
   const [year, month, day] = event.data_inicio.split('-').map(Number)
   const date = new Date(year, month - 1, day)
-  const dateLabel = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(date)
+  const dateLabel = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(date)
   if (!event.hora_inicio) return dateLabel
   return `${dateLabel}, ${event.hora_inicio.slice(0, 5)}`
 }
