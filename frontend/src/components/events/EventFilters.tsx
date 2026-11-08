@@ -30,9 +30,10 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
     fromUrl?.length ? categoryOrder.filter((category) => fromUrl.includes(category)) : [...categoryOrder],
   )
   const initialPrice = searchParams.get('preco')
-  const [price, setPrice] = useState<PriceMode>(
-    initialPrice === 'gratuito' ? 'free' : initialPrice === 'pago' ? 'paid' : 'all',
-  )
+  let initialPriceMode: PriceMode = 'all'
+  if (initialPrice === 'gratuito') initialPriceMode = 'free'
+  else if (initialPrice === 'pago') initialPriceMode = 'paid'
+  const [price, setPrice] = useState<PriceMode>(initialPriceMode)
 
   function toggleCategory(id: CategoryId, checked: boolean) {
     setSelected((current) => {

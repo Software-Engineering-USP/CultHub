@@ -1,6 +1,6 @@
 import type { CategoryId, EventWithDetails } from '@/types'
 
-const knownCategories: CategoryId[] = ['music', 'festival', 'theater', 'sport', 'art']
+const knownCategories = new Set<CategoryId>(['music', 'festival', 'theater', 'sport', 'art'])
 
 export interface ApiCategory {
   codigo: CategoryId
@@ -102,7 +102,7 @@ function formatSchedule(event: ApiEvent): string {
 }
 
 export function toCultEvent(event: ApiEvent): EventWithDetails {
-  const category = event.categorias.find((value) => knownCategories.includes(value)) ?? 'art'
+  const category = event.categorias.find((value) => knownCategories.has(value)) ?? 'art'
   const image = event.imagens[0]
   const venue = event.local?.nome || 'Local a confirmar'
   const { price, priceValue } = formatPrice(event)

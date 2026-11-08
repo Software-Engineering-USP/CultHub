@@ -22,9 +22,9 @@ export default function EventPage({ page: Page, notFoundMessage }: Readonly<Even
   const { event, loading, error } = useCatalogEvent(id)
   if (loading) {
     return (
-      <p role="status" className="py-12 text-center text-muted-foreground">
+      <output className="py-12 text-center text-muted-foreground">
         Carregando evento…
-      </p>
+      </output>
     )
   }
   if (!event) {
