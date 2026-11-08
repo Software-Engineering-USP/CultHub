@@ -112,9 +112,7 @@ export default function Home() {
           </p>
         )}
         {loading && events.length === 0 && (
-          <output className="py-8 text-center text-muted-foreground">
-            Carregando eventos…
-          </output>
+          <output className="py-8 text-center text-muted-foreground">Carregando eventos…</output>
         )}
         {hasMore && (
           <div className="mt-6 text-center">

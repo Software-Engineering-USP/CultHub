@@ -21,11 +21,7 @@ export default function EventPage({ page: Page, notFoundMessage }: Readonly<Even
   const { id } = useParams()
   const { event, loading, error } = useCatalogEvent(id)
   if (loading) {
-    return (
-      <output className="py-12 text-center text-muted-foreground">
-        Carregando evento…
-      </output>
-    )
+    return <output className="py-12 text-center text-muted-foreground">Carregando evento…</output>
   }
   if (!event) {
     if (error?.includes('(404)')) return <EventNotFound message={notFoundMessage} />
