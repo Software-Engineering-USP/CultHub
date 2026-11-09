@@ -20,6 +20,8 @@ from catalogo.ticketmaster import ErroTicketmaster
 FIXTURE = Path(__file__).parent / "dados" / "ticketmaster_pagina.json"
 AGORA = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
 DEPOIS = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
+# 22h de 29/10 em São Paulo, uma hora depois do início do Samba.
+NOITE_DO_SAMBA = datetime(2026, 10, 30, 1, 0, tzinfo=UTC)
 
 
 def eventos_da_fixture():
@@ -135,6 +137,31 @@ class ImportarTest(TestCase):
         ]
         importar(eventos, DEPOIS)
         self.assertIsNone(tm(titulo="BTS WORLD TOUR ARIRANG").removido_em)
+
+    def test_evento_que_comecou_hoje_mais_cedo_e_voltou_continua(self):
+        # Samba começa 29/10 às 21h em SP; a importação roda às 22h.
+        importar(eventos_da_fixture(), AGORA)
+        resumo = importar(eventos_da_fixture(), NOITE_DO_SAMBA)
+        self.assertEqual(resumo.removidos, 0)
+        self.assertIsNone(
+            tm(titulo="Samba nas Alturas | Sampa Sky").removido_em
+        )
+
+    def test_evento_que_comecou_hoje_e_sumiu_e_removido(self):
+        # Começou hoje, então estava na janela da busca: sumir é remoção.
+        # Em UTC já é 30/10; a data de referência é a de SP (29/10).
+        importar(eventos_da_fixture(), AGORA)
+        eventos = [
+            e
+            for e in eventos_da_fixture()
+            if not e["name"].startswith("Samba")
+        ]
+        resumo = importar(eventos, NOITE_DO_SAMBA)
+        self.assertEqual(resumo.removidos, 1)
+        self.assertEqual(
+            tm(titulo="Samba nas Alturas | Sampa Sky").removido_em,
+            NOITE_DO_SAMBA,
+        )
 
     def test_quem_volta_perde_removido_em(self):
         importar(eventos_da_fixture(), AGORA)
