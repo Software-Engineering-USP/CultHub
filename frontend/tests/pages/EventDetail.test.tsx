@@ -1,6 +1,7 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import EventPage from '@/components/events/EventPage'
 import * as demo from '@/lib/demo'
 import { paths, routes } from '@/lib/paths'
 import EventDetail from '@/pages/EventDetail'
@@ -10,7 +11,10 @@ import { renderWithRouter } from '@tests/render'
 function renderEvent(id = 'sp-jazz-blues-festival') {
   return renderWithRouter(
     <Routes>
-      <Route path={routes.event} element={<EventDetail />} />
+      <Route
+        path={routes.event}
+        element={<EventPage page={EventDetail} notFoundMessage="Evento não encontrado." />}
+      />
     </Routes>,
     { route: paths.event(id) },
   )
@@ -19,6 +23,41 @@ function renderEvent(id = 'sp-jazz-blues-festival') {
 describe('EventDetail', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('mostra o evento, o caminho da página e os links para planejar a visita', () => {
+    renderEvent()
+    const id = 'sp-jazz-blues-festival'
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'São Paulo Jazz & Blues Festival' }),
+    ).toBeInTheDocument()
+    expect(document.title).toBe('São Paulo Jazz & Blues Festival | CultHub')
+    expect(screen.getByRole('link', { name: 'Voltar para explorar' })).toHaveAttribute('href', paths.home)
+
+    const breadcrumb = within(screen.getByRole('navigation', { name: 'Caminho da página' }))
+    expect(breadcrumb.getByRole('link', { name: 'Explorar' })).toHaveAttribute('href', paths.home)
+    expect(breadcrumb.getByText('Música')).toBeInTheDocument()
+    expect(breadcrumb.getByText('Jazz & Blues')).toHaveAttribute('aria-current', 'page')
+
+    expect(screen.getByRole('link', { name: /Ver local no mapa/ })).toHaveAttribute(
+      'href',
+      paths.eventOrigin(id),
+    )
+    expect(screen.getByRole('link', { name: /Planejar minha visita/ })).toHaveAttribute(
+      'href',
+      paths.eventOrigin(id),
+    )
+    expect(screen.getByRole('link', { name: 'Ver rota completa de exemplo' })).toHaveAttribute(
+      'href',
+      paths.eventRoute(id),
+    )
+    expect(screen.getByRole('heading', { name: 'Clima no horário do evento' })).toBeInTheDocument()
+  })
+
+  it('mostra o aviso para eventos sem página de detalhes', () => {
+    renderEvent('derby-paulista')
+    expect(screen.getByRole('heading', { level: 1, name: 'Página não encontrada' })).toBeInTheDocument()
+    expect(screen.getByText('Evento não encontrado.')).toBeInTheDocument()
   })
 
   it('Salvar chama a API com o id do evento', async () => {

@@ -13,20 +13,18 @@ export default function WeatherCard({ event }: Readonly<{ event: CultEvent }>) {
 
   return (
     <Surface as="section" aria-labelledby="clima-titulo">
-      <div className="flex items-center justify-between gap-[14px]">
-        <h3 id="clima-titulo" className="text-[17px]">
+      <div className="flex items-center justify-between gap-3.5">
+        <h3 id="clima-titulo" className="text-lg">
           Clima no horário do evento
         </h3>
-        <Eyebrow className="text-[10px] text-muted-foreground">EXEMPLO</Eyebrow>
+        <Eyebrow className="text-2xs text-muted-foreground">EXEMPLO</Eyebrow>
       </div>
 
-      <div className="mt-6 mb-4 flex items-center gap-[18px]">
+      <div className="mt-6 mb-4 flex items-center gap-4.5">
         <Sun strokeWidth={1.5} className="size-12 shrink-0 text-sun" />
         <div>
-          <p className="text-[46px] leading-[1.15] font-[650] tracking-[-.06em] text-ink">
-            {weather.temperature}
-          </p>
-          <p className="text-[12px] text-muted-foreground">{event.schedule} • exemplo</p>
+          <p className="text-5xl font-semibold tracking-tighter text-foreground">{weather.temperature}</p>
+          <p className="text-xs text-muted-foreground">{event.schedule} • exemplo</p>
         </div>
       </div>
 

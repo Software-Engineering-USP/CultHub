@@ -38,7 +38,7 @@ export default function FeaturedCarousel({ events, titleId }: Readonly<FeaturedC
 
       <CarouselContent className="-ml-5 pb-4">
         {events.map((event, index) => (
-          <CarouselItem key={event.id} className="basis-[350px] pl-5 max-sm:basis-[min(310px,85%)]">
+          <CarouselItem key={event.id} className="basis-87.5 pl-5 max-sm:basis-[min(310px,85%)]">
             <EventCard event={event} priority={index === 0} />
           </CarouselItem>
         ))}

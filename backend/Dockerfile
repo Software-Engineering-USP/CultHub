@@ -13,6 +13,7 @@ COPY CultHubBackend ./CultHubBackend
 COPY catalogo ./catalogo
 COPY usuarios ./usuarios
 COPY agenda ./agenda
+COPY clima ./clima
 
 # UID 1000 coincide com o usuário padrão do Linux; o db.sqlite3 é criado em /app.
 RUN useradd --uid 1000 --create-home app && chown app:app /app
