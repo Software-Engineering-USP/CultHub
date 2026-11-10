@@ -32,6 +32,14 @@ describe('EventCard', () => {
     )
   })
 
+  it('não cria links de detalhe quando o evento não pertence ao catálogo', () => {
+    renderWithRouter(<EventCard event={jazz} detailsLink={false} />)
+
+    expect(screen.queryByRole('link', { name: `Conhecer ${jazz.title}` })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: jazz.title })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: `Ver detalhes do ${jazz.title}` })).not.toBeInTheDocument()
+  })
+
   it('preço gratuito aparece em verde', () => {
     renderWithRouter(<EventCard event={virada} />)
     expect(screen.getByText('Gratuito')).toHaveClass('text-success-foreground')

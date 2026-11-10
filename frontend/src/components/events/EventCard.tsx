@@ -13,9 +13,16 @@ interface EventCardProps {
   compact?: boolean
   /** Carrega a imagem imediatamente (primeiro card visível) */
   priority?: boolean
+  /** Exibe links para o detalhe do evento quando ele existe no catálogo. */
+  detailsLink?: boolean
 }
 
-export default function EventCard({ event, compact = false, priority = false }: Readonly<EventCardProps>) {
+export default function EventCard({
+  event,
+  compact = false,
+  priority = false,
+  detailsLink = true,
+}: Readonly<EventCardProps>) {
   const category = categories[event.category]
   const href = paths.event(event.id)
   const info = [
@@ -31,25 +38,30 @@ export default function EventCard({ event, compact = false, priority = false }: 
       )}
     >
       <div className="relative">
-        <Link to={href} aria-label={`Conhecer ${event.title}`}>
+        {detailsLink ? (
+          <Link to={href} aria-label={`Conhecer ${event.title}`}>
+            <img
+              src={event.image}
+              alt={event.imageAlt}
+              loading={priority ? undefined : 'lazy'}
+              className={cn('block w-full object-cover', compact ? 'h-32' : 'h-36')}
+            />
+          </Link>
+        ) : (
           <img
             src={event.image}
             alt={event.imageAlt}
             loading={priority ? undefined : 'lazy'}
             className={cn('block w-full object-cover', compact ? 'h-32' : 'h-36')}
           />
-        </Link>
+        )}
         <Badge className={cn('absolute bottom-3 left-3 bg-card/90 font-medium shadow-badge', category.text)}>
           {category.label}
         </Badge>
       </div>
 
       <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-lg">
-          <Link to={href} className="no-underline hover:underline">
-            {event.title}
-          </Link>
-        </h3>
+        <h3 className="text-lg">{detailsLink ? <Link to={href}>{event.title}</Link> : event.title}</h3>
         <p className="mt-3 line-clamp-2 text-xs">{event.description}</p>
 
         <div className="mt-3 mb-4 grid gap-2 text-xs">
@@ -70,9 +82,11 @@ export default function EventCard({ event, compact = false, priority = false }: 
           >
             {event.price}
           </span>
-          <Link to={href} aria-label={`Ver detalhes do ${shortName(event)}`} className="text-maroon">
-            <ArrowUpRight className="size-4" />
-          </Link>
+          {detailsLink && (
+            <Link to={href} aria-label={`Ver detalhes do ${shortName(event)}`} className="text-maroon">
+              <ArrowUpRight className="size-4" />
+            </Link>
+          )}
         </div>
       </div>
     </article>
