@@ -6,7 +6,7 @@ import * as demo from '@/lib/demo'
 import { paths, routes } from '@/lib/paths'
 import EventDetail from '@/pages/EventDetail'
 import { api } from '@/services/api'
-import { catalogApi } from '@/services/catalog'
+import { ApiError, catalogApi } from '@/services/catalog'
 import { apiEvent } from '@tests/fixtures/catalog'
 import { renderWithRouter } from '@tests/render'
 
@@ -60,7 +60,7 @@ describe('EventDetail', () => {
   })
 
   it('mostra aviso apenas quando a API responde que o evento não existe', async () => {
-    vi.spyOn(catalogApi, 'event').mockRejectedValue(new Error('Não encontrado. (404)'))
+    vi.spyOn(catalogApi, 'event').mockRejectedValue(new ApiError('Não encontrado.', 404))
     renderWithRouter(
       <Routes>
         <Route

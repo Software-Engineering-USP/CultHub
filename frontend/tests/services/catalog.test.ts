@@ -64,6 +64,7 @@ describe('catalogApi', () => {
     await expect(catalogApi.events({ categorias: ['music'] })).rejects.toThrow(
       'Categoria inexistente: xyz. (400)',
     )
+    await expect(catalogApi.events({ categorias: ['music'] })).rejects.toMatchObject({ status: 400 })
   })
 
   it('usa mensagem HTTP se o corpo de erro não for JSON', async () => {

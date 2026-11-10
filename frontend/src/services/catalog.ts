@@ -43,6 +43,16 @@ export interface CatalogQuery {
   page?: number
 }
 
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`/api${path}`, { credentials: 'include', signal })
   if (!response.ok) {
@@ -53,7 +63,7 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
     } catch {
       // Mantém a mensagem HTTP quando a resposta não contém JSON.
     }
-    throw new Error(`${message} (${response.status})`)
+    throw new ApiError(`${message} (${response.status})`, response.status)
   }
   return response.json() as Promise<T>
 }

@@ -91,7 +91,7 @@ export function useCatalogEvent(id: string | undefined) {
     id?: string
     event?: EventWithDetails
     loading: boolean
-    error: string | null
+    error: Error | null
   }>({ loading: true, error: null })
 
   useEffect(() => {
@@ -105,14 +105,14 @@ export function useCatalogEvent(id: string | undefined) {
           setState({
             id,
             loading: false,
-            error: error instanceof Error ? error.message : 'Não foi possível carregar o evento.',
+            error: error instanceof Error ? error : new Error('Não foi possível carregar o evento.'),
           })
         }
       })
     return () => controller.abort()
   }, [id])
 
-  if (!id) return { loading: false, error: 'Evento não encontrado.' }
+  if (!id) return { loading: false, error: new Error('Evento não encontrado.') }
   if (state.id !== id) return { loading: true, error: null }
   return state
 }

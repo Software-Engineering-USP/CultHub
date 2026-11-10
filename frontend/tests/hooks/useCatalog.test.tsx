@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useCatalog, useCatalogEvent } from '@/hooks/useCatalog'
-import { catalogApi } from '@/services/catalog'
+import { ApiError, catalogApi } from '@/services/catalog'
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
 
 describe('useCatalog', () => {
@@ -111,18 +111,19 @@ describe('useCatalogEvent', () => {
   })
 
   it('trata evento inexistente, falha de rede e id ausente', async () => {
-    vi.spyOn(catalogApi, 'event').mockRejectedValue(new Error('Não encontrado. (404)'))
+    vi.spyOn(catalogApi, 'event').mockRejectedValue(new ApiError('Não encontrado.', 404))
     const missing = renderHook(() => useCatalogEvent('inexistente'))
-    await waitFor(() => expect(missing.result.current.error).toContain('(404)'))
+    await waitFor(() => expect(missing.result.current.error).toBeInstanceOf(ApiError))
+    expect((missing.result.current.error as ApiError).status).toBe(404)
     missing.unmount()
 
     vi.restoreAllMocks()
     vi.spyOn(catalogApi, 'event').mockRejectedValue(new TypeError('Failed to fetch'))
     const offline = renderHook(() => useCatalogEvent('algum-id'))
-    await waitFor(() => expect(offline.result.current.error).toBe('Failed to fetch'))
+    await waitFor(() => expect(offline.result.current.error?.message).toBe('Failed to fetch'))
     offline.unmount()
 
     const noId = renderHook(() => useCatalogEvent(undefined))
-    expect(noId.result.current).toEqual({ loading: false, error: 'Evento não encontrado.' })
+    expect(noId.result.current.error?.message).toBe('Evento não encontrado.')
   })
 })

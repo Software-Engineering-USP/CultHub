@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useCatalogEvent } from '@/hooks/useCatalog'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { paths } from '@/lib/paths'
+import { ApiError } from '@/services/catalog'
 import type { EventWithDetails } from '@/types'
 
 interface EventPageProps {
@@ -24,14 +25,14 @@ export default function EventPage({ page: Page, notFoundMessage }: Readonly<Even
     return <output className="py-12 text-center text-muted-foreground">Carregando evento…</output>
   }
   if (!event) {
-    if (error?.includes('(404)')) return <EventNotFound message={notFoundMessage} />
+    if (error instanceof ApiError && error.status === 404) return <EventNotFound message={notFoundMessage} />
     return (
       <section
         role="alert"
         className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-6 text-center"
       >
         <h1 className="text-2xl">Não foi possível carregar o evento</h1>
-        <p className="mt-3 text-muted-foreground">{error}</p>
+        <p className="mt-3 text-muted-foreground">{error?.message}</p>
         <Button asChild className="mt-5">
           <Link to={paths.home}>Voltar para explorar</Link>
         </Button>

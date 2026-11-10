@@ -3,7 +3,7 @@ import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import EventPage from '@/components/events/EventPage'
 import { paths, routes } from '@/lib/paths'
-import { catalogApi } from '@/services/catalog'
+import { ApiError, catalogApi } from '@/services/catalog'
 import type { EventWithDetails } from '@/types'
 import { apiEvent } from '@tests/fixtures/catalog'
 import { renderWithRouter } from '@tests/render'
@@ -51,7 +51,7 @@ describe('EventPage', () => {
   })
 
   it('mostra o estado não encontrado quando a API responde 404', async () => {
-    vi.spyOn(catalogApi, 'event').mockRejectedValue(new Error('Não encontrado. (404)'))
+    vi.spyOn(catalogApi, 'event').mockRejectedValue(new ApiError('Não encontrado.', 404))
     renderAt('inexistente')
 
     expect(
@@ -66,6 +66,14 @@ describe('EventPage', () => {
     renderAt('evento')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to fetch')
+    expect(screen.queryByRole('heading', { name: 'Página não encontrada' })).not.toBeInTheDocument()
+  })
+
+  it('não trata uma mensagem que contém 404 como evento inexistente', async () => {
+    vi.spyOn(catalogApi, 'event').mockRejectedValue(new Error('Falha temporária (404)'))
+    renderAt('evento')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha temporária (404)')
     expect(screen.queryByRole('heading', { name: 'Página não encontrada' })).not.toBeInTheDocument()
   })
 })
