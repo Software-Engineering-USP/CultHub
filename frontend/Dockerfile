@@ -4,8 +4,10 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 # O Vite grava o cache em node_modules, então o usuário node precisa ser o dono.
+# A versão do binding vem do lockfile para acompanhar o rolldown instalado pelo npm ci.
 RUN npm ci --ignore-scripts \
-    && ROLLDOWN_BINDING="@rolldown/binding-linux-$(node -p 'process.arch')-musl@1.2.14" \
+    && ROLLDOWN_VERSION="$(node -p "require('./package-lock.json').packages['node_modules/rolldown'].version")" \
+    && ROLLDOWN_BINDING="@rolldown/binding-linux-$(node -p 'process.arch')-musl@${ROLLDOWN_VERSION}" \
     && npm install --no-save --ignore-scripts "$ROLLDOWN_BINDING" \
     && chown -R node:node node_modules
 
