@@ -116,6 +116,14 @@ describe('toCultEvent', () => {
     expect(event.priceValue).toBe(0)
   })
 
+  it.each([
+    [{ removido: true }, 'removed'],
+    [{ situacao: 'cancelled' }, 'cancelled'],
+    [{ data_inicio: '2020-01-01' }, 'ended'],
+  ] as const)('preserva a indisponibilidade %s do evento', (overrides, expected) => {
+    expect(toCultEvent(apiEvent(overrides)).availability).toBe(expected)
+  })
+
   it('usa dados seguros quando local, imagem, categoria, horário ou descrição faltam', () => {
     const event = toCultEvent(
       apiEvent({

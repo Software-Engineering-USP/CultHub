@@ -10,6 +10,7 @@ export function apiEvent(overrides: Partial<ApiEvent> = {}): ApiEvent {
     data_inicio: '2040-03-10',
     hora_inicio: '20:00:00',
     inicio: '2040-03-10T20:00:00-03:00',
+    fim: null,
     data_fim: null,
     hora_fim: null,
     fuso: 'America/Sao_Paulo',

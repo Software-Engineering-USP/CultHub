@@ -1,4 +1,4 @@
-import type { CategoryId, EventWithDetails } from '@/types'
+import type { CategoryId, EventAvailability, EventWithDetails } from '@/types'
 
 const knownCategories = new Set<CategoryId>(['music', 'festival', 'theater', 'sport', 'art'])
 
@@ -16,6 +16,7 @@ export interface ApiEvent {
   data_inicio: string
   hora_inicio: string | null
   inicio: string | null
+  fim: string | null
   data_fim: string | null
   hora_fim: string | null
   fuso: string
@@ -101,6 +102,32 @@ function formatSchedule(event: ApiEvent): string {
   return `${dateLabel}, ${event.hora_inicio.slice(0, 5)}`
 }
 
+function todayInTimeZone(timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts()
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value
+  return `${value('year')}-${value('month')}-${value('day')}`
+}
+
+function availability(event: ApiEvent): EventAvailability | undefined {
+  if (event.removido) return 'removed'
+  if (event.situacao?.toLowerCase() === 'cancelled' || event.situacao?.toLowerCase() === 'canceled') {
+    return 'cancelled'
+  }
+  if (
+    event.fim
+      ? new Date(event.fim).getTime() < Date.now()
+      : (event.data_fim ?? event.data_inicio) < todayInTimeZone(event.fuso)
+  ) {
+    return 'ended'
+  }
+  return undefined
+}
+
 export function toCultEvent(event: ApiEvent): EventWithDetails {
   const category = event.categorias.find((value) => knownCategories.has(value)) ?? 'art'
   const image = event.imagens[0]
@@ -118,6 +145,7 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
     priceValue,
     image: image?.url ?? '/assets/event-placeholder.svg',
     imageAlt: `Imagem do evento ${event.titulo}`,
+    availability: availability(event),
     details: {
       about: [event.descricao || 'Mais informações sobre este evento em breve.'],
       startTime: event.hora_inicio?.slice(0, 5) ?? 'Horário a confirmar',

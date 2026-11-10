@@ -76,6 +76,25 @@ describe('EventDetail', () => {
     expect(screen.getByText('Evento não encontrado.')).toBeInTheDocument()
   })
 
+  it.each([
+    [{ removido: true }, 'Este evento não está mais disponível no catálogo.'],
+    [{ situacao: 'cancelled' }, 'Este evento foi cancelado.'],
+    [{ data_inicio: '2020-01-01' }, 'Este evento já foi encerrado.'],
+  ])('avisa quando o evento está indisponível', async (overrides, message) => {
+    vi.spyOn(catalogApi, 'event').mockResolvedValue(apiEvent(overrides))
+    renderWithRouter(
+      <Routes>
+        <Route
+          path={routes.event}
+          element={<EventPage page={EventDetail} notFoundMessage="Evento não encontrado." />}
+        />
+      </Routes>,
+      { route: paths.event('evento-indisponivel') },
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+  })
+
   it('Salvar chama a API com o id do evento', async () => {
     const save = vi.spyOn(api.events, 'save').mockResolvedValue()
     const { user } = renderEvent()

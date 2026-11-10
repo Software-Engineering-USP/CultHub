@@ -30,7 +30,13 @@ import { shortName } from '@/lib/events'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { api } from '@/services/api'
-import type { EventWithDetails } from '@/types'
+import type { EventAvailability, EventWithDetails } from '@/types'
+
+const availabilityMessages: Record<EventAvailability, string> = {
+  removed: 'Este evento não está mais disponível no catálogo.',
+  cancelled: 'Este evento foi cancelado.',
+  ended: 'Este evento já foi encerrado.',
+}
 
 export default function EventDetail({ event }: { event: EventWithDetails }) {
   const user = useCurrentUser()
@@ -38,6 +44,7 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
   useDocumentTitle(`${event.title} | CultHub`)
 
   const category = categories[event.category]
+  const availabilityMessage = event.availability ? availabilityMessages[event.availability] : undefined
 
   return (
     <>
@@ -78,6 +85,12 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
             <h1 id="evento-titulo" className="max-w-175 text-foreground">
               {event.title}
             </h1>
+
+            {availabilityMessage && (
+              <p role="alert" className="mt-4 rounded-xl border border-amber-700/30 bg-amber-50 p-4 text-sm">
+                {availabilityMessage}
+              </p>
+            )}
 
             <div className="mt-5.5 mb-2 flex flex-wrap gap-2.5">
               <Button

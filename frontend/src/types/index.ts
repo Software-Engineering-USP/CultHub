@@ -5,6 +5,8 @@ export interface EventDetails {
   startTime: string
 }
 
+export type EventAvailability = 'removed' | 'cancelled' | 'ended'
+
 export interface CultEvent {
   id: string
   title: string
@@ -21,6 +23,8 @@ export interface CultEvent {
   image: string
   imageAlt: string
   featured?: boolean
+  /** Situação que torna o evento indisponível para uma nova visita. */
+  availability?: EventAvailability
   /** Só eventos com detalhes têm página própria */
   details?: EventDetails
 }
