@@ -32,7 +32,7 @@ describe('useCatalog', () => {
 
     await act(async () => result.current.loadMore())
 
-    expect(events).toHaveBeenLastCalledWith({ page: 2 }, undefined)
+    expect(events).toHaveBeenLastCalledWith({ page: 2 }, expect.any(AbortSignal))
     expect(result.current.events.map((event) => event.title)).toEqual(['Jazz no Parque', 'Teatro'])
     expect(result.current.hasMore).toBe(false)
   })
@@ -68,6 +68,33 @@ describe('useCatalog', () => {
 
     expect(result.current.events[0]?.title).toBe('Resultado novo')
     expect(events.mock.calls[0][1]?.aborted).toBe(true)
+  })
+
+  it('não acrescenta uma página antiga depois que os filtros mudam', async () => {
+    let resolveSecondPage!: (value: ReturnType<typeof apiPage>) => void
+    const events = vi
+      .spyOn(catalogApi, 'events')
+      .mockResolvedValueOnce(apiPage([apiEvent({ titulo: 'Antigo p1' })], '/api/eventos/?page=2'))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecondPage = resolve
+          }),
+      )
+      .mockResolvedValueOnce(apiPage([apiEvent({ titulo: 'Novo p1' })]))
+    const { result, rerender } = renderHook(({ q }: { q: string }) => useCatalog({ q }), {
+      initialProps: { q: 'antigo' },
+    })
+    await waitFor(() => expect(result.current.hasMore).toBe(true))
+
+    act(() => result.current.loadMore())
+    await waitFor(() => expect(events).toHaveBeenCalledTimes(2))
+    rerender({ q: 'novo' })
+    await waitFor(() => expect(result.current.events[0]?.title).toBe('Novo p1'))
+    await act(async () => resolveSecondPage(apiPage([apiEvent({ titulo: 'Antigo p2' })])))
+
+    expect(result.current.events.map((event) => event.title)).toEqual(['Novo p1'])
+    expect(events.mock.calls[1][1]?.aborted).toBe(true)
   })
 })
 

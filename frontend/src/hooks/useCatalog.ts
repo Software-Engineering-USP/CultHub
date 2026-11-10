@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { catalogApi, toCultEvent } from '@/services/catalog'
 import type { CatalogQuery } from '@/services/catalog'
 import type { EventWithDetails } from '@/types'
@@ -13,6 +13,8 @@ interface CatalogState {
 }
 
 export function useCatalog(query: CatalogQuery) {
+  const requests = useRef(new Set<AbortController>())
+  const queryVersion = useRef(0)
   const categoryKey = query.categorias?.join(',')
   const stableQuery = useMemo<CatalogQuery>(
     () => ({
@@ -32,11 +34,11 @@ export function useCatalog(query: CatalogQuery) {
   })
 
   const load = useCallback(
-    async (page = 1, append = false, signal?: AbortSignal) => {
+    async (page: number, append: boolean, controller: AbortController, version: number) => {
       setState((current) => ({ ...current, loading: true, error: null }))
       try {
-        const result = await catalogApi.events({ ...stableQuery, page }, signal)
-        if (signal?.aborted) return
+        const result = await catalogApi.events({ ...stableQuery, page }, controller.signal)
+        if (controller.signal.aborted || version !== queryVersion.current) return
         setState((current) => ({
           events: append
             ? [...current.events, ...result.results.map(toCultEvent)]
@@ -48,25 +50,37 @@ export function useCatalog(query: CatalogQuery) {
           nextPage: result.next ? page + 1 : null,
         }))
       } catch (error) {
-        if (signal?.aborted) return
+        if (controller.signal.aborted || version !== queryVersion.current) return
         setState((current) => ({
           ...current,
           loading: false,
           error: error instanceof Error ? error.message : 'Não foi possível carregar os eventos.',
         }))
+      } finally {
+        requests.current.delete(controller)
       }
     },
     [stableQuery],
   )
 
   useEffect(() => {
+    queryVersion.current += 1
+    const version = queryVersion.current
     const controller = new AbortController()
-    void load(1, false, controller.signal)
-    return () => controller.abort()
+    requests.current.add(controller)
+    void load(1, false, controller, version)
+    return () => {
+      requests.current.forEach((request) => request.abort())
+      requests.current.clear()
+    }
   }, [load])
 
   const loadMore = useCallback(() => {
-    if (!state.loading && state.nextPage !== null) void load(state.nextPage, true)
+    if (!state.loading && state.nextPage !== null) {
+      const controller = new AbortController()
+      requests.current.add(controller)
+      void load(state.nextPage, true, controller, queryVersion.current)
+    }
   }, [load, state.nextPage, state.loading])
 
   return { ...state, loadMore }
