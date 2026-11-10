@@ -66,12 +66,13 @@ export function useCatalog(query: CatalogQuery) {
   useEffect(() => {
     queryVersion.current += 1
     const version = queryVersion.current
+    const pending = requests.current
     const controller = new AbortController()
-    requests.current.add(controller)
+    pending.add(controller)
     void load(1, false, controller, version)
     return () => {
-      requests.current.forEach((request) => request.abort())
-      requests.current.clear()
+      pending.forEach((request) => request.abort())
+      pending.clear()
     }
   }, [load])
 

@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 import { paths } from '@/lib/paths'
-import { catalogApi } from '@/services/catalog'
+import { ApiError, catalogApi } from '@/services/catalog'
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
 
 function renderAt(route: string) {
@@ -20,7 +20,7 @@ describe('rotas', () => {
   beforeEach(() => {
     vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([apiEvent()]))
     vi.spyOn(catalogApi, 'event').mockImplementation(async (id) => {
-      if (id === 'nao-existe') throw new Error('Não encontrado. (404)')
+      if (id === 'nao-existe') throw new ApiError('Não encontrado. (404)', 404)
       return apiEvent({ id, titulo: id === 'derby-paulista' ? 'Evento encontrado' : 'Jazz no Parque' })
     })
   })
