@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import EventPage from '@/components/events/EventPage'
@@ -38,7 +38,7 @@ describe('RoutePlan', () => {
   it('mostra o trajeto, as opções de transporte e os links de volta à origem', async () => {
     renderRoutePlan()
     expect(await screen.findByRole('heading', { level: 1, name: 'Como chegar' })).toBeInTheDocument()
-    expect(document.title).toBe('Rota de exemplo | CultHub')
+    await waitFor(() => expect(document.title).toBe('Rota de exemplo | CultHub'))
 
     const panel = within(screen.getByRole('region', { name: 'Seu trajeto' }))
     const options = within(panel.getByRole('list', { name: /Comparação ilustrativa de transportes/ }))

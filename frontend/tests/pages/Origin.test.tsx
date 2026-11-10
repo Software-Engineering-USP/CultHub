@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import EventPage from '@/components/events/EventPage'
@@ -40,7 +40,7 @@ describe('Origin', () => {
   it('mostra o caminho até "Como chegar", o destino e o link para a rota de exemplo', async () => {
     renderOrigin()
     expect(await screen.findByRole('heading', { level: 1, name: 'Como chegar' })).toBeInTheDocument()
-    expect(document.title).toBe('Defina sua origem | CultHub')
+    await waitFor(() => expect(document.title).toBe('Defina sua origem | CultHub'))
     expect(screen.getByRole('link', { name: 'Voltar para o evento' })).toHaveAttribute(
       'href',
       paths.event(id),
