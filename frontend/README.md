@@ -28,7 +28,7 @@ src/
 │   ├── ui/          componentes base, criados a partir do shadcn/ui (Button, Badge, Select, Carousel...)
 │   ├── common/      componentes próprios usados em várias telas (Surface, SectionHeading, Field, DemoNote...)
 │   ├── layout/      Layout, Header, Footer
-│   ├── events/      EventCard, FeaturedCarousel, EventFilters, EventSort, CommentItem...
+│   ├── events/      EventCard, FeaturedCarousel, EventFilters, CommentItem...
 │   └── weather/     WeatherCard, WeatherStrip, WeatherStats
 ├── pages/           uma página por rota
 ├── data/            dados demonstrativos de perfil, comentários, clima e rotas
