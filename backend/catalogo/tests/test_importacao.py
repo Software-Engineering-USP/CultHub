@@ -1,6 +1,6 @@
 import copy
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from io import StringIO
 from pathlib import Path
@@ -10,6 +10,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import OperationalError
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from catalogo import importacao
 from catalogo.importacao import ErroImportacao, importar
@@ -19,6 +20,8 @@ from catalogo.ticketmaster import ErroTicketmaster
 FIXTURE = Path(__file__).parent / "dados" / "ticketmaster_pagina.json"
 AGORA = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
 DEPOIS = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
+# 22h de 29/10 em São Paulo, uma hora depois do início do Samba.
+NOITE_DO_SAMBA = datetime(2026, 10, 30, 1, 0, tzinfo=UTC)
 
 
 def eventos_da_fixture():
@@ -107,12 +110,57 @@ class ImportarTest(TestCase):
     def test_quem_nao_veio_ganha_removido_em(self):
         importar(eventos_da_fixture(), AGORA)
         eventos = [
-            e for e in eventos_da_fixture() if not e["name"].startswith("BTS")
+            e
+            for e in eventos_da_fixture()
+            if not e["name"].startswith("Carioca")
         ]
         resumo = importar(eventos, DEPOIS)
         self.assertEqual(resumo.removidos, 1)
+        self.assertEqual(tm(titulo="Carioca Matsuri 2026").removido_em, DEPOIS)
+
+    def test_evento_que_ja_comecou_e_nao_veio_nao_e_removido(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = [
+            e for e in eventos_da_fixture() if not e["name"].startswith("BTS")
+        ]
+        resumo = importar(eventos, DEPOIS)
+        self.assertEqual(resumo.removidos, 0)
+        self.assertIsNone(tm(titulo="BTS WORLD TOUR ARIRANG").removido_em)
+
+    def test_evento_de_varios_dias_em_andamento_nao_e_removido(self):
+        importar(eventos_da_fixture(), AGORA)
+        Evento.objects.filter(titulo="BTS WORLD TOUR ARIRANG").update(
+            data_fim=date(2026, 10, 30)
+        )
+        eventos = [
+            e for e in eventos_da_fixture() if not e["name"].startswith("BTS")
+        ]
+        importar(eventos, DEPOIS)
+        self.assertIsNone(tm(titulo="BTS WORLD TOUR ARIRANG").removido_em)
+
+    def test_evento_que_comecou_hoje_mais_cedo_e_voltou_continua(self):
+        # Samba começa 29/10 às 21h em SP; a importação roda às 22h.
+        importar(eventos_da_fixture(), AGORA)
+        resumo = importar(eventos_da_fixture(), NOITE_DO_SAMBA)
+        self.assertEqual(resumo.removidos, 0)
+        self.assertIsNone(
+            tm(titulo="Samba nas Alturas | Sampa Sky").removido_em
+        )
+
+    def test_evento_que_comecou_hoje_e_sumiu_e_removido(self):
+        # Começou hoje, então estava na janela da busca: sumir é remoção.
+        # Em UTC já é 30/10; a data de referência é a de SP (29/10).
+        importar(eventos_da_fixture(), AGORA)
+        eventos = [
+            e
+            for e in eventos_da_fixture()
+            if not e["name"].startswith("Samba")
+        ]
+        resumo = importar(eventos, NOITE_DO_SAMBA)
+        self.assertEqual(resumo.removidos, 1)
         self.assertEqual(
-            tm(titulo="BTS WORLD TOUR ARIRANG").removido_em, DEPOIS
+            tm(titulo="Samba nas Alturas | Sampa Sky").removido_em,
+            NOITE_DO_SAMBA,
         )
 
     def test_quem_volta_perde_removido_em(self):
@@ -201,14 +249,12 @@ class ImportarTest(TestCase):
     def test_evento_ja_removido_que_volta_com_erro_continua_removido(self):
         importar(eventos_da_fixture(), AGORA)
         eventos = copy.deepcopy(eventos_da_fixture())
-        ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        ruim = achar(eventos, "Carioca Matsuri 2026")
         eventos.remove(ruim)
         importar(eventos, DEPOIS)
         ruim["images"] = [{"ratio": "16_9"}]
         importar([*eventos, ruim], DEPOIS + timedelta(days=1))
-        self.assertEqual(
-            tm(titulo="BTS WORLD TOUR ARIRANG").removido_em, DEPOIS
-        )
+        self.assertEqual(tm(titulo="Carioca Matsuri 2026").removido_em, DEPOIS)
 
     def test_evento_com_erro_e_id_que_nao_e_texto_vai_para_com_erro(self):
         eventos = eventos_da_fixture()
@@ -370,14 +416,18 @@ class ImportarTest(TestCase):
 
     def test_todos_cancelados_sem_erro_continua_removendo(self):
         importar(eventos_da_fixture(), AGORA)
-        ativos = Evento.objects.filter(removido_em__isnull=True).count()
+        ativos = Evento.objects.filter(
+            removido_em__isnull=True, data_inicio__gte=DEPOIS.date()
+        ).count()
         cancelados = eventos_da_fixture()
         for evento in cancelados:
             evento["dates"]["status"]["code"] = "cancelled"
         resumo = importar(cancelados, DEPOIS)
         self.assertEqual(resumo.removidos, ativos)
         self.assertFalse(
-            Evento.objects.filter(removido_em__isnull=True).exists()
+            Evento.objects.filter(
+                removido_em__isnull=True, data_inicio__gte=DEPOIS.date()
+            ).exists()
         )
 
     def test_erro_nao_deixa_gravacao_parcial(self):
@@ -875,7 +925,7 @@ class ComandoTest(TestCase):
             provedor=Provedor.TICKETMASTER,
             id_externo="velho",
             titulo="Velho",
-            data_inicio=AGORA.date(),
+            data_inicio=timezone.localdate(),
         )
         saida = StringIO()
         with patch(
