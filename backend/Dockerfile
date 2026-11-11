@@ -15,8 +15,8 @@ COPY usuarios ./usuarios
 COPY agenda ./agenda
 COPY clima ./clima
 
-# UID 1000 coincide com o usuário padrão do Linux; o db.sqlite3 é criado em /app.
-RUN useradd --uid 1000 --create-home app && chown app:app /app
+# O banco do Compose fica em /data, em um volume com permissões deste usuário.
+RUN useradd --uid 1000 --create-home app && mkdir /data && chown app:app /app /data
 USER app
 
 EXPOSE 8000

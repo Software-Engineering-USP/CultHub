@@ -8,6 +8,7 @@ venv/
 
 # Banco local
 db.sqlite3
+db.sqlite3.*
 
 # Ferramentas
 .ruff_cache/
