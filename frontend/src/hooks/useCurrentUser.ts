@@ -1,7 +1,7 @@
-import { currentUser } from '@/data/user'
+import { useAuth } from '@/hooks/useAuth'
 import type { User } from '@/types'
 
-/** Usuário logado (por enquanto, o perfil fictício da demonstração). */
-export function useCurrentUser(): User {
-  return currentUser
+/** Usuário autenticado na sessão atual; null para visitantes. */
+export function useCurrentUser(): User | null {
+  return useAuth().user
 }

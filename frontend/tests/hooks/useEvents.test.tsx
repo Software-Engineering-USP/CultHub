@@ -6,6 +6,7 @@ import { events } from '@/data/events'
 import { currentUser } from '@/data/user'
 import { useEvent, useEventById, useEvents, useSavedEvents } from '@/hooks/useEvents'
 import { paths, routes } from '@/lib/paths'
+import { AuthTestProvider } from '../auth'
 
 function routerAt(url: string) {
   return ({ children }: { children: ReactNode }) => (
@@ -51,7 +52,9 @@ describe('useEvent', () => {
 
 describe('useSavedEvents', () => {
   it('devolve os eventos salvos do usuário, na mesma ordem', () => {
-    const { result } = renderHook(() => useSavedEvents())
+    const { result } = renderHook(() => useSavedEvents(), {
+      wrapper: ({ children }) => <AuthTestProvider>{children}</AuthTestProvider>,
+    })
     expect(result.current.map((event) => event.id)).toEqual(currentUser.savedEventIds)
   })
 })
