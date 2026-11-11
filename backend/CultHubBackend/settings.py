@@ -34,6 +34,9 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 TICKETMASTER_API_KEY = os.environ.get("TICKETMASTER_API_KEY", "")
 TICKETMASTER_PAIS = os.environ.get("TICKETMASTER_PAIS", "BR")
 
+# Geocodificação da origem da rota: servidor do Photon (padrão: público).
+PHOTON_URL = os.environ.get("PHOTON_URL", "https://photon.komoot.io")
+
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
 
 
@@ -52,6 +55,7 @@ INSTALLED_APPS = [
     "usuarios",
     "agenda",
     "clima",
+    "rotas",
 ]
 
 MIDDLEWARE = [
