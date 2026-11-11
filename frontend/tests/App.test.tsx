@@ -1,14 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import App from '@/App'
 import { currentUser } from '@/data/user'
 import { paths } from '@/lib/paths'
 import { ApiError, catalogApi } from '@/services/catalog'
-
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
-
 import { AuthTestProvider } from './auth'
 
 function renderAt(route: string) {
