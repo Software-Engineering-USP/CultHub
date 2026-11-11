@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AuthContext } from '@/contexts/auth-context'
 import type { AuthContextValue } from '@/contexts/auth-context'
@@ -23,17 +23,20 @@ function toUser(profile: ProfileResponse): User {
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const authVersion = useRef(0)
 
   const updateUser = useCallback((profile: ProfileResponse) => setUser(toUser(profile)), [])
 
   useEffect(() => {
     let active = true
+    const requestVersion = authVersion.current
     api.auth
       .currentUser()
       .then((profile) => {
-        if (active) updateUser(profile)
+        if (active && requestVersion === authVersion.current) updateUser(profile)
       })
       .catch((error: unknown) => {
+        if (!active || requestVersion !== authVersion.current) return
         // Uma sessão ausente é normal para visitantes; outros erros também
         // deixam o app navegável, e a próxima ação autenticada exibirá o erro.
         if (error instanceof ApiError && error.status !== 401 && error.status !== 403) {
@@ -42,7 +45,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         if (active) setUser(null)
       })
       .finally(() => {
-        if (active) setLoading(false)
+        if (active && requestVersion === authVersion.current) setLoading(false)
       })
     return () => {
       active = false
@@ -52,7 +55,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const signUp = useCallback<AuthContextValue['signUp']>(
     async (data) => {
       const profile = await api.auth.signUp(data)
+      authVersion.current += 1
       updateUser(profile)
+      setLoading(false)
       return profile
     },
     [updateUser],
@@ -61,7 +66,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const signIn = useCallback<AuthContextValue['signIn']>(
     async (data) => {
       const profile = await api.auth.signIn(data)
+      authVersion.current += 1
       updateUser(profile)
+      setLoading(false)
       return profile
     },
     [updateUser],
@@ -69,7 +76,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const signOut = useCallback(async () => {
     await api.auth.signOut()
+    authVersion.current += 1
     setUser(null)
+    setLoading(false)
   }, [])
 
   const value = useMemo(

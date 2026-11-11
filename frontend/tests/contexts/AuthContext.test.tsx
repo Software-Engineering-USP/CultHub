@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { useAuth } from '@/hooks/useAuth'
@@ -141,5 +141,31 @@ describe('AuthProvider', () => {
     await Promise.resolve()
 
     expect(error).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['login', 'Logged in'],
+    ['register', 'Registered'],
+  ])('does not let a late session lookup overwrite %s', async (action, authenticatedName) => {
+    let resolveSession!: (value: ProfileResponse) => void
+    vi.spyOn(api.auth, 'currentUser').mockReturnValue(
+      new Promise((resolve) => {
+        resolveSession = resolve
+      }),
+    )
+    vi.spyOn(api.auth, 'signIn').mockResolvedValue({ ...profile, nome: 'Logged in' })
+    vi.spyOn(api.auth, 'signUp').mockResolvedValue({ ...profile, nome: 'Registered' })
+    const { user } = renderProvider()
+
+    await user.click(screen.getByRole('button', { name: action }))
+    expect(await screen.findByText(authenticatedName)).toBeInTheDocument()
+
+    await act(async () => {
+      resolveSession({ ...profile, nome: 'Old session' })
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText(authenticatedName)).toBeInTheDocument()
+    expect(screen.queryByText('Old session')).not.toBeInTheDocument()
   })
 })

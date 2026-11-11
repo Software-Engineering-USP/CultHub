@@ -44,7 +44,7 @@ export default function Account() {
   useDocumentTitle('Minha conta | CultHub')
   const { user, loading } = useAuth()
 
-  if (loading) return <p role="status">Carregando sua conta...</p>
+  if (loading) return <output className="block">Carregando sua conta...</output>
   if (!user) return <Navigate to={paths.signIn} replace />
   return <AccountContent key={user.id} user={user} />
 }
