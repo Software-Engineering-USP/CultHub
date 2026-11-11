@@ -55,4 +55,15 @@ describe('Account', () => {
     )
     expect(within(menu).getByRole('link', { name: 'Eventos salvos' })).not.toHaveAttribute('aria-current')
   })
+
+  it('não leva eventos demonstrativos salvos para a API do catálogo', () => {
+    renderWithRouter(<Account />)
+
+    expect(
+      screen.getByText('Os eventos salvos são demonstrativos e ainda não possuem detalhes no catálogo.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Conhecer São Paulo Jazz & Blues Festival' }),
+    ).not.toBeInTheDocument()
+  })
 })

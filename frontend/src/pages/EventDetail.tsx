@@ -30,7 +30,13 @@ import { shortName } from '@/lib/events'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { api } from '@/services/api'
-import type { EventWithDetails } from '@/types'
+import type { EventAvailability, EventWithDetails } from '@/types'
+
+const availabilityMessages: Record<EventAvailability, string> = {
+  removed: 'Este evento não está mais disponível no catálogo.',
+  cancelled: 'Este evento foi cancelado.',
+  ended: 'Este evento já foi encerrado.',
+}
 
 export default function EventDetail({ event }: { event: EventWithDetails }) {
   const user = useCurrentUser()
@@ -38,6 +44,7 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
   useDocumentTitle(`${event.title} | CultHub`)
 
   const category = categories[event.category]
+  const availabilityMessage = event.availability ? availabilityMessages[event.availability] : undefined
 
   return (
     <>
@@ -78,6 +85,12 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
             <h1 id="evento-titulo" className="max-w-175 text-foreground">
               {event.title}
             </h1>
+
+            {availabilityMessage && (
+              <p role="alert" className="mt-4 rounded-xl border border-amber-700/30 bg-amber-50 p-4 text-sm">
+                {availabilityMessage}
+              </p>
+            )}
 
             <div className="mt-5.5 mb-2 flex flex-wrap gap-2.5">
               <Button
@@ -139,7 +152,7 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
             <p className="mt-5.5 text-4xl font-bold tracking-tighter text-maroon max-md:mt-3.5 max-sm:text-3xl">
               {event.price}
             </p>
-            <p className="text-xs text-muted-foreground">Preço informado no exemplo</p>
+            <p className="text-xs text-muted-foreground">Valor cadastrado no catálogo</p>
 
             <div className="my-6 grid gap-4 border-y border-maroon/10 py-6 text-sm max-md:my-4.5 max-md:flex max-md:flex-wrap max-md:gap-x-8 max-md:gap-y-4.5 max-md:py-4.5">
               <p className="flex items-start gap-2">
@@ -147,7 +160,7 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
                 <span>
                   <strong>{event.schedule}</strong>
                   <br />
-                  <small>Horário demonstrativo</small>
+                  <small>Horário cadastrado no catálogo</small>
                 </span>
               </p>
               <p className="flex items-start gap-2">

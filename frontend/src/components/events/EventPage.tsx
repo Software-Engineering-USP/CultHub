@@ -1,24 +1,44 @@
 import type { ComponentType } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import NotFound from '@/components/common/NotFound'
+import { Button } from '@/components/ui/button'
+import { useCatalogEvent } from '@/hooks/useCatalog'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEvent } from '@/hooks/useEvents'
-import { hasDetails } from '@/lib/events'
+import { paths } from '@/lib/paths'
+import { ApiError } from '@/services/catalog'
 import type { EventWithDetails } from '@/types'
 
 interface EventPageProps {
-  /** Página mostrada quando o evento da URL existe e tem página própria */
+  /** Tela exibida depois que o evento da URL é carregado. */
   page: ComponentType<{ event: EventWithDetails }>
-  /** Aviso mostrado quando o evento não existe ou não tem página nesta demonstração */
+  /** Aviso mostrado quando a API informa que o evento não existe. */
   notFoundMessage: string
 }
 
 /**
- * Elemento das rotas /eventos/:id/...: lê o evento da URL e mostra a página
- * ou o aviso de "não encontrado". Assim as páginas já recebem o evento pronto.
+ * Carrega da API o evento correspondente à rota e o entrega à página solicitada.
  */
 export default function EventPage({ page: Page, notFoundMessage }: Readonly<EventPageProps>) {
-  const event = useEvent()
-  if (!hasDetails(event)) return <EventNotFound message={notFoundMessage} />
+  const { id } = useParams()
+  const { event, loading, error } = useCatalogEvent(id)
+  if (loading) {
+    return <output className="py-12 text-center text-muted-foreground">Carregando evento…</output>
+  }
+  if (!event) {
+    if (error instanceof ApiError && error.status === 404) return <EventNotFound message={notFoundMessage} />
+    return (
+      <section
+        role="alert"
+        className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-6 text-center"
+      >
+        <h1 className="text-2xl">Não foi possível carregar o evento</h1>
+        <p className="mt-3 text-muted-foreground">{error?.message}</p>
+        <Button asChild className="mt-5">
+          <Link to={paths.home}>Voltar para explorar</Link>
+        </Button>
+      </section>
+    )
+  }
   return <Page event={event} />
 }
 

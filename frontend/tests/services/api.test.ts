@@ -39,17 +39,4 @@ describe('api (mock)', () => {
     })
     expect(JSON.stringify(info.mock.calls)).not.toContain('segredo123')
   })
-
-  it('codifica o texto da busca na URL', async () => {
-    await api.events.search('jazz & blues')
-    expect(info).toHaveBeenCalledWith('[CultHub API mock] GET /api/eventos/?busca=jazz%20%26%20blues', '')
-  })
-
-  it('filtros: manda a faixa de preço só quando não é "Gratuito"', async () => {
-    await api.events.filter({ categories: ['music'], price: 'free', minPrice: 0, maxPrice: 250 })
-    expect(info).toHaveBeenLastCalledWith('[CultHub API mock] GET /api/eventos/', {
-      categorias: ['music'],
-      preco: 'free',
-    })
-  })
 })
