@@ -1,11 +1,15 @@
 import { screen, within } from '@testing-library/react'
+import { useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Header from '@/components/layout/Header'
 import { currentUser } from '@/data/user'
 import { categories, categoryOrder } from '@/lib/categories'
 import { paths } from '@/lib/paths'
-import { api } from '@/services/api'
 import { renderWithRouter } from '@tests/render'
+
+function LocationSearch() {
+  return <output aria-label="Busca na URL">{useLocation().search}</output>
+}
 
 describe('Header', () => {
   afterEach(() => {
@@ -37,10 +41,26 @@ describe('Header', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('enviar a busca chama a API com o texto digitado', async () => {
-    const search = vi.spyOn(api.events, 'search').mockResolvedValue()
-    const { user } = renderWithRouter(<Header />)
-    await user.type(screen.getByRole('searchbox', { name: 'Buscar eventos' }), 'jazz{Enter}')
-    expect(search).toHaveBeenCalledWith('jazz')
+  it('envia a busca para a URL do catálogo e permite limpar a consulta', async () => {
+    const { user } = renderWithRouter(
+      <>
+        <Header />
+        <LocationSearch />
+      </>,
+      { route: '/?categorias=music' },
+    )
+    const input = screen.getByRole('searchbox', { name: 'Buscar eventos' })
+    await user.type(input, 'jazz & blues{Enter}')
+    expect(new URLSearchParams(screen.getByLabelText('Busca na URL').textContent ?? '').get('q')).toBe(
+      'jazz & blues',
+    )
+    expect(
+      new URLSearchParams(screen.getByLabelText('Busca na URL').textContent ?? '').get('categorias'),
+    ).toBe('music')
+
+    const updatedInput = screen.getByRole('searchbox', { name: 'Buscar eventos' })
+    await user.clear(updatedInput)
+    await user.keyboard('{Enter}')
+    expect(new URLSearchParams(screen.getByLabelText('Busca na URL').textContent ?? '').has('q')).toBe(false)
   })
 })

@@ -1,4 +1,3 @@
-import type { EventFilters } from '@/lib/filters'
 import type { CategoryId, RouteOption } from '@/types'
 
 // A conta usa as APIs reais; os demais fluxos ainda são simulados abaixo.
@@ -105,15 +104,8 @@ export const api = {
       apiRequest<ProfileResponse>('/eu/', 'PATCH', { preferencias: categories }),
   },
 
-  /** Provisório */
+  /** Ainda demonstrativo: favoritos ainda não têm endpoint no backend. */
   events: {
-    search: (query: string) => request('GET', `/eventos/?busca=${encodeURIComponent(query)}`),
-    filter: (filters: EventFilters) =>
-      request('GET', '/eventos/', {
-        categorias: filters.categories,
-        preco: filters.price,
-        ...(filters.price !== 'free' && { preco_min: filters.minPrice, preco_max: filters.maxPrice }),
-      }),
     save: (eventId: string) => request('POST', `/eventos/${encodeURIComponent(eventId)}/salvar/`),
   },
 

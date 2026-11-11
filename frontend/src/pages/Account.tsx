@@ -316,9 +316,12 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
 
             <div className="grid grid-cols-2 gap-[22px] max-sm:grid-cols-[minmax(0,1fr)]">
               {savedEvents.map((event) => (
-                <EventCard key={event.id} event={event} compact />
+                <EventCard key={event.id} event={event} compact detailsLink={false} />
               ))}
             </div>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Os eventos salvos são demonstrativos e ainda não possuem detalhes no catálogo.
+            </p>
           </section>
 
           <Surface as="section" id="comentarios" aria-labelledby="comentarios-titulo">

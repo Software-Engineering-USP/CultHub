@@ -1,19 +1,33 @@
 import { LocateFixed } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import CategoryList from '@/components/common/CategoryList'
 import DemoNote from '@/components/common/DemoNote'
 import SectionHeading from '@/components/common/SectionHeading'
 import EventCard from '@/components/events/EventCard'
-import EventSort from '@/components/events/EventSort'
 import FeaturedCarousel from '@/components/events/FeaturedCarousel'
 import { Button } from '@/components/ui/button'
+import { useCatalog } from '@/hooks/useCatalog'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEvents } from '@/hooks/useEvents'
+import { categoryOrder } from '@/lib/categories'
 import { logDemoAction } from '@/lib/demo'
+import type { CatalogQuery } from '@/services/catalog'
 
 export default function Home() {
+  const [searchParams] = useSearchParams()
+  const categoryValues = searchParams.get('categorias')?.split(',') ?? []
+  const categories = categoryValues.filter((value): value is (typeof categoryOrder)[number] =>
+    categoryOrder.includes(value as (typeof categoryOrder)[number]),
+  )
+  const query: CatalogQuery = {
+    q: searchParams.get('q') || undefined,
+    categorias: categories.length ? categories : undefined,
+    preco: (['gratuito', 'pago', 'desconhecido'] as const).find(
+      (value) => value === searchParams.get('preco'),
+    ),
+  }
+  const { events, count, loading, error, hasMore, loadMore } = useCatalog(query)
   useDocumentTitle('CultHub | Explore São Paulo')
-  const events = useEvents()
-  const featured = events.filter((event) => event.featured)
+  const featured = events.slice(0, 5)
 
   return (
     <div className="space-y-12 max-sm:space-y-8.5">
@@ -60,29 +74,53 @@ export default function Home() {
         </figure>
       </section>
 
-      <section aria-labelledby="destaques-titulo">
-        <FeaturedCarousel events={featured} titleId="destaques-titulo" />
-      </section>
+      {featured.length > 0 && (
+        <section aria-labelledby="proximos-eventos-titulo">
+          <FeaturedCarousel events={featured} titleId="proximos-eventos-titulo" />
+        </section>
+      )}
 
       <section aria-labelledby="eventos-titulo">
         <SectionHeading
           id="eventos-titulo"
           title="Todos os Eventos Encontrados"
-          description={`Exibindo ${events.length} evento(s) encontrado(s)`}
+          description={
+            loading && events.length === 0
+              ? 'Carregando eventos…'
+              : `Exibindo ${events.length} de ${count} evento(s)`
+          }
         >
-          <EventSort />
+          <span className="text-xs text-muted-foreground">Ordenados por data</span>
         </SectionHeading>
 
+        {error && (
+          <p
+            role="alert"
+            className="border-destructive/30 bg-destructive/5 mb-4 rounded-xl border p-4 text-sm"
+          >
+            {error}
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-6 max-lg:gap-4.5 max-md:grid-cols-2 max-sm:grid-cols-1 max-sm:gap-5">
           {events.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>
-
-        <DemoNote className="mt-5">
-          Busca, filtros e ordenação são demonstrativos e só aparecem no console. Apenas o Jazz &amp; Blues
-          Festival possui uma página de detalhes neste exemplo.
-        </DemoNote>
+        {!loading && events.length === 0 && !error && (
+          <p className="py-8 text-center text-muted-foreground">
+            Nenhum evento encontrado com esses filtros.
+          </p>
+        )}
+        {loading && events.length === 0 && (
+          <output className="py-8 text-center text-muted-foreground">Carregando eventos…</output>
+        )}
+        {hasMore && (
+          <div className="mt-6 text-center">
+            <Button variant="outline" disabled={loading} onClick={loadMore}>
+              {loading ? 'Carregando…' : 'Carregar mais eventos'}
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   )
