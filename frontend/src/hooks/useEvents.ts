@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { events, findEvent } from '@/data/events'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
-import { toCultEvent } from '@/services/catalog'
 import { api, ApiError } from '@/services/api'
+import { toCultEvent } from '@/services/catalog'
 import type { CultEvent, EventWithDetails } from '@/types'
 
 /** Todos os eventos. */
@@ -60,10 +60,7 @@ export function useSavedEvents(): {
           userId,
           events: [],
           loading: false,
-          error:
-            cause instanceof ApiError
-              ? cause.message
-              : 'Não foi possível carregar seus eventos salvos.',
+          error: cause instanceof ApiError ? cause.message : 'Não foi possível carregar seus eventos salvos.',
         })
       }
     }

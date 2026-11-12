@@ -86,9 +86,7 @@ describe('Account', () => {
     })
     renderWithRouter(<Account />)
 
-    expect(
-      await screen.findByRole('link', { name: 'Conhecer Show salvo' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Conhecer Show salvo' })).toBeInTheDocument()
     expect(savedEvents).toHaveBeenCalledWith(1)
   })
 })

@@ -53,11 +53,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
   const { updateUser, signOut } = useAuth()
   const navigate = useNavigate()
   const { active: activeSection, select: selectSection } = useActiveSection(sectionIds)
-  const {
-    events: savedEvents,
-    loading: savedEventsLoading,
-    error: savedEventsError,
-  } = useSavedEvents()
+  const { events: savedEvents, loading: savedEventsLoading, error: savedEventsError } = useSavedEvents()
   const [profileMessage, setProfileMessage] = useState('')
   const [preferencesMessage, setPreferencesMessage] = useState('')
   const [logoutMessage, setLogoutMessage] = useState('')
@@ -319,15 +315,13 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
               marginClass="mb-5"
               titleClassName="text-[24px]"
             >
-              {savedEventsLoading && (
-                <span className="text-[12px] text-muted-foreground">Carregando…</span>
-              )}
+              {savedEventsLoading && <span className="text-[12px] text-muted-foreground">Carregando…</span>}
             </SectionHeading>
 
             {savedEventsError && (
               <p
                 role="alert"
-                className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+                className="border-destructive/30 bg-destructive/5 mb-4 rounded-xl border p-4 text-sm"
               >
                 {savedEventsError}
               </p>

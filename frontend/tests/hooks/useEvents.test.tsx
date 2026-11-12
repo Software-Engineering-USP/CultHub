@@ -6,8 +6,8 @@ import { events } from '@/data/events'
 import { useEvent, useEventById, useEvents, useSavedEvents } from '@/hooks/useEvents'
 import { paths, routes } from '@/lib/paths'
 import { api } from '@/services/api'
-import { apiEvent } from '../fixtures/catalog'
 import { AuthTestProvider } from '../auth'
+import { apiEvent } from '../fixtures/catalog'
 
 function routerAt(url: string) {
   return ({ children }: { children: ReactNode }) => (

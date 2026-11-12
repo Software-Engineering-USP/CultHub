@@ -1,6 +1,6 @@
 import { ArrowRight, Calendar, CalendarCheck, Heart, MapPin, Share2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import DemoNote from '@/components/common/DemoNote'
 import IconTile from '@/components/common/IconTile'
@@ -89,9 +89,7 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
       setAttendanceCount((count) => Math.max(0, count + (nextAttending ? 1 : -1)))
       setActionMessage(nextAttending ? 'Presença confirmada.' : 'Presença removida.')
     } catch (error) {
-      setActionMessage(
-        error instanceof ApiError ? error.message : 'Não foi possível atualizar sua presença.',
-      )
+      setActionMessage(error instanceof ApiError ? error.message : 'Não foi possível atualizar sua presença.')
     } finally {
       setActionInProgress(null)
     }
@@ -186,9 +184,7 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
                 {actionMessage}
               </p>
             )}
-            <DemoNote>
-              Compartilhar ainda é demonstrativo e só registra a ação no console.
-            </DemoNote>
+            <DemoNote>Compartilhar ainda é demonstrativo e só registra a ação no console.</DemoNote>
 
             <div className="mt-7.5">
               <h2 className="mb-4 text-2xl">Sobre esta experiência</h2>
