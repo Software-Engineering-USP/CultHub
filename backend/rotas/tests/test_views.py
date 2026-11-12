@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APITestCase
+from rest_framework.throttling import ScopedRateThrottle
 
 from rotas.photon import ErroPhoton
 from rotas.views import ERRO_UPSTREAM
@@ -206,3 +207,21 @@ class OrigemReversaTest(APITestCase):
         (linha,) = logs.output
         self.assertIn("Photon respondeu HTTP 503", linha)
         self.assertNotIn("23.5", linha)
+
+
+@patch("rotas.views.buscar_endereco_reverso", return_value=None)
+@patch("rotas.views.buscar_enderecos", return_value=[])
+class LimiteEnderecoTest(APITestCase):
+    def setUp(self):
+        cache.clear()
+
+    @patch.object(ScopedRateThrottle, "THROTTLE_RATES", {"endereco": "2/min"})
+    def test_busca_e_reversa_dividem_o_limite_por_ip(self, *_):
+        coordenada = {"latitude": -23.5, "longitude": -46.6}
+        respostas = [
+            self.client.get(URL_BUSCA, {"q": "rua augusta"}),
+            self.client.get(URL_REVERSA, coordenada),
+            self.client.get(URL_BUSCA, {"q": "rua augusta"}),
+        ]
+
+        self.assertEqual([r.status_code for r in respostas], [200, 200, 429])

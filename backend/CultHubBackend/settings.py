@@ -149,6 +149,16 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Limites por usuário logado ou, sem login, por IP (endpoints públicos
+    # que gastam a cota do Photon e do OSRM). Por escopo, ver rotas/views.
+    "DEFAULT_THROTTLE_RATES": {
+        "endereco": "60/min",
+        "rota": "30/min",
+    },
+    # IP do throttle = o da conexão, nunca o X-Forwarded-For (o cliente
+    # poderia inventar um a cada pedido). Atrás de proxy reverso, usar o
+    # número de proxies na frente do Django.
+    "NUM_PROXIES": 0,
 }
 
 SPECTACULAR_SETTINGS = {

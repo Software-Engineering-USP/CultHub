@@ -9,10 +9,12 @@ from django.test import SimpleTestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
+from rest_framework.throttling import ScopedRateThrottle
 
 from catalogo.models import Evento, Local
 from rotas.osrm import MODOS, ErroOSRM
 from rotas.views import (
+    DISTANCIA_MAXIMA_KM,
     ERRO_ROTA,
     LOCAL_FORA_DO_MAPA,
     LOCAL_SEM_COORDENADAS,
@@ -39,6 +41,7 @@ def url(evento_id):
 @patch("rotas.views.calcular_rotas", return_value=[ROTA])
 class RotaEventoTest(APITestCase):
     def setUp(self):
+        cache.clear()
         caches["rotas"].clear()
         self.local = Local.objects.create(
             nome="MASP",
@@ -55,6 +58,45 @@ class RotaEventoTest(APITestCase):
 
     def test_modos_aceitos_sao_os_do_cliente(self, calcular):
         self.assertEqual(MODOS_DE_ROTA, tuple(MODOS))
+        self.assertEqual(set(DISTANCIA_MAXIMA_KM), set(MODOS))
+
+    def test_partida_longe_demais_da_400_sem_chamar_cliente(self, calcular):
+        # O MASP fica em -23,5615; 1 grau de latitude são ~111 km.
+        casos = [
+            ("carro", -23.5615 + 1.3, 200),
+            ("carro", -23.5615 + 1.4, 400),
+            ("a_pe", -23.5615 + 0.26, 200),
+            ("a_pe", -23.5615 + 0.28, 400),
+        ]
+        for modo, latitude, status in casos:
+            with self.subTest(modo=modo, latitude=latitude):
+                calcular.reset_mock()
+
+                resposta = self.get(
+                    modo=modo, latitude=latitude, longitude=-46.6559
+                )
+
+                self.assertEqual(resposta.status_code, status)
+                self.assertEqual(calcular.called, status == 200)
+                if status == 400:
+                    self.assertIn(
+                        f"{DISTANCIA_MAXIMA_KM[modo]} km",
+                        resposta.json()["detail"],
+                    )
+
+    @patch.object(ScopedRateThrottle, "THROTTLE_RATES", {"rota": "2/min"})
+    def test_limite_de_pedidos_por_ip(self, calcular):
+        respostas = [self.get().status_code for _ in range(3)]
+        falsificado = self.client.get(
+            url(self.evento.pk), PARAMS, HTTP_X_FORWARDED_FOR="10.9.9.9"
+        )
+        outro_ip = self.client.get(
+            url(self.evento.pk), PARAMS, REMOTE_ADDR="10.0.0.2"
+        )
+
+        self.assertEqual(respostas, [200, 200, 429])
+        self.assertEqual(falsificado.status_code, 429)
+        self.assertEqual(outro_ip.status_code, 200)
 
     def test_rota_publica_nos_dois_modos(self, calcular):
         for modo in ("carro", "a_pe"):
@@ -93,10 +135,14 @@ class RotaEventoTest(APITestCase):
         self.assertIs(type(destino[1]), float)
 
     def test_origem_zero_e_valida(self, calcular):
+        self.local.latitude = Decimal("0.050000")
+        self.local.longitude = Decimal("0.050000")
+        self.local.save()
+
         resposta = self.get(latitude=0, longitude=0)
 
         self.assertEqual(resposta.status_code, 200)
-        calcular.assert_called_once_with("carro", (0.0, 0.0), DESTINO)
+        calcular.assert_called_once_with("carro", (0.0, 0.0), (0.05, 0.05))
 
     def test_sem_rota_devolve_lista_vazia(self, calcular):
         calcular.return_value = []
@@ -178,14 +224,13 @@ class RotaEventoTest(APITestCase):
 
     def test_local_na_coordenada_zero_e_valido(self, calcular):
         self.local.latitude = Decimal("0.000000")
+        self.local.longitude = Decimal("0.000000")
         self.local.save()
 
-        resposta = self.get()
+        resposta = self.get(latitude=0.05, longitude=0.05)
 
         self.assertEqual(resposta.status_code, 200)
-        calcular.assert_called_once_with(
-            "carro", (-23.5874, -46.6576), (0.0, -46.6559)
-        )
+        calcular.assert_called_once_with("carro", (0.05, 0.05), (0.0, 0.0))
 
     def test_destino_fora_da_via_da_422_e_fica_no_cache(self, calcular):
         calcular.return_value = None
