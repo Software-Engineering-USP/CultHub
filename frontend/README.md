@@ -54,11 +54,11 @@ Para adicionar um novo componente:
 
 Os componentes de `ui/` devem ser usados diretamente (`import { Button } from '@/components/ui/button'`). Um componente em `common/` só se justifica quando a mesma combinação se repete em várias telas, como o `Field`, que reúne rótulo, campo e texto de ajuda. Os ícones são do [Lucide](https://lucide.dev/icons).
 
-## Ações da demonstração
+## Integração com o backend
 
-Como o backend ainda não está integrado, nenhuma informação é enviada: cada ação é apenas registrada no console do navegador.
+A página inicial carrega os eventos reais do endpoint `GET /api/eventos/`, usando `src/services/catalog.ts`. As imagens e os links oficiais vêm dos dados cadastrados no catálogo. Quando o catálogo estiver vazio, a lista apresenta o estado sem eventos; falhas na API permitem tentar novamente.
 
-- **Ações que dependem do backend** (entrar, salvar evento, comentar, filtrar...) passam por `api.*`, em `src/services/api.ts`, e aparecem como `[CultHub API mock] POST /api/...`. Os endpoints de usuário já seguem os do backend; os demais estão marcados como provisórios. Senhas nunca são exibidas. Para conectar o backend, basta substituir o corpo da função `request` por um `fetch`.
+As demais ações ainda são demonstrativas. Login, perfil, busca, filtros, eventos salvos, comentários e rotas passam por `api.*`, em `src/services/api.ts`, mas por enquanto apenas registram a chamada no console. Senhas nunca são exibidas.
 - **Ações do próprio navegador** (pedir localização, compartilhar, abrir o app de mapas...) usam `logDemoAction`, de `src/lib/demo.ts`, e aparecem como `[CultHub demo] ...`.
 
 ## Rotas

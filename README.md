@@ -13,6 +13,16 @@ docker compose up --build
 
 O backend fica em http://localhost:8000 e o frontend em http://localhost:5173. As portas só aceitam conexões desta máquina, porque o backend roda com `DEBUG` ligado. Para abrir o app em outro dispositivo, remova o `127.0.0.1:` das portas no `docker-compose.yml`, de preferência só em uma rede confiável.
 
+### Carregar eventos reais
+
+A página inicial lista os eventos cadastrados no backend. Para importar eventos do Ticketmaster, copie `backend/.env.example` para `backend/.env`, preencha `TICKETMASTER_API_KEY` e, com o Docker Compose ativo, rode:
+
+```bash
+docker compose exec backend python manage.py importar_ticketmaster
+```
+
+Sem importar eventos, a API e a página inicial mostram o catálogo vazio.
+
 ### Problemas comuns
 
 | Quando | O que acontece | O que fazer |

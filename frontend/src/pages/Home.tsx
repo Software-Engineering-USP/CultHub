@@ -6,14 +6,14 @@ import EventCard from '@/components/events/EventCard'
 import EventSort from '@/components/events/EventSort'
 import FeaturedCarousel from '@/components/events/FeaturedCarousel'
 import { Button } from '@/components/ui/button'
+import { useCatalogEvents } from '@/hooks/useCatalogEvents'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEvents } from '@/hooks/useEvents'
 import { logDemoAction } from '@/lib/demo'
 
 export default function Home() {
   useDocumentTitle('CultHub | Explore São Paulo')
-  const events = useEvents()
-  const featured = events.filter((event) => event.featured)
+  const { events, count, hasMore, loading, error, retry, loadMore } = useCatalogEvents()
+  const featured = events.slice(0, 8)
 
   return (
     <div className="space-y-12 max-sm:space-y-[34px]">
@@ -68,10 +68,29 @@ export default function Home() {
         <SectionHeading
           id="eventos-titulo"
           title="Todos os Eventos Encontrados"
-          description={`Exibindo ${events.length} evento(s) encontrado(s)`}
+          description={
+            loading && events.length === 0
+              ? 'Carregando eventos...'
+              : `Exibindo ${events.length} de ${count} evento(s) encontrado(s)`
+          }
         >
           <EventSort />
         </SectionHeading>
+
+        {error && (
+          <div role="alert" className="border-destructive/30 bg-destructive/5 mb-5 rounded-2xl border p-4">
+            <p>{error}</p>
+            <Button variant="outline" onClick={retry} className="mt-3">
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+
+        {loading && events.length === 0 && (
+          <p role="status" className="mb-5 text-sm text-muted-foreground">
+            Buscando eventos no catálogo...
+          </p>
+        )}
 
         <div className="grid grid-cols-3 gap-6 max-lg:gap-[18px] max-md:grid-cols-2 max-sm:grid-cols-1 max-sm:gap-5">
           {events.map((event) => (
@@ -79,9 +98,23 @@ export default function Home() {
           ))}
         </div>
 
+        {!loading && !error && events.length === 0 && (
+          <p className="rounded-2xl border border-line bg-surface p-5 text-sm text-muted-foreground">
+            Nenhum evento disponível no catálogo no momento.
+          </p>
+        )}
+
+        {hasMore && (
+          <div className="mt-6 text-center">
+            <Button onClick={loadMore} disabled={loading} variant="outline">
+              {loading ? 'Carregando...' : 'Carregar mais eventos'}
+            </Button>
+          </div>
+        )}
+
         <DemoNote className="mt-5">
-          Busca, filtros e ordenação são demonstrativos e só aparecem no console. Apenas o Jazz &amp; Blues
-          Festival possui uma página de detalhes neste exemplo.
+          A lista e a contagem vêm do catálogo do CultHub. Busca, filtros e ordenação ainda são
+          demonstrativos. Os links dos cards abrem a página oficial do evento quando disponível.
         </DemoNote>
       </section>
     </div>

@@ -1,4 +1,4 @@
-export type CategoryId = 'music' | 'festival' | 'theater' | 'sport' | 'art'
+export type CategoryId = 'music' | 'festival' | 'theater' | 'sport' | 'art' | 'other'
 
 export interface EventDetails {
   about: string[]
@@ -16,11 +16,13 @@ export interface CultEvent {
   schedule: string
   /* Preço em texto para exibição na UI */
   price: string
-  priceValue: number
+  priceValue: number | null
   /** Caminho em public/assets */
   image: string
   imageAlt: string
   featured?: boolean
+  /** Página oficial do evento no provedor, quando disponível. */
+  externalUrl?: string
   /** Só eventos com detalhes têm página própria */
   details?: EventDetails
 }

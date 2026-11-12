@@ -49,6 +49,13 @@ export const categories: Record<CategoryId, CategoryStyle> = {
     checkbox: 'data-[state=checked]:border-dot-art data-[state=checked]:bg-dot-art',
     text: 'text-label-art',
   },
+  other: {
+    label: 'Outros',
+    card: 'bg-card',
+    dot: 'bg-dot-art',
+    checkbox: 'data-[state=checked]:border-dot-art data-[state=checked]:bg-dot-art',
+    text: 'text-label-art',
+  },
 }
 
 /** Ordem usada na legenda do mapa e no painel de filtros. */

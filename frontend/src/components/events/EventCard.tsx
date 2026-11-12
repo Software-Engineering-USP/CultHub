@@ -18,6 +18,27 @@ interface EventCardProps {
 export default function EventCard({ event, compact = false, priority = false }: Readonly<EventCardProps>) {
   const category = categories[event.category]
   const href = paths.event(event.id)
+  const image = event.image ? (
+    <img
+      src={event.image}
+      alt={event.imageAlt}
+      loading={priority ? undefined : 'lazy'}
+      className={cn('block w-full object-cover', compact ? 'h-32' : 'h-36')}
+    />
+  ) : (
+    <div
+      role="img"
+      aria-label={event.imageAlt}
+      className={cn(
+        'flex w-full items-center justify-center text-sm font-semibold',
+        compact ? 'h-32' : 'h-36',
+        category.card,
+        category.text,
+      )}
+    >
+      {category.label}
+    </div>
+  )
   const info = [
     { icon: MapPin, text: event.venue },
     { icon: Calendar, text: event.schedule },
@@ -31,14 +52,20 @@ export default function EventCard({ event, compact = false, priority = false }: 
       )}
     >
       <div className="relative">
-        <Link to={href} aria-label={`Conhecer ${event.title}`}>
-          <img
-            src={event.image}
-            alt={event.imageAlt}
-            loading={priority ? undefined : 'lazy'}
-            className={cn('block w-full object-cover', compact ? 'h-32' : 'h-36')}
-          />
-        </Link>
+        {event.externalUrl ? (
+          <a
+            href={event.externalUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Abrir página oficial de ${event.title}`}
+          >
+            {image}
+          </a>
+        ) : (
+          <Link to={href} aria-label={`Conhecer ${event.title}`}>
+            {image}
+          </Link>
+        )}
         <Badge className={cn('absolute bottom-3 left-3 bg-card/90 font-medium shadow-badge', category.text)}>
           {category.label}
         </Badge>
@@ -46,9 +73,20 @@ export default function EventCard({ event, compact = false, priority = false }: 
 
       <div className="flex flex-1 flex-col p-5">
         <h3 className="text-lg">
-          <Link to={href} className="no-underline hover:underline">
-            {event.title}
-          </Link>
+          {event.externalUrl ? (
+            <a
+              href={event.externalUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="no-underline hover:underline"
+            >
+              {event.title}
+            </a>
+          ) : (
+            <Link to={href} className="no-underline hover:underline">
+              {event.title}
+            </Link>
+          )}
         </h3>
         <p className="mt-3 line-clamp-2 text-xs">{event.description}</p>
 
@@ -70,9 +108,21 @@ export default function EventCard({ event, compact = false, priority = false }: 
           >
             {event.price}
           </span>
-          <Link to={href} aria-label={`Ver detalhes do ${shortName(event)}`} className="text-maroon">
-            <ArrowUpRight className="size-4" />
-          </Link>
+          {event.externalUrl ? (
+            <a
+              href={event.externalUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Abrir página oficial de ${shortName(event)}`}
+              className="text-maroon"
+            >
+              <ArrowUpRight className="size-4" />
+            </a>
+          ) : (
+            <Link to={href} aria-label={`Ver detalhes do ${shortName(event)}`} className="text-maroon">
+              <ArrowUpRight className="size-4" />
+            </Link>
+          )}
         </div>
       </div>
     </article>

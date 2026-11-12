@@ -18,6 +18,9 @@ export function defaultFilters(ceiling: number): EventFilters {
 
 export function matchesFilters(event: CultEvent, filters: EventFilters): boolean {
   if (!filters.categories.includes(event.category)) return false
+  if (event.priceValue === null) {
+    return filters.price === 'all' && filters.minPrice === 0
+  }
   if (filters.price === 'free') return event.priceValue === 0
   if (filters.price === 'paid' && event.priceValue === 0) return false
   return event.priceValue >= filters.minPrice && event.priceValue <= filters.maxPrice

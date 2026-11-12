@@ -28,7 +28,7 @@ export default function FeaturedCarousel({ events, titleId }: Readonly<FeaturedC
       <SectionHeading
         id={titleId}
         title="Eventos em Destaque"
-        description="As experiências mais recomendadas da semana"
+        description="Eventos com as datas mais próximas"
       >
         <div className="flex gap-2">
           <CarouselPrevious />

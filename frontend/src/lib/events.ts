@@ -7,6 +7,6 @@ export function shortName(event: CultEvent): string {
 
 /** Teto da faixa de preço dos filtros: o maior preço, arredondado para cima de 50 em 50. */
 export function maxPrice(events: CultEvent[]): number {
-  const highest = Math.max(0, ...events.map((event) => event.priceValue))
+  const highest = Math.max(0, ...events.map((event) => event.priceValue ?? 0))
   return Math.ceil(highest / 50) * 50
 }
