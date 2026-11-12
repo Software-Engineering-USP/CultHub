@@ -122,6 +122,17 @@ class TransporteTest(SimpleTestCase):
                     _get_json("/api/", {})
                 self.assertEqual(urlopen.call_count, 1)
 
+    def test_photon_url_invalida_e_erro_controlado(self, urlopen):
+        for url in ("", "photon.komoot.io"):
+            with self.subTest(url=url):
+                with (
+                    self.settings(PHOTON_URL=url),
+                    self.assertRaises(ErroPhoton) as contexto,
+                ):
+                    _get_json("/api/", {"q": "rua secreta"})
+                self.assertNotIn("rua secreta", str(contexto.exception))
+        urlopen.assert_not_called()
+
     def test_mensagem_de_erro_nao_leva_a_url(self, urlopen):
         urlopen.side_effect = erro_http(404)
 

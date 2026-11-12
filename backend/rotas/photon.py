@@ -28,9 +28,12 @@ class _FalhaPassageira(ErroPhoton):
 
 
 def _requisitar(url):
-    requisicao = urllib.request.Request(
-        url, headers={"User-Agent": USER_AGENT}
-    )
+    try:
+        requisicao = urllib.request.Request(
+            url, headers={"User-Agent": USER_AGENT}
+        )
+    except ValueError:
+        raise ErroPhoton("PHOTON_URL inválida") from None
     try:
         with urllib.request.urlopen(requisicao, timeout=TIMEOUT) as resposta:
             return json.load(resposta)
