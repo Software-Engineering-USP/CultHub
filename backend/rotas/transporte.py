@@ -15,6 +15,7 @@ USER_AGENT = (
 RESPOSTA_INVALIDA = "resposta inválida"
 # Com menos tempo que isso no prazo, nova tentativa não vale a pena.
 TEMPO_MINIMO_TENTATIVA = 2
+TAMANHO_DO_PEDACO = 64 * 1024
 
 
 class _FalhaPassageira(Exception):
@@ -31,7 +32,17 @@ def numero(valor):
         return False
 
 
-def _requisitar(url, servico, erro, timeout, ler_erro_http):
+def _ler_json(resposta, fim):
+    """JSON do corpo, lido aos pedaços para conferir o prazo `fim`."""
+    pedacos = []
+    while pedaco := resposta.read1(TAMANHO_DO_PEDACO):
+        if fim is not None and time.monotonic() > fim:
+            raise TimeoutError
+        pedacos.append(pedaco)
+    return json.loads(b"".join(pedacos))
+
+
+def _requisitar(url, servico, erro, timeout, fim, ler_erro_http):
     try:
         requisicao = urllib.request.Request(
             url, headers={"User-Agent": USER_AGENT}
@@ -40,12 +51,13 @@ def _requisitar(url, servico, erro, timeout, ler_erro_http):
         raise erro(f"URL do {servico} inválida") from None
     try:
         with urllib.request.urlopen(requisicao, timeout=timeout) as resposta:
-            return json.load(resposta)
+            return _ler_json(resposta, fim)
     except urllib.error.HTTPError as falha:
-        mensagem = f"{servico} respondeu HTTP {falha.code}"
-        if falha.code >= 500:
-            raise _FalhaPassageira(mensagem) from None
-        dados = ler_erro_http(falha) if ler_erro_http else None
+        with falha:
+            mensagem = f"{servico} respondeu HTTP {falha.code}"
+            if falha.code >= 500:
+                raise _FalhaPassageira(mensagem) from None
+            dados = ler_erro_http(falha) if ler_erro_http else None
         if dados is not None:
             return dados
         raise erro(mensagem) from None
@@ -80,24 +92,35 @@ def obter_json(
 
     - `prazo`: tempo total (s) para todas as tentativas, contando a espera
       de `antes_de_tentar`; a tentativa usa o que sobrar, até `timeout`.
+      O prazo é conferido antes de cada tentativa e a cada pedaço lido;
+      uma operação de rede isolada (conectar, ler um pedaço) ainda pode
+      levar até `timeout`, e a resolução de DNS fica a cargo do sistema.
     - `antes_de_tentar`: chamado antes de cada tentativa (ex.: esperar a
       vez); pode levantar `erro`.
     - `ler_erro_http`: recebe o `HTTPError` 4xx e devolve o JSON a usar
       como resposta, ou None para tratá-lo como erro.
     """
-    inicio = time.monotonic()
+    fim = None if prazo is None else time.monotonic() + prazo
+
+    def sem_tempo():
+        return (
+            fim is not None and fim - time.monotonic() < TEMPO_MINIMO_TENTATIVA
+        )
+
     ultima_falha = "prazo esgotado"
     for _ in range(tentativas):
+        # Antes da fila, para não reservar uma vez que não será usada.
+        if sem_tempo():
+            break
         if antes_de_tentar is not None:
             antes_de_tentar()
-        limite = timeout
-        if prazo is not None:
-            restante = prazo - (time.monotonic() - inicio)
-            if restante < TEMPO_MINIMO_TENTATIVA:
-                break
-            limite = min(timeout, restante)
+        if sem_tempo():
+            break
+        limite = (
+            timeout if fim is None else min(timeout, fim - time.monotonic())
+        )
         try:
-            return _requisitar(url, servico, erro, limite, ler_erro_http)
+            return _requisitar(url, servico, erro, limite, fim, ler_erro_http)
         except _FalhaPassageira as falha:
             ultima_falha = str(falha)
     raise erro(ultima_falha)

@@ -28,6 +28,47 @@ def erro_http(codigo, corpo=None):
     return urllib.error.HTTPError("u", codigo, "x", {}, fp)
 
 
+class Relogio:
+    """Relógio falso para `rotas.transporte.time`, avançado à mão."""
+
+    def __init__(self, tempo):
+        self.agora = 0.0
+        tempo.monotonic.side_effect = lambda: self.agora
+
+
+def em_sequencia(relogio, *passos):
+    """`side_effect` do urlopen: cada passo adianta o relógio e responde."""
+    passos = iter(passos)
+
+    def chamar(*args, **kwargs):
+        segundos, resultado = next(passos)
+        relogio.agora += segundos
+        if isinstance(resultado, BaseException):
+            raise resultado
+        return resultado
+
+    return chamar
+
+
+class RespostaLenta:
+    """Corpo que chega aos pedaços, cada um levando `passo` segundos."""
+
+    def __init__(self, relogio, passo, *pedacos):
+        self.relogio = relogio
+        self.passo = passo
+        self.pedacos = list(pedacos)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *excecao):
+        return False
+
+    def read1(self, tamanho=-1):
+        self.relogio.agora += self.passo
+        return self.pedacos.pop(0) if self.pedacos else b""
+
+
 def requisicao_da_chamada(urlopen):
     (requisicao,) = urlopen.call_args.args
     return requisicao, urlsplit(requisicao.full_url)
@@ -65,7 +106,7 @@ class TransporteTest(SemEsperaTestCase):
                 "overview": ["full"],
                 "geometries": ["geojson"],
                 "steps": ["false"],
-                "alternatives": ["true"],
+                "alternatives": ["2"],
             },
         )
         self.assertEqual(requisicao.get_header("User-agent"), USER_AGENT)
@@ -186,24 +227,74 @@ class TransporteTest(SemEsperaTestCase):
         urlopen.assert_not_called()
 
     @patch("rotas.transporte.time")
-    def test_sem_nova_tentativa_quando_o_prazo_acaba(self, relogio, urlopen):
-        relogio.monotonic.side_effect = [0, 0, 10.5]
-        urlopen.side_effect = TimeoutError()
+    def test_sem_nova_tentativa_quando_o_prazo_acaba(self, tempo, urlopen):
+        relogio = Relogio(tempo)
+        urlopen.side_effect = em_sequencia(relogio, (10.5, TimeoutError()))
 
         with self.assertRaises(ErroOSRM) as contexto:
             _consultar("carro", ORIGEM, DESTINO)
         self.assertEqual(urlopen.call_count, 1)
         self.assertEqual(str(contexto.exception), "tempo esgotado")
+        # Sem prazo para tentar de novo, nem entra na fila.
+        self.assertEqual(self.aguardar.call_count, 1)
 
     @patch("rotas.transporte.time")
-    def test_nova_tentativa_usa_o_que_sobra_do_prazo(self, relogio, urlopen):
-        relogio.monotonic.side_effect = [0, 0, 3]
-        urlopen.side_effect = [erro_http(503), resposta_json({"code": "Ok"})]
+    def test_espera_da_vez_conta_no_prazo(self, tempo, urlopen):
+        relogio = Relogio(tempo)
+        urlopen.side_effect = em_sequencia(relogio, (1, erro_http(503)))
+        esperas = iter([0, 10])
+
+        def aguardar():
+            relogio.agora += next(esperas)
+            return True
+
+        self.aguardar.side_effect = aguardar
+
+        with self.assertRaises(ErroOSRM):
+            _consultar("carro", ORIGEM, DESTINO)
+        self.assertEqual(urlopen.call_count, 1)
+
+    @patch("rotas.transporte.time")
+    def test_nova_tentativa_usa_o_que_sobra_do_prazo(self, tempo, urlopen):
+        relogio = Relogio(tempo)
+        urlopen.side_effect = em_sequencia(
+            relogio,
+            (3, erro_http(503)),
+            (0, resposta_json({"code": "Ok"})),
+        )
 
         _consultar("carro", ORIGEM, DESTINO)
 
         tempos = [c.kwargs["timeout"] for c in urlopen.call_args_list]
         self.assertEqual(tempos, [10, 9])
+
+    @patch("rotas.transporte.time")
+    def test_leitura_lenta_respeita_o_prazo_total(self, tempo, urlopen):
+        relogio = Relogio(tempo)
+        urlopen.return_value = RespostaLenta(relogio, 7, b'{"code":', b'"Ok"}')
+
+        with self.assertRaises(ErroOSRM) as contexto:
+            _consultar("carro", ORIGEM, DESTINO)
+        self.assertEqual(str(contexto.exception), "tempo esgotado")
+        self.assertEqual(urlopen.call_count, 1)
+
+    @patch("rotas.transporte.time")
+    def test_leitura_em_pedacos_dentro_do_prazo(self, tempo, urlopen):
+        relogio = Relogio(tempo)
+        urlopen.return_value = RespostaLenta(relogio, 1, b'{"code":', b'"Ok"}')
+
+        self.assertEqual(_consultar("carro", ORIGEM, DESTINO), {"code": "Ok"})
+
+    def test_fecha_o_erro_http(self, urlopen):
+        for erro in (erro_http(400, {"code": "NoRoute"}), erro_http(404)):
+            with self.subTest(codigo=erro.code):
+                urlopen.side_effect = erro
+
+                try:
+                    _consultar("carro", ORIGEM, DESTINO)
+                except ErroOSRM:
+                    pass
+                self.assertTrue(erro.fp.closed)
 
 
 GEOMETRIA = {
@@ -245,6 +336,14 @@ class CalcularRotasTest(SimpleTestCase):
             ],
         )
         consultar.assert_called_once_with("carro", ORIGEM, DESTINO)
+
+    def test_geometria_leva_so_tipo_e_posicoes(self, consultar):
+        geometria = {**GEOMETRIA, "bbox": [float("nan")] * 4, "x": {}}
+        consultar.return_value = resposta([rota(geometria=geometria)])
+
+        (convertida,) = calcular_rotas("carro", ORIGEM, DESTINO)
+
+        self.assertEqual(convertida["geometria"], GEOMETRIA)
 
     def test_arredonda_meio_para_cima(self, consultar):
         consultar.return_value = resposta(
@@ -352,18 +451,29 @@ class CalcularRotasTest(SimpleTestCase):
                 self.assertEqual(calcular_rotas("carro", ORIGEM, DESTINO), [])
 
     def test_no_segment_do_destino_e_none(self, consultar):
-        consultar.return_value = {
-            "code": "NoSegment",
-            "message": f"{SEM_SEGMENTO} 1",
-        }
+        mensagens = [
+            f"{SEM_SEGMENTO} 1",
+            f"{SEM_SEGMENTO} 1.",
+            f"{SEM_SEGMENTO}  1 (radius)",
+        ]
+        for mensagem in mensagens:
+            with self.subTest(mensagem=mensagem):
+                consultar.return_value = {
+                    "code": "NoSegment",
+                    "message": mensagem,
+                }
 
-        self.assertIsNone(calcular_rotas("carro", ORIGEM, DESTINO))
+                self.assertIsNone(calcular_rotas("carro", ORIGEM, DESTINO))
 
     def test_no_segment_da_origem_ou_sem_indice_e_lista_vazia(self, consultar):
         casos = [
             {
                 "code": "NoSegment",
                 "message": f"{SEM_SEGMENTO} 0",
+            },
+            {
+                "code": "NoSegment",
+                "message": f"{SEM_SEGMENTO} 10",
             },
             {
                 "code": "NoRoute",

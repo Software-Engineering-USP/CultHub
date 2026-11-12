@@ -16,7 +16,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalogo.models import Evento
-from rotas.osrm import ErroOSRM, calcular_rotas
+from rotas.osrm import MODOS, ErroOSRM, calcular_rotas
+from rotas.osrm import PRAZO as PRAZO_OSRM
 from rotas.photon import (
     ErroPhoton,
     buscar_endereco_reverso,
@@ -32,14 +33,11 @@ LOCAL_FORA_DO_MAPA = {
     "detail": "Não foi possível localizar o local deste evento no mapa."
 }
 VALIDADE_CACHE = 24 * 60 * 60
-MODOS_DE_ROTA = ("carro", "a_pe")
+MODOS_DE_ROTA = tuple(MODOS)
 MINIMO_TEXTO = 3
 MAXIMO_TEXTO = 200
 
 logger = logging.getLogger(__name__)
-# Travas da rota por chave de cache (repartidas por hash): pedidos iguais
-# ao mesmo tempo esperam o primeiro em vez de consultar o OSRM de novo.
-_TRAVAS_DA_ROTA = tuple(threading.Lock() for _ in range(64))
 
 
 def _latitude(**kwargs):
@@ -186,20 +184,68 @@ class OrigemReversaView(APIView):
         return Response({"rotulo": rotulo})
 
 
+class _ConsultaEmAndamento:
+    """Consulta de rota em curso, que outros pedidos iguais aguardam."""
+
+    def __init__(self):
+        self.pronta = threading.Event()
+        self.rotas = None
+        # Mensagem do erro; continua preenchida se a consulta não terminar
+        # bem por qualquer motivo.
+        self.falha = "consulta igual falhou"
+
+
+# Consultas em curso por chave de cache, dentro do processo (como o
+# próprio cache em memória).
+_EM_ANDAMENTO = {}
+_TRAVA_EM_ANDAMENTO = threading.Lock()
+
+
+def _aguardar(consulta):
+    if not consulta.pronta.wait(PRAZO_OSRM):
+        raise ErroOSRM("consulta igual ainda em andamento")
+    if consulta.falha is not None:
+        raise ErroOSRM(consulta.falha)
+    return consulta.rotas
+
+
 def _rotas_do_cache(chave, calcular):
     """`get_or_set` no cache de rotas, com uma consulta só por chave.
 
-    A trava vale dentro do processo, como o próprio cache em memória.
+    Pedidos iguais ao mesmo tempo esperam a consulta em curso (até o prazo
+    do OSRM) e ficam com o resultado ou a falha dela, sem consultar de
+    novo. Chaves diferentes não esperam umas pelas outras.
     """
     cache_de_rotas = caches["rotas"]
     ausente = object()
     rotas = cache_de_rotas.get(chave, ausente)
     if rotas is not ausente:
         return rotas
-    with _TRAVAS_DA_ROTA[hash(chave) % len(_TRAVAS_DA_ROTA)]:
-        return cache_de_rotas.get_or_set(
-            chave, calcular, timeout=VALIDADE_CACHE
-        )
+    with _TRAVA_EM_ANDAMENTO:
+        consulta = _EM_ANDAMENTO.get(chave)
+        if consulta is None:
+            consulta = _EM_ANDAMENTO[chave] = _ConsultaEmAndamento()
+            dono = True
+        else:
+            dono = False
+    if not dono:
+        return _aguardar(consulta)
+    try:
+        # Outra consulta pode ter terminado entre o get e o registro.
+        rotas = cache_de_rotas.get(chave, ausente)
+        if rotas is ausente:
+            rotas = calcular()
+            cache_de_rotas.set(chave, rotas, timeout=VALIDADE_CACHE)
+        consulta.rotas = rotas
+        consulta.falha = None
+        return rotas
+    except ErroOSRM as erro:
+        consulta.falha = str(erro)
+        raise
+    finally:
+        with _TRAVA_EM_ANDAMENTO:
+            del _EM_ANDAMENTO[chave]
+        consulta.pronta.set()
 
 
 class RotaEventoSerializer(serializers.Serializer):

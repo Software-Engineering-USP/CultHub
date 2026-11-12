@@ -1,6 +1,7 @@
 import http.client
 import json
 import math
+import re
 import urllib.parse
 
 from django.conf import settings
@@ -31,14 +32,16 @@ MODOS = {
 }
 # Códigos que o OSRM devolve com HTTP 400 quando não há rota.
 SEM_ROTA = {"NoRoute", "NoSegment"}
-# Fim da mensagem do NoSegment quando é o destino (2º ponto) que não
-# encaixa em via nenhuma; o OSRM 5.27 diz o índice do ponto.
-DESTINO_SEM_VIA = "for coordinate 1"
+# O NoSegment diz o índice do ponto que não encaixa em via nenhuma
+# ("... for coordinate 1" no OSRM 5.27); o destino é o 2º ponto.
+INDICE_DO_PONTO = re.compile(r"\bcoordinate\s+(\d+)\b")
+INDICE_DO_DESTINO = 1
 PARAMETROS = {
     "overview": "full",
     "geometries": "geojson",
     "steps": "false",
-    "alternatives": "true",
+    # "true" pede só 1 alternativa; um número pede até esse tanto.
+    "alternatives": str(MAXIMO_ROTAS - 1),
 }
 
 _vez = Espacador(INTERVALO_ENTRE_REQUISICOES, ESPERA_MAXIMA)
@@ -154,18 +157,22 @@ def _converter_rota(rota):
     return {
         "distancia_metros": _arredondar(distancia),
         "duracao_segundos": _arredondar(duracao),
-        "geometria": geometria,
+        # Só os campos validados: chave extra (ex.: bbox com NaN) não
+        # passa adiante.
+        "geometria": {
+            "type": "LineString",
+            "coordinates": geometria["coordinates"],
+        },
     }
 
 
 def _destino_sem_via(dados):
     """Se o NoSegment é do destino (e não da origem)."""
     mensagem = dados.get("message")
-    return (
-        _codigo(dados) == "NoSegment"
-        and isinstance(mensagem, str)
-        and mensagem.endswith(DESTINO_SEM_VIA)
-    )
+    if _codigo(dados) != "NoSegment" or not isinstance(mensagem, str):
+        return False
+    indice = INDICE_DO_PONTO.search(mensagem)
+    return indice is not None and int(indice[1]) == INDICE_DO_DESTINO
 
 
 def calcular_rotas(modo, origem, destino):

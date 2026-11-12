@@ -11,11 +11,12 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from catalogo.models import Evento, Local
-from rotas.osrm import ErroOSRM
+from rotas.osrm import MODOS, ErroOSRM
 from rotas.views import (
     ERRO_ROTA,
     LOCAL_FORA_DO_MAPA,
     LOCAL_SEM_COORDENADAS,
+    MODOS_DE_ROTA,
     _rotas_do_cache,
 )
 
@@ -51,6 +52,9 @@ class RotaEventoTest(APITestCase):
     def get(self, evento=None, **parametros):
         evento_id = (evento or self.evento).pk
         return self.client.get(url(evento_id), {**PARAMS, **parametros})
+
+    def test_modos_aceitos_sao_os_do_cliente(self, calcular):
+        self.assertEqual(MODOS_DE_ROTA, tuple(MODOS))
 
     def test_rota_publica_nos_dois_modos(self, calcular):
         for modo in ("carro", "a_pe"):
@@ -240,6 +244,82 @@ class RotaEventoTest(APITestCase):
 class RotasDoCacheTest(SimpleTestCase):
     def setUp(self):
         caches["rotas"].clear()
+
+    def consulta_presa(self, chave):
+        """Começa uma consulta de `chave` que só termina no fim do teste."""
+        dentro = threading.Event()
+        liberar = threading.Event()
+
+        def calcular():
+            dentro.set()
+            liberar.wait(5)
+            return [ROTA]
+
+        primeira = threading.Thread(
+            target=_rotas_do_cache, args=(chave, calcular)
+        )
+        primeira.start()
+        self.addCleanup(primeira.join, 5)
+        self.addCleanup(liberar.set)
+        self.assertTrue(dentro.wait(5))
+
+    def test_pedido_igual_recebe_a_falha_sem_consultar_de_novo(self):
+        dentro = threading.Event()
+        liberar = threading.Event()
+        chamadas = []
+        falhas = []
+
+        def calcular():
+            chamadas.append(1)
+            dentro.set()
+            liberar.wait(5)
+            raise ErroOSRM("tempo esgotado")
+
+        def pedir():
+            try:
+                _rotas_do_cache("osrm:f", calcular)
+            except ErroOSRM as erro:
+                falhas.append(str(erro))
+
+        primeira = threading.Thread(target=pedir)
+        primeira.start()
+        self.assertTrue(dentro.wait(5))
+        segunda = threading.Thread(target=pedir)
+        segunda.start()
+        segunda.join(0.2)
+        self.assertTrue(segunda.is_alive())
+        liberar.set()
+        primeira.join(5)
+        segunda.join(5)
+
+        self.assertEqual(len(chamadas), 1)
+        self.assertEqual(falhas, ["tempo esgotado"] * 2)
+
+    def test_chaves_diferentes_nao_esperam_uma_a_outra(self):
+        self.consulta_presa("osrm:presa")
+        resultados = []
+
+        def pedir_outras():
+            for i in range(200):
+                resultados.append(
+                    _rotas_do_cache(f"osrm:outra:{i}", lambda i=i: [i])
+                )
+
+        outras = threading.Thread(target=pedir_outras)
+        outras.start()
+        outras.join(1)
+
+        self.assertFalse(outras.is_alive())
+        self.assertEqual(resultados, [[i] for i in range(200)])
+
+    @patch("rotas.views.PRAZO_OSRM", 0.1)
+    def test_pedido_igual_desiste_depois_do_prazo(self):
+        self.consulta_presa("osrm:lenta")
+        chamadas = []
+
+        with self.assertRaises(ErroOSRM):
+            _rotas_do_cache("osrm:lenta", lambda: chamadas.append(1))
+        self.assertEqual(chamadas, [])
 
     def test_pedidos_iguais_ao_mesmo_tempo_calculam_uma_vez(self):
         dentro = threading.Event()
