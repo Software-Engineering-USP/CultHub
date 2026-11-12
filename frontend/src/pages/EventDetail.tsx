@@ -180,9 +180,9 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
               </p>
             )}
             {actionMessage && (
-              <p role="status" className="mb-2 text-xs text-muted-foreground">
+              <output className="mb-2 block text-xs text-muted-foreground" aria-live="polite">
                 {actionMessage}
-              </p>
+              </output>
             )}
             <DemoNote>Compartilhar ainda é demonstrativo e só registra a ação no console.</DemoNote>
 

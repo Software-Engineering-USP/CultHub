@@ -1,14 +1,50 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
+import { AuthContext } from '@/contexts/auth-context'
 import { events } from '@/data/events'
+import { currentUser } from '@/data/user'
 import { useEvent, useEventById, useEvents, useSavedEvents } from '@/hooks/useEvents'
 import { paths, routes } from '@/lib/paths'
 import { api, ApiError } from '@/services/api'
+import type { ProfileResponse } from '@/services/api'
 import type { ApiEvent, Paginated } from '@/services/catalog'
+import type { User } from '@/types'
 import { AuthTestProvider } from '../auth'
 import { apiEvent } from '../fixtures/catalog'
+
+const switchProfile: ProfileResponse = {
+  id: 'second-user',
+  nome: 'Outra Pessoa',
+  email: 'outra.pessoa@exemplo.com',
+  cidade: '',
+  bairro: '',
+  preferencias: [],
+  iniciais: 'OP',
+}
+
+function SwitchableAuthProvider({ children }: Readonly<{ children: ReactNode }>) {
+  const [user, setUser] = useState<User | null>(currentUser)
+  const value = {
+    user,
+    loading: false,
+    signUp: async () => switchProfile,
+    signIn: async () => switchProfile,
+    signOut: async () => setUser(null),
+    updateUser: () => setUser({ ...currentUser, id: switchProfile.id }),
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      <button type="button" onClick={() => setUser({ ...currentUser, id: switchProfile.id })}>
+        Mudar sessão
+      </button>
+    </AuthContext.Provider>
+  )
+}
 
 function routerAt(url: string) {
   return ({ children }: { children: ReactNode }) => (
@@ -74,7 +110,7 @@ describe('useSavedEvents', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.events.map((event) => event.id)).toEqual(['evento-1', 'evento-2'])
-    expect(savedEvents).toHaveBeenNthCalledWith(1, 1)
+    expect(savedEvents).toHaveBeenNthCalledWith(1)
     expect(savedEvents).toHaveBeenNthCalledWith(2, 2)
   })
 
@@ -99,37 +135,45 @@ describe('useSavedEvents', () => {
     expect(result.current.error).toBe('Sessão expirada.')
   })
 
-  it('ignora uma resposta bem-sucedida que chega após desmontar o hook', async () => {
-    let resolveRequest!: (response: Paginated<ApiEvent>) => void
-    const pending = new Promise<Paginated<ApiEvent>>((resolve) => {
-      resolveRequest = resolve
+  it('ignora os resultados da sessão anterior após trocar de usuário', async () => {
+    let resolvePrevious!: (response: Paginated<ApiEvent>) => void
+    let resolveCurrent!: (response: Paginated<ApiEvent>) => void
+    const previousRequest = new Promise<Paginated<ApiEvent>>((resolve) => {
+      resolvePrevious = resolve
     })
-    vi.spyOn(api.agenda, 'savedEvents').mockReturnValue(pending)
-    const { unmount } = renderHook(() => useSavedEvents(), {
-      wrapper: ({ children }) => <AuthTestProvider>{children}</AuthTestProvider>,
+    const currentRequest = new Promise<Paginated<ApiEvent>>((resolve) => {
+      resolveCurrent = resolve
     })
+    const savedEvents = vi
+      .spyOn(api.agenda, 'savedEvents')
+      .mockReturnValueOnce(previousRequest)
+      .mockReturnValueOnce(currentRequest)
+    const { result } = renderHook(() => useSavedEvents(), { wrapper: SwitchableAuthProvider })
 
-    unmount()
+    fireEvent.click(screen.getByRole('button', { name: 'Mudar sessão' }))
+    expect(savedEvents).toHaveBeenCalledTimes(2)
+
     await act(async () => {
-      resolveRequest({ count: 0, next: null, previous: null, results: [] })
-      await pending
+      resolvePrevious({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [apiEvent({ id: 'evento-da-sessao-antiga' })],
+      })
+      await previousRequest
     })
-  })
+    expect(result.current).toEqual({ events: [], loading: true, error: null })
 
-  it('ignora um erro que chega após desmontar o hook', async () => {
-    let rejectRequest!: (error: Error) => void
-    const pending = new Promise<Paginated<ApiEvent>>((_, reject) => {
-      rejectRequest = reject
-    })
-    vi.spyOn(api.agenda, 'savedEvents').mockReturnValue(pending)
-    const { unmount } = renderHook(() => useSavedEvents(), {
-      wrapper: ({ children }) => <AuthTestProvider>{children}</AuthTestProvider>,
-    })
-
-    unmount()
     await act(async () => {
-      rejectRequest(new Error('Falha de rede.'))
-      await pending.catch(() => undefined)
+      resolveCurrent({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [apiEvent({ id: 'evento-da-sessao-atual' })],
+      })
+      await currentRequest
     })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.events.map((event) => event.id)).toEqual(['evento-da-sessao-atual'])
   })
 })

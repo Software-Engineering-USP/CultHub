@@ -44,15 +44,12 @@ export function useSavedEvents(): {
 
     async function loadSavedEvents(activeUserId: string) {
       try {
-        const results: EventWithDetails[] = []
-        let page = 1
-        let hasNextPage = true
-        while (hasNextPage) {
-          const response = await api.agenda.savedEvents(page)
-          results.push(...response.results.map(toCultEvent))
-          hasNextPage = Boolean(response.next)
-          page += 1
-        }
+        const firstPage = await api.agenda.savedEvents()
+        const pageCount = firstPage.next ? Math.ceil(firstPage.count / firstPage.results.length) : 1
+        const remainingPages = await Promise.all(
+          Array.from({ length: pageCount - 1 }, (_, index) => api.agenda.savedEvents(index + 2)),
+        )
+        const results = [firstPage, ...remainingPages].flatMap((page) => page.results.map(toCultEvent))
         if (active) {
           setState({ userId: activeUserId, events: results, loading: false, error: null })
         }
