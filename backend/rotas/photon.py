@@ -83,13 +83,13 @@ def montar_rotulo(propriedades):
     """Endereço legível a partir das `properties` de uma feature."""
     nome = _texto(propriedades, "name")
     rua = _texto(propriedades, "street")
+    numero = _texto(propriedades, "housenumber")
     if rua:
-        principal = rua
-        numero = _texto(propriedades, "housenumber")
-        if numero:
-            principal = f"{rua}, {numero}"
+        principal = f"{rua}, {numero}" if numero else rua
         if nome and nome != rua:
             principal = f"{nome} – {principal}"
+    elif nome and numero:
+        principal = f"{nome}, {numero}"
     else:
         principal = nome
 

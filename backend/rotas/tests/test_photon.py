@@ -186,6 +186,11 @@ class RotuloTest(SimpleTestCase):
             ({"locality": "L", "city": "C"}, "L, C"),
             ({"district": "D", "locality": "L", "city": "C"}, "D, C"),
             ({"name": "N", "state": "SP"}, "N, SP"),
+            (
+                {"name": "Rua X", "housenumber": "100", "city": "C"},
+                "Rua X, 100, C",
+            ),
+            ({"housenumber": "100", "city": "C"}, "C"),
             ({"name": "N", "city": "C", "state": "SP"}, "N, C"),
             ({"name": "São Paulo", "city": "São Paulo"}, "São Paulo"),
             ({"district": "Moema", "city": "São Paulo"}, "Moema, São Paulo"),
@@ -286,6 +291,23 @@ class BuscaTest(SimpleTestCase):
         )
         self.assertEqual(
             (resultados[0]["latitude"], resultados[0]["longitude"]), (2, 2)
+        )
+
+    def test_busca_nao_junta_casa_sem_rua_com_a_rua(self, urlopen):
+        urlopen.return_value = colecao(
+            feature({"name": "Rua X", "city": "C"}, lon=1, lat=1),
+            feature(
+                {"name": "Rua X", "housenumber": "100", "city": "C"},
+                lon=2,
+                lat=2,
+            ),
+        )
+
+        resultados = buscar_enderecos("rua x 100")
+
+        self.assertEqual(
+            [(item["rotulo"], item["latitude"]) for item in resultados],
+            [("Rua X, C", 1), ("Rua X, 100, C", 2)],
         )
 
     def test_busca_descarta_features_malformadas(self, urlopen):
