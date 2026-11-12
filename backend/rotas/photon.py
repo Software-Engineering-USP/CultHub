@@ -79,23 +79,24 @@ def _texto(propriedades, chave):
     return valor if isinstance(valor, str) and valor else None
 
 
-def montar_rotulo(propriedades):
-    """Endereço legível a partir das `properties` de uma feature."""
+def _principal(propriedades):
+    """Nome e/ou rua com o número da casa, quando houver."""
     nome = _texto(propriedades, "name")
     rua = _texto(propriedades, "street")
     numero = _texto(propriedades, "housenumber")
-    if rua:
-        principal = f"{rua}, {numero}" if numero else rua
-        if nome and nome != rua:
-            principal = f"{nome} – {principal}"
-    elif nome and numero:
-        principal = f"{nome}, {numero}"
-    else:
-        principal = nome
+    endereco = rua or nome
+    if endereco and numero:
+        endereco = f"{endereco}, {numero}"
+    if rua and nome and nome != rua:
+        return f"{nome} – {endereco}"
+    return endereco
 
+
+def montar_rotulo(propriedades):
+    """Endereço legível a partir das `properties` de uma feature."""
     cidade = _texto(propriedades, "city")
     partes = [
-        principal,
+        _principal(propriedades),
         _texto(propriedades, "district") or _texto(propriedades, "locality"),
         cidade,
         None if cidade else _texto(propriedades, "state"),
