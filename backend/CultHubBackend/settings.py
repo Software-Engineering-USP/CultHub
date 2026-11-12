@@ -49,6 +49,20 @@ OSRM_A_PE_URL = (
     or "https://routing.openstreetmap.de/routed-foot"
 )
 
+# Cache em memória (por processo). As rotas ficam num cache à parte: cada
+# uma leva a linha inteira do trajeto e não deve expulsar as buscas de
+# endereço do cache padrão.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+    "rotas": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "rotas",
+        "OPTIONS": {"MAX_ENTRIES": 500},
+    },
+}
+
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
 
 

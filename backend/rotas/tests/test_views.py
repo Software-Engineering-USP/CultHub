@@ -95,7 +95,8 @@ class OrigemBuscaTest(APITestCase):
     def test_busca_erro_do_photon_da_502_sem_cachear(self, buscar):
         buscar.side_effect = [ErroPhoton("tempo esgotado"), []]
 
-        primeira = self.client.get(URL_BUSCA, {"q": "rua augusta"})
+        with self.assertLogs("rotas.views", "WARNING") as logs:
+            primeira = self.client.get(URL_BUSCA, {"q": "rua augusta"})
         segunda = self.client.get(URL_BUSCA, {"q": "rua augusta"})
 
         self.assertEqual(primeira.status_code, 502)
@@ -103,6 +104,9 @@ class OrigemBuscaTest(APITestCase):
         self.assertNotIn("tempo esgotado", primeira.content.decode())
         self.assertEqual(segunda.status_code, 200)
         self.assertEqual(buscar.call_count, 2)
+        (linha,) = logs.output
+        self.assertIn("Photon falhou: tempo esgotado", linha)
+        self.assertNotIn("augusta", linha)
 
     def test_busca_cache_separa_vies_diferente(self, buscar):
         self.client.get(
@@ -192,9 +196,13 @@ class OrigemReversaTest(APITestCase):
     def test_reversa_erro_do_photon_da_502(self, reverso):
         reverso.side_effect = ErroPhoton("Photon respondeu HTTP 503")
 
-        resposta = self.client.get(
-            URL_REVERSA, {"latitude": -23.5, "longitude": -46.6}
-        )
+        with self.assertLogs("rotas.views", "WARNING") as logs:
+            resposta = self.client.get(
+                URL_REVERSA, {"latitude": -23.5, "longitude": -46.6}
+            )
 
         self.assertEqual(resposta.status_code, 502)
         self.assertEqual(resposta.json(), ERRO_UPSTREAM)
+        (linha,) = logs.output
+        self.assertIn("Photon respondeu HTTP 503", linha)
+        self.assertNotIn("23.5", linha)

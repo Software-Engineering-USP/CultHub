@@ -1,7 +1,9 @@
 import hashlib
 import json
+import logging
+import threading
 
-from django.core.cache import cache
+from django.core.cache import cache, caches
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -33,6 +35,11 @@ VALIDADE_CACHE = 24 * 60 * 60
 MODOS_DE_ROTA = ("carro", "a_pe")
 MINIMO_TEXTO = 3
 MAXIMO_TEXTO = 200
+
+logger = logging.getLogger(__name__)
+# Travas da rota por chave de cache (repartidas por hash): pedidos iguais
+# ao mesmo tempo esperam o primeiro em vez de consultar o OSRM de novo.
+_TRAVAS_DA_ROTA = tuple(threading.Lock() for _ in range(64))
 
 
 def _latitude(**kwargs):
@@ -135,7 +142,8 @@ class OrigemBuscaView(APIView):
                 lambda: buscar_enderecos(texto, latitude, longitude),
                 timeout=VALIDADE_CACHE,
             )
-        except ErroPhoton:
+        except ErroPhoton as erro:
+            logger.warning("Photon falhou: %s", erro)
             return Response(ERRO_UPSTREAM, status=502)
         return Response({"resultados": resultados})
 
@@ -172,9 +180,26 @@ class OrigemReversaView(APIView):
                 lambda: buscar_endereco_reverso(latitude, longitude),
                 timeout=VALIDADE_CACHE,
             )
-        except ErroPhoton:
+        except ErroPhoton as erro:
+            logger.warning("Photon falhou: %s", erro)
             return Response(ERRO_UPSTREAM, status=502)
         return Response({"rotulo": rotulo})
+
+
+def _rotas_do_cache(chave, calcular):
+    """`get_or_set` no cache de rotas, com uma consulta só por chave.
+
+    A trava vale dentro do processo, como o próprio cache em memória.
+    """
+    cache_de_rotas = caches["rotas"]
+    ausente = object()
+    rotas = cache_de_rotas.get(chave, ausente)
+    if rotas is not ausente:
+        return rotas
+    with _TRAVAS_DA_ROTA[hash(chave) % len(_TRAVAS_DA_ROTA)]:
+        return cache_de_rotas.get_or_set(
+            chave, calcular, timeout=VALIDADE_CACHE
+        )
 
 
 class RotaEventoSerializer(serializers.Serializer):
@@ -228,12 +253,12 @@ class RotaEventoView(APIView):
     permission_classes = (AllowAny,)
 
     def get(self, request, evento_id):
-        parametros = RotaEventoSerializer(data=request.query_params)
-        parametros.is_valid(raise_exception=True)
-        modo = parametros.validated_data["modo"]
         evento = get_object_or_404(
             Evento.objects.select_related("local"), pk=evento_id
         )
+        parametros = RotaEventoSerializer(data=request.query_params)
+        parametros.is_valid(raise_exception=True)
+        modo = parametros.validated_data["modo"]
         local = evento.local
         if local is None or local.latitude is None or local.longitude is None:
             return Response(LOCAL_SEM_COORDENADAS, status=422)
@@ -248,12 +273,11 @@ class RotaEventoView(APIView):
             f"{destino[0]:.6f}:{destino[1]:.6f}"
         )
         try:
-            rotas = cache.get_or_set(
-                chave,
-                lambda: calcular_rotas(modo, origem, destino),
-                timeout=VALIDADE_CACHE,
+            rotas = _rotas_do_cache(
+                chave, lambda: calcular_rotas(modo, origem, destino)
             )
-        except ErroOSRM:
+        except ErroOSRM as erro:
+            logger.warning("OSRM falhou: %s", erro)
             return Response(ERRO_ROTA, status=502)
         if rotas is None:
             return Response(LOCAL_FORA_DO_MAPA, status=422)

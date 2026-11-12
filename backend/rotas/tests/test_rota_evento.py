@@ -1,16 +1,23 @@
+import threading
 import uuid
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
 
-from django.core.cache import cache
+from django.core.cache import cache, caches
+from django.test import SimpleTestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from catalogo.models import Evento, Local
 from rotas.osrm import ErroOSRM
-from rotas.views import ERRO_ROTA, LOCAL_FORA_DO_MAPA, LOCAL_SEM_COORDENADAS
+from rotas.views import (
+    ERRO_ROTA,
+    LOCAL_FORA_DO_MAPA,
+    LOCAL_SEM_COORDENADAS,
+    _rotas_do_cache,
+)
 
 ROTA = {
     "distancia_metros": 6614,
@@ -31,7 +38,7 @@ def url(evento_id):
 @patch("rotas.views.calcular_rotas", return_value=[ROTA])
 class RotaEventoTest(APITestCase):
     def setUp(self):
-        cache.clear()
+        caches["rotas"].clear()
         self.local = Local.objects.create(
             nome="MASP",
             latitude=Decimal("-23.561500"),
@@ -48,7 +55,7 @@ class RotaEventoTest(APITestCase):
     def test_rota_publica_nos_dois_modos(self, calcular):
         for modo in ("carro", "a_pe"):
             with self.subTest(modo=modo):
-                cache.clear()
+                caches["rotas"].clear()
 
                 resposta = self.get(modo=modo)
 
@@ -132,6 +139,13 @@ class RotaEventoTest(APITestCase):
         self.assertEqual(resposta.status_code, 404)
         calcular.assert_not_called()
 
+    def test_evento_inexistente_da_404_mesmo_sem_parametros(self, calcular):
+        for parametros in ({}, {"modo": "onibus"}):
+            with self.subTest(parametros=parametros):
+                resposta = self.client.get(url(uuid.uuid4()), parametros)
+
+                self.assertEqual(resposta.status_code, 404)
+
     def test_local_sem_coordenadas_da_422(self, calcular):
         sem_local = Evento.objects.create(
             titulo="S", data_inicio=date(2026, 11, 20)
@@ -183,7 +197,8 @@ class RotaEventoTest(APITestCase):
     def test_erro_do_osrm_da_502_e_nao_vai_para_o_cache(self, calcular):
         calcular.side_effect = [ErroOSRM("tempo esgotado"), [ROTA]]
 
-        primeira = self.get()
+        with self.assertLogs("rotas.views", "WARNING") as logs:
+            primeira = self.get()
         segunda = self.get()
 
         self.assertEqual(primeira.status_code, 502)
@@ -191,6 +206,17 @@ class RotaEventoTest(APITestCase):
         self.assertNotIn("tempo esgotado", primeira.content.decode())
         self.assertEqual(segunda.status_code, 200)
         self.assertEqual(calcular.call_count, 2)
+        (linha,) = logs.output
+        self.assertIn("OSRM falhou: tempo esgotado", linha)
+        self.assertNotIn("23.58", linha)
+
+    def test_rotas_ficam_fora_do_cache_padrao(self, calcular):
+        self.get()
+        cache.clear()
+
+        self.get()
+
+        calcular.assert_called_once()
 
     def test_cache_separa_modo_e_reaproveita_origem_proxima(self, calcular):
         self.get(latitude=-23.58741)
@@ -209,3 +235,47 @@ class RotaEventoTest(APITestCase):
 
         self.assertEqual(calcular.call_count, 2)
         self.assertEqual(calcular.call_args.args[2], (-23.5616, -46.6559))
+
+
+class RotasDoCacheTest(SimpleTestCase):
+    def setUp(self):
+        caches["rotas"].clear()
+
+    def test_pedidos_iguais_ao_mesmo_tempo_calculam_uma_vez(self):
+        dentro = threading.Event()
+        liberar = threading.Event()
+        chamadas = []
+        resultados = []
+
+        def calcular():
+            chamadas.append(1)
+            dentro.set()
+            liberar.wait(5)
+            return [ROTA]
+
+        def pedir():
+            resultados.append(_rotas_do_cache("osrm:k", calcular))
+
+        primeira = threading.Thread(target=pedir)
+        primeira.start()
+        self.assertTrue(dentro.wait(5))
+        segunda = threading.Thread(target=pedir)
+        segunda.start()
+        segunda.join(0.2)
+        self.assertTrue(segunda.is_alive())
+        liberar.set()
+        primeira.join(5)
+        segunda.join(5)
+
+        self.assertEqual(len(chamadas), 1)
+        self.assertEqual(resultados, [[ROTA], [ROTA]])
+
+    def test_none_tambem_fica_no_cache(self):
+        chamadas = []
+
+        def calcular():
+            chamadas.append(1)
+
+        self.assertIsNone(_rotas_do_cache("osrm:n", calcular))
+        self.assertIsNone(_rotas_do_cache("osrm:n", calcular))
+        self.assertEqual(len(chamadas), 1)
