@@ -1,3 +1,4 @@
+import type { ApiEvent, Paginated } from '@/services/catalog'
 import type { CategoryId, RouteOption } from '@/types'
 
 // A conta usa as APIs reais; os demais fluxos ainda são simulados abaixo.
@@ -104,9 +105,26 @@ export const api = {
       apiRequest<ProfileResponse>('/eu/', 'PATCH', { preferencias: categories }),
   },
 
-  /** Ainda demonstrativo: favoritos ainda não têm endpoint no backend. */
+  agenda: {
+    savedEvents: (page = 1) => {
+      const params = new URLSearchParams()
+      if (page > 1) params.set('page', String(page))
+      const suffix = params.size ? `?${params.toString()}` : ''
+      return apiRequest<Paginated<ApiEvent>>(`/eu/salvos/${suffix}`)
+    },
+  },
+
   events: {
-    save: (eventId: string) => request('POST', `/eventos/${encodeURIComponent(eventId)}/salvar/`),
+    save: async (eventId: string) => {
+      await apiRequest<void>(`/eventos/${encodeURIComponent(eventId)}/salvar/`, 'POST')
+    },
+    unsave: (eventId: string) =>
+      apiRequest<void>(`/eventos/${encodeURIComponent(eventId)}/salvar/`, 'DELETE'),
+    attend: async (eventId: string) => {
+      await apiRequest<void>(`/eventos/${encodeURIComponent(eventId)}/presenca/`, 'POST')
+    },
+    unattend: (eventId: string) =>
+      apiRequest<void>(`/eventos/${encodeURIComponent(eventId)}/presenca/`, 'DELETE'),
   },
 
   /** Provisório */

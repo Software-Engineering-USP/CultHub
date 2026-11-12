@@ -5,14 +5,24 @@ import EventPage from '@/components/events/EventPage'
 import * as demo from '@/lib/demo'
 import { paths, routes } from '@/lib/paths'
 import EventDetail from '@/pages/EventDetail'
-import { api } from '@/services/api'
-import { ApiError, catalogApi } from '@/services/catalog'
+import { ApiError as ActionApiError, api } from '@/services/api'
+import { catalogApi, ApiError as CatalogApiError, toCultEvent } from '@/services/catalog'
+import type { ApiEvent } from '@/services/catalog'
 import { apiEvent } from '@tests/fixtures/catalog'
 import { renderWithRouter } from '@tests/render'
 
-function renderEvent(id = 'sp-jazz-blues-festival') {
+function renderEvent(
+  id = 'sp-jazz-blues-festival',
+  authUser?: NonNullable<Parameters<typeof renderWithRouter>[1]>['authUser'],
+  overrides: Partial<ApiEvent> = {},
+) {
   vi.spyOn(catalogApi, 'event').mockResolvedValue(
-    apiEvent({ id, titulo: 'São Paulo Jazz & Blues Festival', descricao: 'Descrição do show.' }),
+    apiEvent({
+      id,
+      titulo: 'São Paulo Jazz & Blues Festival',
+      descricao: 'Descrição do show.',
+      ...overrides,
+    }),
   )
   return renderWithRouter(
     <Routes>
@@ -21,7 +31,7 @@ function renderEvent(id = 'sp-jazz-blues-festival') {
         element={<EventPage page={EventDetail} notFoundMessage="Evento não encontrado." />}
       />
     </Routes>,
-    { route: paths.event(id) },
+    { route: paths.event(id), authUser },
   )
 }
 
@@ -60,7 +70,7 @@ describe('EventDetail', () => {
   })
 
   it('mostra aviso apenas quando a API responde que o evento não existe', async () => {
-    vi.spyOn(catalogApi, 'event').mockRejectedValue(new ApiError('Não encontrado.', 404))
+    vi.spyOn(catalogApi, 'event').mockRejectedValue(new CatalogApiError('Não encontrado.', 404))
     renderWithRouter(
       <Routes>
         <Route
@@ -95,11 +105,97 @@ describe('EventDetail', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(message)
   })
 
-  it('Salvar chama a API com o id do evento', async () => {
+  it('salva e remove o evento dos salvos pela API', async () => {
     const save = vi.spyOn(api.events, 'save').mockResolvedValue()
+    const unsave = vi.spyOn(api.events, 'unsave').mockResolvedValue()
     const { user } = renderEvent()
     await user.click(await screen.findByRole('button', { name: /Salvar/ }))
     expect(save).toHaveBeenCalledWith('sp-jazz-blues-festival')
+
+    const savedButton = await screen.findByRole('button', { name: 'Salvo' })
+    expect(savedButton).toHaveAttribute('aria-pressed', 'true')
+    await user.click(savedButton)
+    expect(unsave).toHaveBeenCalledWith('sp-jazz-blues-festival')
+    expect(await screen.findByRole('button', { name: 'Salvar' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('confirma e remove a presença atualizando o total', async () => {
+    const attend = vi.spyOn(api.events, 'attend').mockResolvedValue()
+    const unattend = vi.spyOn(api.events, 'unattend').mockResolvedValue()
+    const { user } = renderEvent()
+
+    await user.click(await screen.findByRole('button', { name: 'Vou' }))
+    expect(attend).toHaveBeenCalledWith('sp-jazz-blues-festival')
+    expect(await screen.findByRole('button', { name: 'Vou!' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('1 pessoa confirmou presença.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Vou!' }))
+    expect(unattend).toHaveBeenCalledWith('sp-jazz-blues-festival')
+    expect(await screen.findByText('0 pessoas confirmaram presença.')).toBeInTheDocument()
+  })
+
+  it('inicia com os estados e o total retornados pelo backend', async () => {
+    renderEvent('evento-ja-marcado', undefined, {
+      salvo: true,
+      presenca: true,
+      total_presencas: 7,
+    })
+
+    expect(await screen.findByRole('button', { name: 'Salvo' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Vou!' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('7 pessoas confirmaram presença.')).toBeInTheDocument()
+  })
+
+  it('usa valores padrão se o detalhe não incluir as marcações', () => {
+    const event = {
+      ...toCultEvent(apiEvent()),
+      saved: undefined,
+      attending: undefined,
+      attendanceCount: undefined,
+    }
+    renderWithRouter(<EventDetail event={event} />)
+
+    expect(screen.getByRole('button', { name: 'Salvar' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Vou' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText('0 pessoas confirmaram presença.')).toBeInTheDocument()
+  })
+
+  it('pede login antes de salvar ou confirmar presença', async () => {
+    const save = vi.spyOn(api.events, 'save')
+    const attend = vi.spyOn(api.events, 'attend')
+    const { user } = renderEvent('sp-jazz-blues-festival', null)
+
+    await user.click(await screen.findByRole('button', { name: 'Salvar' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Entre na sua conta para salvar eventos.')
+    await user.click(screen.getByRole('button', { name: 'Vou' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Entre na sua conta para confirmar presença.')
+    expect(save).not.toHaveBeenCalled()
+    expect(attend).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Entre na sua conta' })).toHaveAttribute('href', paths.signIn)
+  })
+
+  it('mostra erros devolvidos pela API ao salvar e confirmar presença', async () => {
+    vi.spyOn(api.events, 'save').mockRejectedValue(new Error('Falha ao salvar.'))
+    vi.spyOn(api.events, 'attend').mockRejectedValue(new Error('Falha ao confirmar.'))
+    const { user } = renderEvent()
+
+    await user.click(await screen.findByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Não foi possível atualizar os eventos salvos.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Vou' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Não foi possível atualizar sua presença.')
+  })
+
+  it('mostra mensagens específicas de erro retornadas pelo backend', async () => {
+    vi.spyOn(api.events, 'save').mockRejectedValue(new ActionApiError('Evento removido.', 409))
+    vi.spyOn(api.events, 'attend').mockRejectedValue(new ActionApiError('Evento encerrado.', 409))
+    const { user } = renderEvent()
+
+    await user.click(await screen.findByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Evento removido.')
+    await user.click(screen.getByRole('button', { name: 'Vou' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Evento encerrado.')
   })
 
   it('Compartilhar registra a ação no console', async () => {
