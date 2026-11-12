@@ -1,4 +1,5 @@
-import { ArrowRight, Calendar, Heart, MapPin, Share2 } from 'lucide-react'
+import { ArrowRight, Calendar, CalendarCheck, Heart, MapPin, Share2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import DemoNote from '@/components/common/DemoNote'
@@ -29,7 +30,7 @@ import { logDemoAction } from '@/lib/demo'
 import { shortName } from '@/lib/events'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
-import { api } from '@/services/api'
+import { api, ApiError } from '@/services/api'
 import type { EventAvailability, EventWithDetails } from '@/types'
 
 const availabilityMessages: Record<EventAvailability, string> = {
@@ -41,10 +42,58 @@ const availabilityMessages: Record<EventAvailability, string> = {
 export default function EventDetail({ event }: { event: EventWithDetails }) {
   const user = useCurrentUser()
   const comments = useComments(event.id)
+  const [saved, setSaved] = useState(event.saved ?? false)
+  const [attending, setAttending] = useState(event.attending ?? false)
+  const [attendanceCount, setAttendanceCount] = useState(event.attendanceCount ?? 0)
+  const [actionInProgress, setActionInProgress] = useState<'saved' | 'attendance' | null>(null)
+  const [actionMessage, setActionMessage] = useState('')
   useDocumentTitle(`${event.title} | CultHub`)
 
   const category = categories[event.category]
   const availabilityMessage = event.availability ? availabilityMessages[event.availability] : undefined
+
+  async function toggleSaved() {
+    if (!user) {
+      setActionMessage('Entre na sua conta para salvar eventos.')
+      return
+    }
+    const nextSaved = !saved
+    setActionInProgress('saved')
+    setActionMessage('')
+    try {
+      if (nextSaved) await api.events.save(event.id)
+      else await api.events.unsave(event.id)
+      setSaved(nextSaved)
+      setActionMessage(nextSaved ? 'Evento salvo na sua conta.' : 'Evento removido dos salvos.')
+    } catch (error) {
+      setActionMessage(
+        error instanceof ApiError ? error.message : 'Não foi possível atualizar os eventos salvos.',
+      )
+    } finally {
+      setActionInProgress(null)
+    }
+  }
+
+  async function toggleAttendance() {
+    if (!user) {
+      setActionMessage('Entre na sua conta para confirmar presença.')
+      return
+    }
+    const nextAttending = !attending
+    setActionInProgress('attendance')
+    setActionMessage('')
+    try {
+      if (nextAttending) await api.events.attend(event.id)
+      else await api.events.unattend(event.id)
+      setAttending(nextAttending)
+      setAttendanceCount((count) => Math.max(0, count + (nextAttending ? 1 : -1)))
+      setActionMessage(nextAttending ? 'Presença confirmada.' : 'Presença removida.')
+    } catch (error) {
+      setActionMessage(error instanceof ApiError ? error.message : 'Não foi possível atualizar sua presença.')
+    } finally {
+      setActionInProgress(null)
+    }
+  }
 
   return (
     <>
@@ -95,24 +144,47 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
             <div className="mt-5.5 mb-2 flex flex-wrap gap-2.5">
               <Button
                 variant="outline"
-                aria-describedby="acoes-aviso"
-                onClick={() => void api.events.save(event.id)}
+                aria-pressed={saved}
+                disabled={actionInProgress !== null}
+                onClick={() => void toggleSaved()}
               >
-                <Heart />
-                Salvar
+                <Heart fill={saved ? 'currentColor' : 'none'} />
+                {saved ? 'Salvo' : 'Salvar'}
+              </Button>
+              <Button
+                variant={attending ? 'default' : 'outline'}
+                aria-pressed={attending}
+                disabled={actionInProgress !== null}
+                onClick={() => void toggleAttendance()}
+              >
+                <CalendarCheck />
+                {attending ? 'Vou!' : 'Vou'}
               </Button>
               <Button
                 variant="outline"
-                aria-describedby="acoes-aviso"
                 onClick={() => logDemoAction('Compartilhar evento', { eventId: event.id })}
               >
                 <Share2 />
                 Compartilhar
               </Button>
             </div>
-            <DemoNote id="acoes-aviso">
-              Demonstração: salvar e compartilhar só registram a ação no console.
-            </DemoNote>
+            <p className="mb-2 text-xs text-muted-foreground" aria-live="polite">
+              {attendanceCount} {attendanceCount === 1 ? 'pessoa confirmou' : 'pessoas confirmaram'} presença.
+            </p>
+            {!user && (
+              <p className="mb-2 text-xs text-muted-foreground">
+                <Link to={paths.signIn} className="font-semibold text-maroon underline">
+                  Entre na sua conta
+                </Link>{' '}
+                para salvar o evento ou confirmar presença.
+              </p>
+            )}
+            {actionMessage && (
+              <output className="mb-2 block text-xs text-muted-foreground" aria-live="polite">
+                {actionMessage}
+              </output>
+            )}
+            <DemoNote>Compartilhar ainda é demonstrativo e só registra a ação no console.</DemoNote>
 
             <div className="mt-7.5">
               <h2 className="mb-4 text-2xl">Sobre esta experiência</h2>

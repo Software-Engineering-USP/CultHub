@@ -51,6 +51,24 @@ describe('api', () => {
     })
   })
 
+  it('usa as rotas de salvar, presença e lista paginada da agenda', async () => {
+    await api.events.save('evento/42')
+    await api.events.unsave('evento/42')
+    await api.events.attend('evento/42')
+    await api.events.unattend('evento/42')
+    await api.agenda.savedEvents()
+    await api.agenda.savedEvents(2)
+
+    expect(fetchMock.mock.calls.map(([url, options]) => [url, (options as RequestInit).method])).toEqual([
+      ['/api/eventos/evento%2F42/salvar/', 'POST'],
+      ['/api/eventos/evento%2F42/salvar/', 'DELETE'],
+      ['/api/eventos/evento%2F42/presenca/', 'POST'],
+      ['/api/eventos/evento%2F42/presenca/', 'DELETE'],
+      ['/api/eu/salvos/', 'GET'],
+      ['/api/eu/salvos/?page=2', 'GET'],
+    ])
+  })
+
   it('envia e-mail e senha ao backend sem registrá-los no console', async () => {
     await api.auth.signIn({ email: 'voce@exemplo.com', password: 'segredo123', remember: true })
     await api.auth.signUp({

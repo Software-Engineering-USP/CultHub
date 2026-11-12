@@ -34,6 +34,9 @@ export interface ApiEvent {
   avisos?: string
   situacao?: string
   removido?: boolean
+  salvo?: boolean
+  presenca?: boolean
+  total_presencas?: number
 }
 
 export interface Paginated<T> {
@@ -166,6 +169,9 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
     priceValue,
     image: image?.url ?? '/assets/event-placeholder.svg',
     imageAlt: `Imagem do evento ${event.titulo}`,
+    saved: event.salvo ?? false,
+    attending: event.presenca ?? false,
+    attendanceCount: event.total_presencas ?? 0,
     availability: availability(event),
     details: {
       about: [event.descricao || 'Mais informações sobre este evento em breve.'],

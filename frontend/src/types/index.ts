@@ -36,6 +36,9 @@ export interface CultEvent {
   image: string
   imageAlt: string
   featured?: boolean
+  saved?: boolean
+  attending?: boolean
+  attendanceCount?: number
   /** Situação que torna o evento indisponível para uma nova visita. */
   availability?: EventAvailability
   /** Só eventos com detalhes têm página própria */
