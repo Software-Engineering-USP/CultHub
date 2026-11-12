@@ -1,5 +1,6 @@
 import http.client
 import json
+import math
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -70,25 +71,31 @@ def _get_json(caminho, parametros):
     return dados
 
 
+def _texto(propriedades, chave):
+    valor = propriedades.get(chave)
+    return valor if isinstance(valor, str) and valor else None
+
+
 def montar_rotulo(propriedades):
     """Endereço legível a partir das `properties` de uma feature."""
-    nome = propriedades.get("name")
-    rua = propriedades.get("street")
+    nome = _texto(propriedades, "name")
+    rua = _texto(propriedades, "street")
     if rua:
         principal = rua
-        if propriedades.get("housenumber"):
-            principal = f"{rua}, {propriedades['housenumber']}"
+        numero = _texto(propriedades, "housenumber")
+        if numero:
+            principal = f"{rua}, {numero}"
         if nome and nome != rua:
             principal = f"{nome} – {principal}"
     else:
         principal = nome
 
-    cidade = propriedades.get("city")
+    cidade = _texto(propriedades, "city")
     partes = [
         principal,
-        propriedades.get("district") or propriedades.get("locality"),
+        _texto(propriedades, "district") or _texto(propriedades, "locality"),
         cidade,
-        None if cidade else propriedades.get("state"),
+        None if cidade else _texto(propriedades, "state"),
     ]
     rotulo = []
     for parte in partes:
@@ -98,7 +105,11 @@ def montar_rotulo(propriedades):
 
 
 def _numero(valor):
-    return isinstance(valor, (int, float)) and not isinstance(valor, bool)
+    return (
+        isinstance(valor, (int, float))
+        and not isinstance(valor, bool)
+        and math.isfinite(valor)
+    )
 
 
 def _converter(feature):
@@ -116,10 +127,12 @@ def _converter(feature):
         or not all(_numero(valor) for valor in coordenadas[:2])
     ):
         return None
+    longitude, latitude = coordenadas[:2]
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return None
     rotulo = montar_rotulo(propriedades)
     if rotulo is None:
         return None
-    longitude, latitude = coordenadas[:2]
     return rotulo, latitude, longitude
 
 

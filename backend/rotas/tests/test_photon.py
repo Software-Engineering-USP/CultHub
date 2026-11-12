@@ -185,6 +185,18 @@ class RotuloTest(SimpleTestCase):
             with self.subTest(propriedades=propriedades):
                 self.assertEqual(montar_rotulo(propriedades), esperado)
 
+    def test_rotulo_ignora_valores_que_nao_sao_texto(self):
+        casos = [
+            ({"name": 123, "city": "C"}, "C"),
+            ({"name": "N", "city": ["x"], "state": "SP"}, "N, SP"),
+            ({"street": {"a": 1}, "name": "N", "district": 7}, "N"),
+            ({"street": "Rua X", "housenumber": 15, "city": "C"}, "Rua X, C"),
+            ({"name": None, "district": False}, None),
+        ]
+        for propriedades, esperado in casos:
+            with self.subTest(propriedades=propriedades):
+                self.assertEqual(montar_rotulo(propriedades), esperado)
+
 
 @patch("rotas.photon.urllib.request.urlopen")
 class BuscaTest(SimpleTestCase):
@@ -278,7 +290,19 @@ class BuscaTest(SimpleTestCase):
         booleana["geometry"]["coordinates"] = [True, False]
         sem_propriedades = feature({})
         sem_propriedades["properties"] = None
+        nao_finita = feature({"name": "NaN"})
+        nao_finita["geometry"]["coordinates"] = [float("nan"), 1.0]
+        infinita = feature({"name": "Inf"})
+        infinita["geometry"]["coordinates"] = [1.0, float("inf")]
+        fora_do_mundo = feature({"name": "Fora"}, lon=500, lat=900)
+        latitude_impossivel = feature({"name": "Lat"}, lon=-46.6, lat=-91)
+        nome_numerico = feature({"name": 123})
         urlopen.return_value = colecao(
+            nao_finita,
+            infinita,
+            fora_do_mundo,
+            latitude_impossivel,
+            nome_numerico,
             None,
             "texto",
             sem_propriedades,
