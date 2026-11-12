@@ -1,5 +1,5 @@
 import { ArrowUpRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import StaticMap from '@/components/common/StaticMap'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { logDemoAction } from '@/lib/demo'
+import { originSearch, parseMode, parseOrigin } from '@/lib/origin'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 import type { EventWithDetails } from '@/types'
@@ -18,6 +19,10 @@ const dotBase =
 
 export default function RoutePlan({ event }: { event: EventWithDetails }) {
   const routeOptions = useRouteOptions(event.id)
+  const [searchParams] = useSearchParams()
+  const origin = parseOrigin(searchParams)
+  const mode = parseMode(searchParams)
+  const changeOrigin = paths.eventOrigin(event.id, origin ? originSearch(origin, mode) : '')
   useDocumentTitle('Rota de exemplo | CultHub')
 
   const selected = routeOptions[0]
@@ -33,7 +38,7 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
       description="Planeje seu caminho até a música. Compare as opções neste trajeto demonstrativo."
       status={
         <Badge variant="muted" size="md">
-          Rota ilustrativa • origem fictícia
+          {origin ? 'Rota ilustrativa • partida definida' : 'Rota ilustrativa • origem fictícia'}
         </Badge>
       }
       map={
@@ -58,11 +63,18 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
 
         <div className="mb-5.5 grid gap-4">
           <div className={dotBase}>
-            <Link to={paths.eventOrigin(event.id)} className="float-right text-2xs text-maroon underline">
+            <Link to={changeOrigin} className="float-right text-2xs text-maroon underline">
               Alterar
             </Link>
             <small className="block text-2xs text-muted-foreground">Partida</small>
-            <strong className="block text-xs">Sua localização • exemplo</strong>
+            <strong className="block text-xs">
+              {origin ? (origin.label ?? 'Ponto marcado no mapa') : 'Sua localização • exemplo'}
+            </strong>
+            {origin && (
+              <small className="block text-2xs text-muted-foreground">
+                Endereço © OpenStreetMap contributors
+              </small>
+            )}
           </div>
           <div className={cn(dotBase, 'before:bg-maroon')}>
             <small className="block text-2xs text-muted-foreground">Destino</small>
@@ -133,9 +145,11 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
         </DemoNote>
 
         <DemoNote size="xs" className="mt-4.5 border-t border-border pt-4">
-          Origem, distâncias e tempos são fictícios. Não há consulta de trânsito, cálculo de percurso ou
-          compartilhamento de localização.{' '}
-          <Link to={paths.eventOrigin(event.id)}>Voltar à definição de origem</Link>.
+          {origin
+            ? 'A partida é a que você escolheu; trajeto, distâncias e tempos ainda são fictícios.'
+            : 'Origem, distâncias e tempos são fictícios.'}{' '}
+          Não há consulta de trânsito ou cálculo de percurso.{' '}
+          <Link to={changeOrigin}>Voltar à definição de origem</Link>.
         </DemoNote>
       </PlanVisitPanel>
     </PlanVisitLayout>

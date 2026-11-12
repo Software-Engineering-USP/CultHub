@@ -11,7 +11,7 @@ import { renderWithRouter } from '@tests/render'
 
 const id = 'sp-jazz-blues-festival'
 
-function renderRoutePlan() {
+function renderRoutePlan(search = '') {
   vi.spyOn(catalogApi, 'event').mockResolvedValue(
     apiEvent({
       id,
@@ -26,7 +26,7 @@ function renderRoutePlan() {
         element={<EventPage page={RoutePlan} notFoundMessage="Evento não encontrado." />}
       />
     </Routes>,
-    { route: paths.eventRoute(id) },
+    { route: paths.eventRoute(id, search) },
   )
 }
 
@@ -52,6 +52,25 @@ describe('RoutePlan', () => {
       paths.eventOrigin(id),
     )
     expect(screen.getByRole('img', { name: /Mapa ilustrativo de uma rota destacada/ })).toBeInTheDocument()
+  })
+
+  it('mostra a partida escolhida e leva ela de volta ao alterar', async () => {
+    const search = '?latitude=-23.6&longitude=-46.7&rotulo=Rua+Augusta%2C+1500&modo=ape'
+    renderRoutePlan(search)
+    const panel = within(await screen.findByRole('region', { name: 'Seu trajeto' }))
+    expect(panel.getByText('Rua Augusta, 1500')).toBeInTheDocument()
+    expect(panel.getByText(/OpenStreetMap contributors/)).toBeInTheDocument()
+    expect(screen.getByText('Rota ilustrativa • partida definida')).toBeInTheDocument()
+    expect(panel.getByRole('link', { name: 'Alterar' })).toHaveAttribute(
+      'href',
+      paths.eventOrigin(id, '?latitude=-23.6&longitude=-46.7&rotulo=Rua+Augusta%2C+1500&modo=ape'),
+    )
+  })
+
+  it('mostra "Ponto marcado no mapa" quando a partida não tem endereço', async () => {
+    renderRoutePlan('?latitude=-23.6&longitude=-46.7')
+    const panel = within(await screen.findByRole('region', { name: 'Seu trajeto' }))
+    expect(panel.getByText('Ponto marcado no mapa')).toBeInTheDocument()
   })
 
   it('"Abrir no app de mapas" registra a ação com o id do evento', async () => {
