@@ -2,8 +2,6 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import SectionHeading from '@/components/common/SectionHeading'
-import StaticMap from '@/components/common/StaticMap'
-import type { StaticMapProps } from '@/components/common/StaticMap'
 import Surface from '@/components/common/Surface'
 import type { SurfaceProps } from '@/components/common/Surface'
 import EventStrip from '@/components/events/EventStrip'
@@ -27,8 +25,8 @@ interface PlanVisitLayoutProps {
   description: string
   /** Selo à direita do título */
   status: ReactNode
-  /** Mapa estático da coluna da direita */
-  map: Omit<StaticMapProps, 'legend' | 'className'>
+  /** Mapa da coluna da direita (StaticMap ou OriginMap) */
+  map: ReactNode
   /** Painel da coluna da esquerda (use PlanVisitPanel) */
   children: ReactNode
 }
@@ -72,7 +70,7 @@ export default function PlanVisitLayout({
 
       <div className="grid grid-cols-[minmax(300px,400fr)_minmax(0,856fr)] items-start gap-6 max-lg:grid-cols-[minmax(300px,.9fr)_minmax(0,1.5fr)] max-md:grid-cols-1">
         {children}
-        <StaticMap {...map} />
+        {map}
       </div>
 
       <WeatherStrip event={event} />

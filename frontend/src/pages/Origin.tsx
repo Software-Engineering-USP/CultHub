@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import Field from '@/components/common/Field'
 import IconTile from '@/components/common/IconTile'
+import StaticMap from '@/components/common/StaticMap'
 import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,14 +32,15 @@ export default function Origin({ event }: { event: EventWithDetails }) {
           Defina sua origem para começar
         </Badge>
       }
-      map={{
-        src: '/assets/mapa-origem.png',
-        width: 856,
-        height: 690,
-        alt: 'Mapa ilustrativo da região do Ibirapuera na tela de definição da origem, sem ponto de partida real. Os controles desenhados fazem parte da imagem e não são interativos.',
-        caption:
-          'Mapa estático do layout de referência. Origem não definida; não é um serviço de mapas ou navegação.',
-      }}
+      map={
+        <StaticMap
+          src="/assets/mapa-origem.png"
+          width={856}
+          height={690}
+          alt="Mapa ilustrativo da região do Ibirapuera na tela de definição da origem, sem ponto de partida real. Os controles desenhados fazem parte da imagem e não são interativos."
+          caption="Mapa estático do layout de referência. Origem não definida; não é um serviço de mapas ou navegação."
+        />
+      }
     >
       <PlanVisitPanel aria-labelledby="origem-titulo">
         <div className="mb-5 flex items-center gap-3">

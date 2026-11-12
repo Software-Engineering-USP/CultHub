@@ -2,6 +2,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
+import StaticMap from '@/components/common/StaticMap'
 import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,14 +36,15 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
           Rota ilustrativa • origem fictícia
         </Badge>
       }
-      map={{
-        src: '/assets/mapa-rota.png',
-        width: 856,
-        height: 690,
-        alt: 'Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real.',
-        caption:
-          'Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um serviço de mapas atualizado.',
-      }}
+      map={
+        <StaticMap
+          src="/assets/mapa-rota.png"
+          width={856}
+          height={690}
+          alt="Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real."
+          caption="Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um serviço de mapas atualizado."
+        />
+      }
     >
       <PlanVisitPanel aria-labelledby="trajeto-titulo" className="bg-cream">
         <div className="mb-5 flex items-start justify-between gap-3.5">
