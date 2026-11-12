@@ -20,7 +20,14 @@ export interface ApiEvent {
   data_fim: string | null
   hora_fim: string | null
   fuso: string
-  local: { nome: string; endereco: string; cidade: string; estado: string } | null
+  local: {
+    nome: string
+    endereco: string
+    cidade: string
+    estado: string
+    latitude?: number | null
+    longitude?: number | null
+  } | null
   situacao_preco: 'gratuito' | 'pago' | 'desconhecido'
   faixas_preco: { minimo: number | null; maximo: number | null; moeda: string }[]
   imagens: { url: string; proporcao: string; largura: number | null; altura: number | null }[]
@@ -142,6 +149,8 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
   const category = event.categorias.find((value) => knownCategories.has(value)) ?? 'art'
   const image = event.imagens[0]
   const venue = event.local?.nome || 'Local a confirmar'
+  const latitude = event.local?.latitude
+  const longitude = event.local?.longitude
   const { price, priceValue } = formatPrice(event)
   return {
     id: event.id,
@@ -150,6 +159,8 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
     category,
     description: event.descricao || 'Mais informações sobre este evento em breve.',
     venue,
+    location:
+      typeof latitude === 'number' && typeof longitude === 'number' ? { latitude, longitude } : undefined,
     schedule: formatSchedule(event),
     price,
     priceValue,

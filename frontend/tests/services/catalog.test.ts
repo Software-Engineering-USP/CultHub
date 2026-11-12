@@ -97,12 +97,21 @@ describe('toCultEvent', () => {
       category: 'music',
       description: 'Show ao ar livre.',
       venue: 'Parque Central',
+      location: { latitude: -23.5874, longitude: -46.6576 },
       priceValue: 80,
       image: 'https://img.example/jazz.jpg',
       details: { about: ['Show ao ar livre.'], startTime: '20:00' },
     })
     expect(event.price.replaceAll('\u00a0', ' ')).toBe('A partir de R$ 80,00')
     expect(event.schedule).toContain('10 de março')
+  })
+
+  it('não inventa coordenadas quando o local não as tem', () => {
+    const local = { nome: 'Sem mapa', endereco: '', cidade: 'São Paulo', estado: 'SP' }
+    expect(toCultEvent(apiEvent({ local })).location).toBeUndefined()
+    expect(
+      toCultEvent(apiEvent({ local: { ...local, latitude: null, longitude: null } })).location,
+    ).toBeUndefined()
   })
 
   it('representa evento gratuito sem depender das faixas de preço', () => {
@@ -136,6 +145,7 @@ describe('toCultEvent', () => {
         imagens: [],
       }),
     )
+    expect(event.location).toBeUndefined()
     expect(event).toMatchObject({
       category: 'art',
       description: 'Mais informações sobre este evento em breve.',

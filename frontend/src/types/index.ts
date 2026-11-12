@@ -7,6 +7,12 @@ export interface EventDetails {
 
 export type EventAvailability = 'removed' | 'cancelled' | 'ended'
 
+/** Ponto em WGS84, no padrão do backend (`latitude`/`longitude`). */
+export interface Coordinates {
+  latitude: number
+  longitude: number
+}
+
 export interface CultEvent {
   id: string
   title: string
@@ -15,6 +21,8 @@ export interface CultEvent {
   category: CategoryId
   description: string
   venue: string
+  /** Coordenadas do local, quando o catálogo as conhece */
+  location?: Coordinates
   schedule: string
   /* Preço em texto para exibição na UI */
   price: string
