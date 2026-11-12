@@ -14,6 +14,7 @@ COPY catalogo ./catalogo
 COPY usuarios ./usuarios
 COPY agenda ./agenda
 COPY clima ./clima
+COPY rotas ./rotas
 
 # O banco do Compose fica em /data, em um volume com permissões deste usuário.
 RUN useradd --uid 1000 --create-home app && mkdir /data && chown app:app /app /data
