@@ -13,32 +13,18 @@ interface EventCardProps {
   compact?: boolean
   /** Carrega a imagem imediatamente (primeiro card visível) */
   priority?: boolean
+  /** Exibe links para o detalhe do evento quando ele existe no catálogo. */
+  detailsLink?: boolean
 }
 
-export default function EventCard({ event, compact = false, priority = false }: Readonly<EventCardProps>) {
+export default function EventCard({
+  event,
+  compact = false,
+  priority = false,
+  detailsLink = true,
+}: Readonly<EventCardProps>) {
   const category = categories[event.category]
   const href = paths.event(event.id)
-  const image = event.image ? (
-    <img
-      src={event.image}
-      alt={event.imageAlt}
-      loading={priority ? undefined : 'lazy'}
-      className={cn('block w-full object-cover', compact ? 'h-32' : 'h-36')}
-    />
-  ) : (
-    <div
-      role="img"
-      aria-label={event.imageAlt}
-      className={cn(
-        'flex w-full items-center justify-center text-sm font-semibold',
-        compact ? 'h-32' : 'h-36',
-        category.card,
-        category.text,
-      )}
-    >
-      {category.label}
-    </div>
-  )
   const info = [
     { icon: MapPin, text: event.venue },
     { icon: Calendar, text: event.schedule },
@@ -52,19 +38,22 @@ export default function EventCard({ event, compact = false, priority = false }: 
       )}
     >
       <div className="relative">
-        {event.externalUrl ? (
-          <a
-            href={event.externalUrl}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`Abrir página oficial de ${event.title}`}
-          >
-            {image}
-          </a>
-        ) : (
+        {detailsLink ? (
           <Link to={href} aria-label={`Conhecer ${event.title}`}>
-            {image}
+            <img
+              src={event.image}
+              alt={event.imageAlt}
+              loading={priority ? undefined : 'lazy'}
+              className={cn('block w-full object-cover', compact ? 'h-32' : 'h-36')}
+            />
           </Link>
+        ) : (
+          <img
+            src={event.image}
+            alt={event.imageAlt}
+            loading={priority ? undefined : 'lazy'}
+            className={cn('block w-full object-cover', compact ? 'h-32' : 'h-36')}
+          />
         )}
         <Badge className={cn('absolute bottom-3 left-3 bg-card/90 font-medium shadow-badge', category.text)}>
           {category.label}
@@ -73,19 +62,12 @@ export default function EventCard({ event, compact = false, priority = false }: 
 
       <div className="flex flex-1 flex-col p-5">
         <h3 className="text-lg">
-          {event.externalUrl ? (
-            <a
-              href={event.externalUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="no-underline hover:underline"
-            >
-              {event.title}
-            </a>
-          ) : (
+          {detailsLink ? (
             <Link to={href} className="no-underline hover:underline">
               {event.title}
             </Link>
+          ) : (
+            event.title
           )}
         </h3>
         <p className="mt-3 line-clamp-2 text-xs">{event.description}</p>
@@ -103,7 +85,7 @@ export default function EventCard({ event, compact = false, priority = false }: 
           <span
             className={cn(
               'text-base font-bold',
-              event.priceValue === 0 ? 'text-success-foreground' : 'text-maroon',
+              event.price === 'Gratuito' ? 'text-success-foreground' : 'text-maroon',
             )}
           >
             {event.price}
@@ -118,11 +100,11 @@ export default function EventCard({ event, compact = false, priority = false }: 
             >
               <ArrowUpRight className="size-4" />
             </a>
-          ) : (
+          ) : detailsLink ? (
             <Link to={href} aria-label={`Ver detalhes do ${shortName(event)}`} className="text-maroon">
               <ArrowUpRight className="size-4" />
             </Link>
-          )}
+          ) : null}
         </div>
       </div>
     </article>

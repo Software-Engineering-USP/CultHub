@@ -5,10 +5,13 @@ services:
     env_file:
       - path: ./backend/.env
         required: false
+    environment:
+      DJANGO_DB_PATH: /data/db.sqlite3
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./backend:/app
+      - backend_data:/data
 
   frontend:
     build: ./frontend
@@ -22,3 +25,6 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+
+volumes:
+  backend_data:

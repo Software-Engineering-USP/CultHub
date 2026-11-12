@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+  <title id="title">Imagem de evento indisponível</title>
+  <desc id="desc">Fundo vinho com um ícone de localização do CultHub.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#641b32" />
+      <stop offset="1" stop-color="#a64b5b" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="url(#bg)" />
+  <g fill="none" stroke="#f8e9dc" stroke-linecap="round" stroke-linejoin="round" stroke-width="18" opacity=".9">
+    <path d="M600 420s-130-123-130-220a130 130 0 1 1 260 0c0 97-130 220-130 220Z" />
+    <circle cx="600" cy="200" r="43" />
+  </g>
+  <text x="600" y="530" fill="#fff8f1" font-family="sans-serif" font-size="42" font-weight="700" text-anchor="middle">CultHub</text>
+</svg>

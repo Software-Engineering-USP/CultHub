@@ -1,22 +1,36 @@
 import { LocateFixed } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import CategoryList from '@/components/common/CategoryList'
 import DemoNote from '@/components/common/DemoNote'
 import SectionHeading from '@/components/common/SectionHeading'
 import EventCard from '@/components/events/EventCard'
-import EventSort from '@/components/events/EventSort'
 import FeaturedCarousel from '@/components/events/FeaturedCarousel'
 import { Button } from '@/components/ui/button'
-import { useCatalogEvents } from '@/hooks/useCatalogEvents'
+import { useCatalog } from '@/hooks/useCatalog'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { categoryOrder } from '@/lib/categories'
 import { logDemoAction } from '@/lib/demo'
+import type { CatalogQuery } from '@/services/catalog'
 
 export default function Home() {
+  const [searchParams] = useSearchParams()
+  const categoryValues = searchParams.get('categorias')?.split(',') ?? []
+  const categories = categoryValues.filter((value): value is (typeof categoryOrder)[number] =>
+    categoryOrder.includes(value as (typeof categoryOrder)[number]),
+  )
+  const query: CatalogQuery = {
+    q: searchParams.get('q') || undefined,
+    categorias: categories.length ? categories : undefined,
+    preco: (['gratuito', 'pago', 'desconhecido'] as const).find(
+      (value) => value === searchParams.get('preco'),
+    ),
+  }
+  const { events, count, loading, error, hasMore, loadMore, retry } = useCatalog(query)
   useDocumentTitle('CultHub | Explore São Paulo')
-  const { events, count, hasMore, loading, error, retry, loadMore } = useCatalogEvents()
-  const featured = events.slice(0, 8)
+  const featured = events.slice(0, 5)
 
   return (
-    <div className="space-y-12 max-sm:space-y-[34px]">
+    <div className="space-y-12 max-sm:space-y-8.5">
       <section aria-labelledby="mapa-titulo">
         <SectionHeading
           as="h1"
@@ -24,45 +38,47 @@ export default function Home() {
           title="Mapa de Eventos"
           description="Explore atividades e shows acontecendo ao seu redor em São Paulo"
         >
-          <div className="max-w-[245px] text-right max-sm:max-w-none max-sm:text-left">
+          <div className="max-w-61 text-right max-sm:max-w-none max-sm:text-left">
             <Button
               variant="outline"
               aria-describedby="localizacao-aviso"
               onClick={() => logDemoAction('Pedir localização do usuário')}
-              className="max-sm:min-h-10 max-sm:px-[14px] max-sm:py-[9px]"
+              className="max-sm:min-h-10 max-sm:px-3.5 max-sm:py-2"
             >
               <LocateFixed />
               Minha Localização
             </Button>
-            <DemoNote id="localizacao-aviso" className="mt-[5px]">
+            <DemoNote id="localizacao-aviso" className="mt-1">
               Mapa ilustrativo. Nesta demonstração, o pedido de localização só aparece no console.
             </DemoNote>
           </div>
         </SectionHeading>
 
         <figure>
-          <img
-            className="block w-full rounded-[26px] border border-line max-sm:rounded-2xl"
-            src="/assets/mapa-eventos.png"
-            width={1280}
-            height={450}
-            alt="Mapa ilustrativo de São Paulo com marcadores de eventos culturais. Os elementos representados na imagem não são interativos."
+          <iframe
+            className="block h-112.5 w-full rounded-3xl border border-border max-sm:h-85 max-sm:rounded-2xl"
+            title="Mapa OpenStreetMap de São Paulo"
+            src="https://www.openstreetmap.org/export/embed.html?bbox=-46.75%2C-23.65%2C-46.55%2C-23.48&layer=mapnik"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
           />
-          <figcaption className="mt-[14px] flex flex-wrap items-center justify-between gap-x-6 gap-y-3 max-sm:gap-[10px]">
+          <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 max-sm:gap-2.5">
             <CategoryList
               aria-label="Legenda de categorias"
-              className="gap-[22px] text-[11px] font-semibold max-md:gap-4 max-sm:gap-x-[14px] max-sm:gap-y-[10px] max-sm:text-[10px]"
+              className="gap-5.5 text-xs font-semibold max-md:gap-4 max-sm:gap-x-3.5 max-sm:gap-y-2.5 max-sm:text-2xs"
             />
-            <DemoNote className="max-sm:text-[10px]">
-              Imagem estática de referência, sem navegação ou localização em tempo real.
+            <DemoNote>
+              Mapa © OpenStreetMap contributors. Os pins dos eventos serão adicionados depois.
             </DemoNote>
           </figcaption>
         </figure>
       </section>
 
-      <section aria-labelledby="destaques-titulo">
-        <FeaturedCarousel events={featured} titleId="destaques-titulo" />
-      </section>
+      {featured.length > 0 && (
+        <section aria-labelledby="proximos-eventos-titulo">
+          <FeaturedCarousel events={featured} titleId="proximos-eventos-titulo" />
+        </section>
+      )}
 
       <section aria-labelledby="eventos-titulo">
         <SectionHeading
@@ -70,52 +86,44 @@ export default function Home() {
           title="Todos os Eventos Encontrados"
           description={
             loading && events.length === 0
-              ? 'Carregando eventos...'
-              : `Exibindo ${events.length} de ${count} evento(s) encontrado(s)`
+              ? 'Carregando eventos…'
+              : `Exibindo ${events.length} de ${count} evento(s)`
           }
         >
-          <EventSort />
+          <span className="text-xs text-muted-foreground">Ordenados por data</span>
         </SectionHeading>
 
         {error && (
-          <div role="alert" className="border-destructive/30 bg-destructive/5 mb-5 rounded-2xl border p-4">
+          <div
+            role="alert"
+            className="border-destructive/30 bg-destructive/5 mb-4 rounded-xl border p-4 text-sm"
+          >
             <p>{error}</p>
-            <Button variant="outline" onClick={retry} className="mt-3">
+            <Button variant="outline" className="mt-3" onClick={retry}>
               Tentar novamente
             </Button>
           </div>
         )}
-
-        {loading && events.length === 0 && (
-          <p role="status" className="mb-5 text-sm text-muted-foreground">
-            Buscando eventos no catálogo...
-          </p>
-        )}
-
-        <div className="grid grid-cols-3 gap-6 max-lg:gap-[18px] max-md:grid-cols-2 max-sm:grid-cols-1 max-sm:gap-5">
+        <div className="grid grid-cols-3 gap-6 max-lg:gap-4.5 max-md:grid-cols-2 max-sm:grid-cols-1 max-sm:gap-5">
           {events.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>
-
-        {!loading && !error && events.length === 0 && (
-          <p className="rounded-2xl border border-line bg-surface p-5 text-sm text-muted-foreground">
-            Nenhum evento disponível no catálogo no momento.
+        {!loading && events.length === 0 && !error && (
+          <p className="py-8 text-center text-muted-foreground">
+            Nenhum evento encontrado com esses filtros.
           </p>
         )}
-
+        {loading && events.length === 0 && (
+          <output className="py-8 text-center text-muted-foreground">Carregando eventos…</output>
+        )}
         {hasMore && (
           <div className="mt-6 text-center">
-            <Button onClick={loadMore} disabled={loading} variant="outline">
-              {loading ? 'Carregando...' : 'Carregar mais eventos'}
+            <Button variant="outline" disabled={loading} onClick={loadMore}>
+              {loading ? 'Carregando…' : 'Carregar mais eventos'}
             </Button>
           </div>
         )}
-
-        <DemoNote className="mt-5">
-          A lista e a contagem vêm do catálogo do CultHub. Busca, filtros e ordenação ainda são
-          demonstrativos. Os links dos cards abrem a página oficial do evento quando disponível.
-        </DemoNote>
       </section>
     </div>
   )

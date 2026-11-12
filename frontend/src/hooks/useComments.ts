@@ -11,5 +11,5 @@ export function useComments(eventId: string | undefined): EventComment[] {
 /** Comentários escritos pelo usuário atual. */
 export function useUserComments(): EventComment[] {
   const user = useCurrentUser()
-  return demoComments.filter((comment) => comment.authorId === user.id)
+  return user ? demoComments.filter((comment) => comment.authorId === user.id) : []
 }

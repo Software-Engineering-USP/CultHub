@@ -9,7 +9,7 @@ const featured = events.filter((event) => event.featured)
 describe('FeaturedCarousel', () => {
   it('mostra um item por evento numa região rotulada', () => {
     renderWithRouter(<FeaturedCarousel events={featured} titleId="destaques" />)
-    const carousel = screen.getByRole('region', { name: `${featured.length} experiências em destaque` })
+    const carousel = screen.getByRole('region', { name: `${featured.length} próximos eventos` })
     const items = within(carousel).getAllByRole('group')
     expect(items).toHaveLength(featured.length)
     featured.forEach((event, index) => {
@@ -32,6 +32,6 @@ describe('FeaturedCarousel', () => {
 
   it('mostra o título da seção com o id recebido', () => {
     renderWithRouter(<FeaturedCarousel events={featured} titleId="destaques" />)
-    expect(screen.getByRole('heading', { name: 'Eventos em Destaque' })).toHaveAttribute('id', 'destaques')
+    expect(screen.getByRole('heading', { name: 'Próximos eventos' })).toHaveAttribute('id', 'destaques')
   })
 })

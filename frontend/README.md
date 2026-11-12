@@ -28,14 +28,14 @@ src/
 │   ├── ui/          componentes base, criados a partir do shadcn/ui (Button, Badge, Select, Carousel...)
 │   ├── common/      componentes próprios usados em várias telas (Surface, SectionHeading, Field, DemoNote...)
 │   ├── layout/      Layout, Header, Footer
-│   ├── events/      EventCard, FeaturedCarousel, EventFilters, EventSort, CommentItem...
+│   ├── events/      EventCard, FeaturedCarousel, EventFilters, CommentItem...
 │   └── weather/     WeatherCard, WeatherStrip, WeatherStats
 ├── pages/           uma página por rota
-├── data/            dados de exemplo, separados por assunto (serão substituídos pela API)
+├── data/            dados demonstrativos de perfil, comentários, clima e rotas
 ├── types/           tipos compartilhados (CultEvent, User, CategoryId...)
 ├── hooks/           leitura de dados (useEvents, useCurrentUser...), useActiveSection e useDocumentTitle
 ├── lib/             rotas (paths), filtros, cn() e outras funções auxiliares
-└── services/        api.ts: chamadas ao backend (por enquanto, apenas registradas no console)
+└── services/        catalog.ts: cliente e adaptadores da API de catálogo; api.ts: ações ainda demonstrativas
 
 tests/               testes, organizados nas mesmas pastas do src/ (além de setup.ts e do helper render.tsx)
 ```
@@ -54,12 +54,14 @@ Para adicionar um novo componente:
 
 Os componentes de `ui/` devem ser usados diretamente (`import { Button } from '@/components/ui/button'`). Um componente em `common/` só se justifica quando a mesma combinação se repete em várias telas, como o `Field`, que reúne rótulo, campo e texto de ajuda. Os ícones são do [Lucide](https://lucide.dev/icons).
 
-## Integração com o backend
+## Integração do catálogo e ações demonstrativas
 
-A página inicial carrega os eventos reais do endpoint `GET /api/eventos/`, usando `src/services/catalog.ts`. As imagens e os links oficiais vêm dos dados cadastrados no catálogo. Quando o catálogo estiver vazio, a lista apresenta o estado sem eventos; falhas na API permitem tentar novamente.
+Na página inicial, o catálogo consome os eventos reais do backend Django pelos endpoints `/api/eventos/`, `/api/eventos/{uuid}/` e `/api/categorias/`. Busca e filtros são mantidos na URL (`q`, `categorias` e `preco`) e a listagem respeita a paginação da API. Os cards mostram dados do evento e permitem abrir seu detalhe no CultHub ou, quando disponível, sua página oficial. O Vite encaminha `/api` para `localhost:8000`; no Docker, `API_PROXY_TARGET` aponta para o serviço `backend`.
 
-As demais ações ainda são demonstrativas. Login, perfil, busca, filtros, eventos salvos, comentários e rotas passam por `api.*`, em `src/services/api.ts`, mas por enquanto apenas registram a chamada no console. Senhas nunca são exibidas.
+- **Ações ainda demonstrativas** (login, perfil, salvar evento, comentários, rotas, clima e geolocalização) usam dados locais ou registram ações no console. Elas ainda não fazem parte da integração do catálogo.
 - **Ações do próprio navegador** (pedir localização, compartilhar, abrir o app de mapas...) usam `logDemoAction`, de `src/lib/demo.ts`, e aparecem como `[CultHub demo] ...`.
+
+Para desenvolver com os dois serviços, rode `docker compose up --build` na raiz do projeto. O frontend ficará em `http://localhost:5173` e o backend em `http://localhost:8000`.
 
 ## Rotas
 
@@ -78,7 +80,7 @@ As URLs são definidas apenas em `src/lib/paths.ts`. Nos links, use `paths` em v
 <Link to={paths.event(event.id)}>...</Link>
 ```
 
-No momento, apenas o evento `sp-jazz-blues-festival` possui página de detalhes (campo `details` em `src/data/events.ts`); os demais exibem um aviso.
+Eventos retornados pelo catálogo têm páginas de detalhes. Os dados de exemplo continuam sendo usados nas áreas ainda não conectadas, como perfil salvo, comentários, clima e rotas.
 
 ## Cores, tamanhos e Tailwind
 

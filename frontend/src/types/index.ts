@@ -5,6 +5,8 @@ export interface EventDetails {
   startTime: string
 }
 
+export type EventAvailability = 'removed' | 'cancelled' | 'ended'
+
 export interface CultEvent {
   id: string
   title: string
@@ -16,16 +18,21 @@ export interface CultEvent {
   schedule: string
   /* Preço em texto para exibição na UI */
   price: string
-  priceValue: number | null
+  priceValue: number
   /** Caminho em public/assets */
   image: string
   imageAlt: string
   featured?: boolean
   /** Página oficial do evento no provedor, quando disponível. */
   externalUrl?: string
+  /** Situação que torna o evento indisponível para uma nova visita. */
+  availability?: EventAvailability
   /** Só eventos com detalhes têm página própria */
   details?: EventDetails
 }
+
+/** Evento com página própria (detalhes, origem e rota). */
+export type EventWithDetails = CultEvent & { details: EventDetails }
 
 export interface User {
   id: string

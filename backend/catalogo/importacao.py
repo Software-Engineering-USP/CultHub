@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
@@ -175,9 +176,14 @@ def _contabilizar(resumo, evento, criado, tem_categoria):
 
 
 def _remover_ausentes(presentes, agora):
+    # A busca começa hoje (data local), então a ausência de um evento que já
+    # começou não significa remoção: só ficam elegíveis os que começam hoje
+    # ou depois.
     return (
         Evento.objects.filter(
-            provedor=Provedor.TICKETMASTER, removido_em__isnull=True
+            provedor=Provedor.TICKETMASTER,
+            removido_em__isnull=True,
+            data_inicio__gte=timezone.localdate(agora),
         )
         .exclude(id_externo__in=presentes)
         .update(removido_em=agora)

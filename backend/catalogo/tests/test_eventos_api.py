@@ -104,6 +104,7 @@ class ContratoDaApiTest(APITestCase):
                 }
             ],
             "distancia_km": None,
+            "salvo": False,
         }
 
     def test_listagem(self):
@@ -119,6 +120,8 @@ class ContratoDaApiTest(APITestCase):
                 "avisos": "Chegue cedo",
                 "situacao": "onsale",
                 "removido": False,
+                "presenca": False,
+                "total_presencas": 0,
             },
         )
 

@@ -1,116 +1,166 @@
-import { categories } from '@/lib/categories'
-import type { CategoryId, CultEvent } from '@/types'
+import type { CategoryId, EventAvailability, EventWithDetails } from '@/types'
 
-interface FaixaPrecoApi {
-  moeda: string
-  minimo: number | null
-  maximo: number | null
+const knownCategories = new Set<CategoryId>(['music', 'festival', 'theater', 'sport', 'art'])
+
+export interface ApiCategory {
+  codigo: CategoryId
+  nome: string
 }
 
-interface EventoApi {
+export interface ApiEvent {
   id: string
   titulo: string
   descricao: string
-  categorias: string[]
-  url_externa: string
+  genero: string
+  categorias: CategoryId[]
+  url_externa?: string
   data_inicio: string
+  hora_inicio: string | null
   inicio: string | null
+  fim: string | null
+  data_fim: string | null
+  hora_fim: string | null
   fuso: string
-  local: {
-    nome: string
-    cidade: string
-    latitude: number | null
-    longitude: number | null
-  } | null
-  gratuito: boolean
+  local: { nome: string; endereco: string; cidade: string; estado: string } | null
   situacao_preco: 'gratuito' | 'pago' | 'desconhecido'
-  faixas_preco: FaixaPrecoApi[]
-  imagens: { url: string }[]
+  faixas_preco: { minimo: number | null; maximo: number | null; moeda: string }[]
+  imagens: { url: string; proporcao: string; largura: number | null; altura: number | null }[]
+  avisos?: string
+  situacao?: string
+  removido?: boolean
 }
 
-interface PaginaEventosApi {
+export interface Paginated<T> {
   count: number
   next: string | null
-  results: EventoApi[]
+  previous: string | null
+  results: T[]
 }
 
-export interface PaginaEventos {
-  count: number
-  hasMore: boolean
-  events: CultEvent[]
+export interface CatalogQuery {
+  q?: string
+  categorias?: CategoryId[]
+  preco?: 'gratuito' | 'pago' | 'desconhecido'
+  page?: number
 }
 
-const TAMANHO_PAGINA = 100
+export class ApiError extends Error {
+  readonly status: number
 
-function isCategoryId(value: string): value is CategoryId {
-  return value in categories
-}
-
-function schedule(event: EventoApi): string {
-  const withTime = Boolean(event.inicio)
-  const date = event.inicio ? new Date(event.inicio) : new Date(`${event.data_inicio}T00:00:00Z`)
-
-  return new Intl.DateTimeFormat('pt-BR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-    ...(withTime && { hour: '2-digit', minute: '2-digit' }),
-    timeZone: withTime ? event.fuso : 'UTC',
-  }).format(date)
-}
-
-function price(event: EventoApi): { label: string; value: number | null } {
-  if (event.gratuito || event.situacao_preco === 'gratuito') {
-    return { label: 'Gratuito', value: 0 }
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
   }
+}
 
-  const faixa = event.faixas_preco.find((item) => item.minimo !== null || item.maximo !== null)
-  const value = faixa?.minimo ?? faixa?.maximo ?? null
-  if (!faixa || value === null) {
-    return { label: 'Preço não informado', value: null }
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`/api${path}`, { credentials: 'include', signal })
+  if (!response.ok) {
+    let message = 'Falha ao carregar o catálogo.'
+    try {
+      const body: unknown = await response.json()
+      if (body && typeof body === 'object') message = Object.values(body).flat().join(' ')
+    } catch {
+      // Mantém a mensagem HTTP quando a resposta não contém JSON.
+    }
+    throw new ApiError(`${message} (${response.status})`, response.status)
   }
+  return response.json() as Promise<T>
+}
 
-  const moeda = /^[A-Z]{3}$/.test(faixa.moeda) ? faixa.moeda : 'BRL'
-  const formatted = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: moeda,
-  }).format(value)
+export const catalogApi = {
+  categories: () => get<ApiCategory[]>('/categorias/'),
+  events: (query: CatalogQuery = {}, signal?: AbortSignal) => {
+    const params = new URLSearchParams()
+    if (query.q?.trim()) params.set('q', query.q.trim())
+    if (query.categorias?.length) params.set('categorias', query.categorias.join(','))
+    if (query.preco) params.set('preco', query.preco)
+    if (query.page && query.page > 1) params.set('page', String(query.page))
+    const suffix = params.size ? `?${params.toString()}` : ''
+    return get<Paginated<ApiEvent>>(`/eventos/${suffix}`, signal)
+  },
+  event: (id: string, signal?: AbortSignal) => get<ApiEvent>(`/eventos/${encodeURIComponent(id)}/`, signal),
+}
+
+const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+function formatPrice(event: ApiEvent): { price: string; priceValue: number } {
+  if (event.situacao_preco === 'gratuito') return { price: 'Gratuito', priceValue: 0 }
+  const values = event.faixas_preco
+    .flatMap((range) => [range.minimo, range.maximo])
+    .filter((value): value is number => value !== null)
+  if (event.situacao_preco === 'desconhecido' || !values.length) {
+    return { price: 'Preço não informado', priceValue: 0 }
+  }
+  const minimum = Math.min(...values)
+  const maximum = Math.max(...values)
   return {
-    label: faixa.minimo === null ? `Até ${formatted}` : `A partir de ${formatted}`,
-    value,
+    price: maximum > minimum ? `A partir de ${currency.format(minimum)}` : currency.format(minimum),
+    priceValue: minimum,
   }
 }
 
-function adaptEvent(event: EventoApi): CultEvent {
-  const eventPrice = price(event)
+function formatSchedule(event: ApiEvent): string {
+  const [year, month, day] = event.data_inicio.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  const dateLabel = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(date)
+  if (!event.hora_inicio) return dateLabel
+  return `${dateLabel}, ${event.hora_inicio.slice(0, 5)}`
+}
+
+function todayInTimeZone(timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts()
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value
+  return `${value('year')}-${value('month')}-${value('day')}`
+}
+
+function availability(event: ApiEvent): EventAvailability | undefined {
+  if (event.removido) return 'removed'
+  if (event.situacao?.toLowerCase() === 'cancelled' || event.situacao?.toLowerCase() === 'canceled') {
+    return 'cancelled'
+  }
+  if (
+    event.fim
+      ? new Date(event.fim).getTime() < Date.now()
+      : (event.data_fim ?? event.data_inicio) < todayInTimeZone(event.fuso)
+  ) {
+    return 'ended'
+  }
+  return undefined
+}
+
+export function toCultEvent(event: ApiEvent): EventWithDetails {
+  const category = event.categorias.find((value) => knownCategories.has(value)) ?? 'other'
+  const image = event.imagens[0]
+  const venue = event.local?.nome || 'Local a confirmar'
+  const { price, priceValue } = formatPrice(event)
   return {
     id: event.id,
     title: event.titulo,
-    category: event.categorias.find(isCategoryId) ?? 'other',
+    shortTitle: event.titulo,
+    category,
     description: event.descricao || 'Mais informações sobre este evento em breve.',
-    venue: event.local
-      ? [event.local.nome, event.local.cidade].filter(Boolean).join(' · ')
-      : 'Local a confirmar',
-    schedule: schedule(event),
-    price: eventPrice.label,
-    priceValue: eventPrice.value,
-    image: event.imagens[0]?.url ?? '',
-    imageAlt: `Imagem de ${event.titulo}`,
+    venue,
+    schedule: formatSchedule(event),
+    price,
+    priceValue,
+    image: image?.url ?? '/assets/event-placeholder.svg',
+    imageAlt: `Imagem do evento ${event.titulo}`,
     externalUrl: event.url_externa || undefined,
-  }
-}
-
-export async function buscarEventos(page: number, signal?: AbortSignal): Promise<PaginaEventos> {
-  const query = new URLSearchParams({ page: String(page), tamanho: String(TAMANHO_PAGINA) })
-  const response = await fetch(`/api/eventos/?${query}`, { signal })
-  if (!response.ok) {
-    throw new Error('Não foi possível carregar os eventos. Tente novamente.')
-  }
-
-  const data = (await response.json()) as PaginaEventosApi
-  return {
-    count: data.count,
-    hasMore: data.next !== null,
-    events: data.results.map(adaptEvent),
+    availability: availability(event),
+    details: {
+      about: [event.descricao || 'Mais informações sobre este evento em breve.'],
+      startTime: event.hora_inicio?.slice(0, 5) ?? 'Horário a confirmar',
+    },
   }
 }
