@@ -71,6 +71,6 @@ export function useSavedEvents(): {
   }, [userId])
 
   if (!userId) return { events: [], loading: false, error: null }
-  if (!state || state.userId !== userId) return { events: [], loading: true, error: null }
+  if (state?.userId !== userId) return { events: [], loading: true, error: null }
   return state
 }
