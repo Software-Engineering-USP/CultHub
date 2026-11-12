@@ -5,10 +5,22 @@ import urllib.parse
 
 from django.conf import settings
 
-from rotas.transporte import RESPOSTA_INVALIDA, numero, obter_json
+from rotas.transporte import (
+    RESPOSTA_INVALIDA,
+    Espacador,
+    numero,
+    obter_json,
+)
 
 TIMEOUT = 10
 TENTATIVAS = 2
+# Tempo total de uma consulta, somando a espera da vez e as tentativas:
+# depois de um tempo esgotado (10 s) não sobra prazo para repetir.
+PRAZO = 12
+# Política do routing.openstreetmap.de: no máximo 1 requisição por segundo.
+INTERVALO_ENTRE_REQUISICOES = 1
+# Fila maior que isso dá erro na hora, sem chamar o OSRM.
+ESPERA_MAXIMA = 4
 # Distância máxima entre o ponto pedido e a via onde o OSRM o encaixou.
 LIMITE_ENCAIXE_METROS = 1000
 MAXIMO_ROTAS = 3
@@ -19,12 +31,17 @@ MODOS = {
 }
 # Códigos que o OSRM devolve com HTTP 400 quando não há rota.
 SEM_ROTA = {"NoRoute", "NoSegment"}
+# Fim da mensagem do NoSegment quando é o destino (2º ponto) que não
+# encaixa em via nenhuma; o OSRM 5.27 diz o índice do ponto.
+DESTINO_SEM_VIA = "for coordinate 1"
 PARAMETROS = {
     "overview": "full",
     "geometries": "geojson",
     "steps": "false",
     "alternatives": "true",
 }
+
+_vez = Espacador(INTERVALO_ENTRE_REQUISICOES, ESPERA_MAXIMA)
 
 
 class ErroOSRM(Exception):
@@ -50,6 +67,11 @@ def _corpo_sem_rota(erro):
     return None
 
 
+def _esperar_vez():
+    if not _vez.aguardar():
+        raise ErroOSRM("muitas requisições na fila")
+
+
 def _ponto(coordenada):
     latitude, longitude = coordenada
     return f"{longitude:.6f},{latitude:.6f}"
@@ -66,6 +88,8 @@ def _consultar(modo, origem, destino):
         erro=ErroOSRM,
         timeout=TIMEOUT,
         tentativas=TENTATIVAS,
+        prazo=PRAZO,
+        antes_de_tentar=_esperar_vez,
         ler_erro_http=_corpo_sem_rota,
     )
     if not isinstance(dados, dict):
@@ -92,6 +116,30 @@ def _encaixes(dados):
     return distancias
 
 
+def _posicao_valida(posicao):
+    """Par [longitude, latitude] de números dentro dos limites."""
+    return (
+        isinstance(posicao, list)
+        and len(posicao) == 2
+        and all(numero(valor) for valor in posicao)
+        and -180 <= posicao[0] <= 180
+        and -90 <= posicao[1] <= 90
+    )
+
+
+def _geometria_valida(geometria):
+    """LineString GeoJSON com 2 ou mais posições válidas."""
+    if not isinstance(geometria, dict):
+        return False
+    posicoes = geometria.get("coordinates")
+    return (
+        geometria.get("type") == "LineString"
+        and isinstance(posicoes, list)
+        and len(posicoes) >= 2
+        and all(map(_posicao_valida, posicoes))
+    )
+
+
 def _converter_rota(rota):
     """Rota do OSRM → formato do CultHub, ou None se estiver malformada."""
     if not isinstance(rota, dict):
@@ -101,12 +149,7 @@ def _converter_rota(rota):
     if not all(numero(v) and v >= 0 for v in (distancia, duracao)):
         return None
     geometria = rota.get("geometry")
-    if (
-        not isinstance(geometria, dict)
-        or geometria.get("type") != "LineString"
-        or not isinstance(geometria.get("coordinates"), list)
-        or len(geometria["coordinates"]) < 2
-    ):
+    if not _geometria_valida(geometria):
         return None
     return {
         "distancia_metros": _arredondar(distancia),
@@ -115,18 +158,29 @@ def _converter_rota(rota):
     }
 
 
+def _destino_sem_via(dados):
+    """Se o NoSegment é do destino (e não da origem)."""
+    mensagem = dados.get("message")
+    return (
+        _codigo(dados) == "NoSegment"
+        and isinstance(mensagem, str)
+        and mensagem.endswith(DESTINO_SEM_VIA)
+    )
+
+
 def calcular_rotas(modo, origem, destino):
     """Até 3 rotas de `origem` a `destino`, ambos (latitude, longitude).
 
     Devolve `[]` quando não há rota (inclusive com a origem longe de
     qualquer via: mover o pino resolve) e `None` quando o destino está longe
-    de qualquer via (a coordenada do local está errada). Levanta `ErroOSRM`
-    em falha do servidor ou resposta inválida.
+    de qualquer via ou não encaixa em nenhuma (a coordenada do local está
+    errada). Um `NoRoute` não diz qual ponto está isolado; vira `[]`.
+    Levanta `ErroOSRM` em falha do servidor ou resposta inválida.
     """
     dados = _consultar(modo, origem, destino)
     codigo = _codigo(dados)
     if codigo in SEM_ROTA:
-        return []
+        return None if _destino_sem_via(dados) else []
     if codigo != "Ok":
         raise ErroOSRM(RESPOSTA_INVALIDA)
 

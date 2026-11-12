@@ -8,10 +8,13 @@ from urllib.parse import parse_qs, urlsplit
 from django.test import SimpleTestCase, override_settings
 
 from rotas.osrm import ErroOSRM, _consultar, calcular_rotas
-from rotas.transporte import USER_AGENT
+from rotas.transporte import USER_AGENT, Espacador
 
 ORIGEM = (-23.5874, -46.6576)
 DESTINO = (-23.5615, -46.6559)
+# Mensagem real do NoSegment (routing.openstreetmap.de, 12/11/2026), sem o
+# índice do ponto.
+SEM_SEGMENTO = "Could not find a matching segment for coordinate"
 
 
 def resposta_json(dados):
@@ -30,8 +33,18 @@ def requisicao_da_chamada(urlopen):
     return requisicao, urlsplit(requisicao.full_url)
 
 
+class SemEsperaTestCase(SimpleTestCase):
+    """Testes de transporte sem o intervalo de 1 s entre requisições."""
+
+    def setUp(self):
+        super().setUp()
+        espera = patch("rotas.osrm._vez.aguardar", return_value=True)
+        self.aguardar = espera.start()
+        self.addCleanup(espera.stop)
+
+
 @patch("rotas.osrm.urllib.request.urlopen")
-class TransporteTest(SimpleTestCase):
+class TransporteTest(SemEsperaTestCase):
     @override_settings(OSRM_CARRO_URL="https://osrm.exemplo/car/")
     def test_monta_url_do_carro(self, urlopen):
         urlopen.return_value = resposta_json({"code": "Ok"})
@@ -158,6 +171,40 @@ class TransporteTest(SimpleTestCase):
             _consultar("carro", ORIGEM, DESTINO)
         self.assertNotIn("23.58", str(contexto.exception))
 
+    def test_espera_a_vez_antes_de_cada_tentativa(self, urlopen):
+        urlopen.side_effect = [TimeoutError(), resposta_json({"code": "Ok"})]
+
+        _consultar("carro", ORIGEM, DESTINO)
+
+        self.assertEqual(self.aguardar.call_count, 2)
+
+    def test_fila_cheia_e_erro_sem_chamar(self, urlopen):
+        self.aguardar.return_value = False
+
+        with self.assertRaises(ErroOSRM):
+            _consultar("carro", ORIGEM, DESTINO)
+        urlopen.assert_not_called()
+
+    @patch("rotas.transporte.time")
+    def test_sem_nova_tentativa_quando_o_prazo_acaba(self, relogio, urlopen):
+        relogio.monotonic.side_effect = [0, 0, 10.5]
+        urlopen.side_effect = TimeoutError()
+
+        with self.assertRaises(ErroOSRM) as contexto:
+            _consultar("carro", ORIGEM, DESTINO)
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(str(contexto.exception), "tempo esgotado")
+
+    @patch("rotas.transporte.time")
+    def test_nova_tentativa_usa_o_que_sobra_do_prazo(self, relogio, urlopen):
+        relogio.monotonic.side_effect = [0, 0, 3]
+        urlopen.side_effect = [erro_http(503), resposta_json({"code": "Ok"})]
+
+        _consultar("carro", ORIGEM, DESTINO)
+
+        tempos = [c.kwargs["timeout"] for c in urlopen.call_args_list]
+        self.assertEqual(tempos, [10, 9])
+
 
 GEOMETRIA = {
     "type": "LineString",
@@ -261,6 +308,34 @@ class CalcularRotasTest(SimpleTestCase):
 
         self.assertEqual([r["distancia_metros"] for r in rotas], [42])
 
+    def test_descarta_geometria_com_posicao_invalida(self, consultar):
+        boa = [-46.6, -23.5]
+        posicoes_ruins = [
+            None,
+            "x",
+            [None, "x"],
+            [-46.6],
+            [-46.6, -23.5, 760],
+            [float("inf"), -23.5],
+            [-46.6, float("nan")],
+            [10**400, -23.5],
+            [True, False],
+            [-181, -23.5],
+            [-46.6, 91],
+        ]
+        rotas = [
+            rota(
+                distancia=i,
+                geometria={"type": "LineString", "coordinates": [boa, ruim]},
+            )
+            for i, ruim in enumerate(posicoes_ruins)
+        ]
+        consultar.return_value = resposta([*rotas, rota(42)])
+
+        convertidas = calcular_rotas("carro", ORIGEM, DESTINO)
+
+        self.assertEqual([r["distancia_metros"] for r in convertidas], [42])
+
     def test_ok_sem_rota_valida_e_erro(self, consultar):
         for rotas in ([], [None, rota(distancia="x")]):
             with self.subTest(rotas=rotas):
@@ -273,6 +348,33 @@ class CalcularRotasTest(SimpleTestCase):
         for codigo in ("NoRoute", "NoSegment"):
             with self.subTest(codigo=codigo):
                 consultar.return_value = {"code": codigo, "message": "m"}
+
+                self.assertEqual(calcular_rotas("carro", ORIGEM, DESTINO), [])
+
+    def test_no_segment_do_destino_e_none(self, consultar):
+        consultar.return_value = {
+            "code": "NoSegment",
+            "message": f"{SEM_SEGMENTO} 1",
+        }
+
+        self.assertIsNone(calcular_rotas("carro", ORIGEM, DESTINO))
+
+    def test_no_segment_da_origem_ou_sem_indice_e_lista_vazia(self, consultar):
+        casos = [
+            {
+                "code": "NoSegment",
+                "message": f"{SEM_SEGMENTO} 0",
+            },
+            {
+                "code": "NoRoute",
+                "message": f"{SEM_SEGMENTO} 1",
+            },
+            {"code": "NoSegment", "message": ["for coordinate 1"]},
+            {"code": "NoSegment"},
+        ]
+        for dados in casos:
+            with self.subTest(dados=dados):
+                consultar.return_value = dados
 
                 self.assertEqual(calcular_rotas("carro", ORIGEM, DESTINO), [])
 
@@ -352,7 +454,7 @@ class RespostaEstranhaTest(SimpleTestCase):
 
 
 @patch("rotas.osrm.urllib.request.urlopen")
-class Http400EstranhoTest(SimpleTestCase):
+class Http400EstranhoTest(SemEsperaTestCase):
     def test_http_400_com_codigo_que_nao_e_texto_e_erro(self, urlopen):
         for codigo in (["NoRoute"], {}):
             with self.subTest(codigo=codigo):
@@ -362,3 +464,38 @@ class Http400EstranhoTest(SimpleTestCase):
                 with self.assertRaises(ErroOSRM):
                     _consultar("carro", ORIGEM, DESTINO)
                 self.assertEqual(urlopen.call_count, 1)
+
+
+class EspacadorTest(SimpleTestCase):
+    def setUp(self):
+        self.agora = 100.0
+        self.esperas = []
+        self.espacador = Espacador(
+            1, 2, relogio=lambda: self.agora, dormir=self.esperas.append
+        )
+
+    def test_primeira_vez_nao_espera(self):
+        self.assertTrue(self.espacador.aguardar())
+        self.assertEqual(self.esperas, [])
+
+    def test_requisicoes_seguidas_esperam_a_vez(self):
+        for _ in range(3):
+            self.assertTrue(self.espacador.aguardar())
+
+        self.assertEqual(self.esperas, [1, 2])
+
+    def test_fila_longa_demais_recusa_sem_reservar(self):
+        for _ in range(3):
+            self.espacador.aguardar()
+
+        self.assertFalse(self.espacador.aguardar())
+        self.agora += 1
+        self.assertTrue(self.espacador.aguardar())
+        self.assertEqual(self.esperas, [1, 2, 2])
+
+    def test_depois_do_intervalo_nao_espera(self):
+        self.espacador.aguardar()
+        self.agora += 1.5
+
+        self.assertTrue(self.espacador.aguardar())
+        self.assertEqual(self.esperas, [])
