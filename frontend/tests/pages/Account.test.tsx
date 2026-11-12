@@ -1,9 +1,10 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as demo from '@/lib/demo'
 import Account from '@/pages/Account'
 import { api } from '@/services/api'
 import type { ProfileResponse } from '@/services/api'
+import { apiEvent } from '@tests/fixtures/catalog'
 import { renderWithRouter } from '@tests/render'
 
 const profile: ProfileResponse = {
@@ -58,8 +59,16 @@ describe('Account', () => {
     expect(updatePreferences).toHaveBeenCalledWith(['music', 'art', 'theater'])
   })
 
-  it('o menu lateral marca a seção atual', () => {
+  it('o menu lateral marca a seção atual', async () => {
+    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(0)
+    vi.spyOn(api.agenda, 'savedEvents').mockResolvedValue({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    })
     renderWithRouter(<Account />)
+    await waitFor(() => expect(screen.getByText('0 experiências salvas')).toBeInTheDocument())
     const menu = screen.getByRole('navigation', { name: 'Seções da conta' })
     expect(within(menu).getByRole('link', { name: 'Dados pessoais' })).toHaveAttribute(
       'aria-current',
@@ -68,14 +77,18 @@ describe('Account', () => {
     expect(within(menu).getByRole('link', { name: 'Eventos salvos' })).not.toHaveAttribute('aria-current')
   })
 
-  it('não leva eventos demonstrativos salvos para a API do catálogo', () => {
+  it('carrega eventos salvos da conta e permite abrir seus detalhes', async () => {
+    const savedEvents = vi.spyOn(api.agenda, 'savedEvents').mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [apiEvent({ id: 'evento-salvo', titulo: 'Show salvo' })],
+    })
     renderWithRouter(<Account />)
 
     expect(
-      screen.getByText('Os eventos salvos são demonstrativos e ainda não possuem detalhes no catálogo.'),
+      await screen.findByRole('link', { name: 'Conhecer Show salvo' }),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('link', { name: 'Conhecer São Paulo Jazz & Blues Festival' }),
-    ).not.toBeInTheDocument()
+    expect(savedEvents).toHaveBeenCalledWith(1)
   })
 })

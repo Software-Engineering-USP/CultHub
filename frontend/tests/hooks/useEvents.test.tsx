@@ -1,11 +1,12 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { events } from '@/data/events'
-import { currentUser } from '@/data/user'
 import { useEvent, useEventById, useEvents, useSavedEvents } from '@/hooks/useEvents'
 import { paths, routes } from '@/lib/paths'
+import { api } from '@/services/api'
+import { apiEvent } from '../fixtures/catalog'
 import { AuthTestProvider } from '../auth'
 
 function routerAt(url: string) {
@@ -51,10 +52,28 @@ describe('useEvent', () => {
 })
 
 describe('useSavedEvents', () => {
-  it('devolve os eventos salvos do usuário, na mesma ordem', () => {
+  it('carrega todos os eventos salvos pela API, preservando a ordem das páginas', async () => {
+    const savedEvents = vi.spyOn(api.agenda, 'savedEvents')
+    savedEvents
+      .mockResolvedValueOnce({
+        count: 2,
+        next: '/api/eu/salvos/?page=2',
+        previous: null,
+        results: [apiEvent({ id: 'evento-1', titulo: 'Primeiro salvo' })],
+      })
+      .mockResolvedValueOnce({
+        count: 2,
+        next: null,
+        previous: '/api/eu/salvos/',
+        results: [apiEvent({ id: 'evento-2', titulo: 'Segundo salvo' })],
+      })
     const { result } = renderHook(() => useSavedEvents(), {
       wrapper: ({ children }) => <AuthTestProvider>{children}</AuthTestProvider>,
     })
-    expect(result.current.map((event) => event.id)).toEqual(currentUser.savedEventIds)
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.events.map((event) => event.id)).toEqual(['evento-1', 'evento-2'])
+    expect(savedEvents).toHaveBeenNthCalledWith(1, 1)
+    expect(savedEvents).toHaveBeenNthCalledWith(2, 2)
   })
 })

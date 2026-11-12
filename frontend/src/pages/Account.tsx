@@ -53,7 +53,11 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
   const { updateUser, signOut } = useAuth()
   const navigate = useNavigate()
   const { active: activeSection, select: selectSection } = useActiveSection(sectionIds)
-  const savedEvents = useSavedEvents()
+  const {
+    events: savedEvents,
+    loading: savedEventsLoading,
+    error: savedEventsError,
+  } = useSavedEvents()
   const [profileMessage, setProfileMessage] = useState('')
   const [preferencesMessage, setPreferencesMessage] = useState('')
   const [logoutMessage, setLogoutMessage] = useState('')
@@ -307,21 +311,38 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
             <SectionHeading
               id="salvos-titulo"
               title="Eventos salvos"
-              description={`${savedEvents.length} experiências salvas`}
+              description={
+                savedEventsLoading
+                  ? 'Carregando eventos salvos…'
+                  : `${savedEvents.length} experiências salvas`
+              }
               marginClass="mb-5"
               titleClassName="text-[24px]"
             >
-              <span className="text-[12px] text-muted-foreground">Recurso de eventos salvos em breve</span>
+              {savedEventsLoading && (
+                <span className="text-[12px] text-muted-foreground">Carregando…</span>
+              )}
             </SectionHeading>
+
+            {savedEventsError && (
+              <p
+                role="alert"
+                className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+              >
+                {savedEventsError}
+              </p>
+            )}
 
             <div className="grid grid-cols-2 gap-[22px] max-sm:grid-cols-[minmax(0,1fr)]">
               {savedEvents.map((event) => (
-                <EventCard key={event.id} event={event} compact detailsLink={false} />
+                <EventCard key={event.id} event={event} compact />
               ))}
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">
-              Os eventos salvos são demonstrativos e ainda não possuem detalhes no catálogo.
-            </p>
+            {!savedEventsLoading && !savedEventsError && savedEvents.length === 0 && (
+              <p className="mt-4 text-xs text-muted-foreground">
+                Você ainda não salvou nenhum evento. Explore o catálogo e salve os que quer acompanhar.
+              </p>
+            )}
           </section>
 
           <Surface as="section" id="comentarios" aria-labelledby="comentarios-titulo">
