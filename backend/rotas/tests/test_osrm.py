@@ -328,3 +328,37 @@ class CalcularRotasTest(SimpleTestCase):
 
         with self.assertRaises(ErroOSRM):
             calcular_rotas("carro", ORIGEM, DESTINO)
+
+
+@patch("rotas.osrm._consultar")
+class RespostaEstranhaTest(SimpleTestCase):
+    def test_codigo_que_nao_e_texto_e_erro(self, consultar):
+        for codigo in (["Ok"], {}, ["NoRoute"]):
+            with self.subTest(codigo=codigo):
+                consultar.return_value = {**resposta([rota()]), "code": codigo}
+
+                with self.assertRaises(ErroOSRM):
+                    calcular_rotas("carro", ORIGEM, DESTINO)
+
+    def test_numero_gigante_e_resposta_invalida(self, consultar):
+        gigante = 10**400
+        consultar.return_value = resposta([rota()], encaixe_destino=gigante)
+        with self.assertRaises(ErroOSRM):
+            calcular_rotas("carro", ORIGEM, DESTINO)
+
+        consultar.return_value = resposta([rota(gigante), rota(42)])
+        rotas = calcular_rotas("carro", ORIGEM, DESTINO)
+        self.assertEqual([r["distancia_metros"] for r in rotas], [42])
+
+
+@patch("rotas.osrm.urllib.request.urlopen")
+class Http400EstranhoTest(SimpleTestCase):
+    def test_http_400_com_codigo_que_nao_e_texto_e_erro(self, urlopen):
+        for codigo in (["NoRoute"], {}):
+            with self.subTest(codigo=codigo):
+                urlopen.reset_mock()
+                urlopen.side_effect = erro_http(400, {"code": codigo})
+
+                with self.assertRaises(ErroOSRM):
+                    _consultar("carro", ORIGEM, DESTINO)
+                self.assertEqual(urlopen.call_count, 1)

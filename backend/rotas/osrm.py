@@ -37,13 +37,19 @@ class _FalhaPassageira(ErroOSRM):
     """Falha que vale tentar de novo (rede, tempo esgotado, HTTP 5xx)."""
 
 
+def _codigo(dados):
+    """Campo `code` da resposta, só se for texto."""
+    codigo = dados.get("code")
+    return codigo if isinstance(codigo, str) else None
+
+
 def _corpo_sem_rota(erro):
     """Corpo de um HTTP 400 que diz "sem rota", ou None."""
     try:
         dados = json.loads(erro.read())
     except (OSError, ValueError, http.client.HTTPException):
         return None
-    if isinstance(dados, dict) and dados.get("code") in SEM_ROTA:
+    if isinstance(dados, dict) and _codigo(dados) in SEM_ROTA:
         return dados
     return None
 
@@ -108,11 +114,12 @@ def _consultar(modo, origem, destino):
 
 
 def _numero(valor):
-    return (
-        isinstance(valor, (int, float))
-        and not isinstance(valor, bool)
-        and math.isfinite(valor)
-    )
+    if not isinstance(valor, (int, float)) or isinstance(valor, bool):
+        return False
+    try:
+        return math.isfinite(valor)
+    except OverflowError:
+        return False
 
 
 def _arredondar(valor):
@@ -166,9 +173,10 @@ def calcular_rotas(modo, origem, destino):
     em falha do servidor ou resposta inválida.
     """
     dados = _consultar(modo, origem, destino)
-    if dados.get("code") in SEM_ROTA:
+    codigo = _codigo(dados)
+    if codigo in SEM_ROTA:
         return []
-    if dados.get("code") != "Ok":
+    if codigo != "Ok":
         raise ErroOSRM("resposta inválida")
 
     encaixe_origem, encaixe_destino = _encaixes(dados)
