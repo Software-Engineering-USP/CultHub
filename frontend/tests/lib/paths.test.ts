@@ -8,6 +8,15 @@ describe('paths', () => {
     expect(paths.eventRoute('sp-jazz')).toBe('/eventos/sp-jazz/rota')
   })
 
+  it('anexa a query da origem às páginas "Como chegar"', () => {
+    expect(paths.eventOrigin('sp-jazz', '?latitude=1&longitude=2')).toBe(
+      '/eventos/sp-jazz/origem?latitude=1&longitude=2',
+    )
+    expect(paths.eventRoute('sp-jazz', '?latitude=1&longitude=2')).toBe(
+      '/eventos/sp-jazz/rota?latitude=1&longitude=2',
+    )
+  })
+
   it('codifica caracteres especiais no id', () => {
     expect(paths.event('a b')).toBe('/eventos/a%20b')
   })

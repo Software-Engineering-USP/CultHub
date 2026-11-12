@@ -13,6 +13,11 @@ export interface Coordinates {
   longitude: number
 }
 
+/** Ponto de partida da rota: a coordenada do pino e, se conhecido, o endereço legível. */
+export interface RouteOrigin extends Coordinates {
+  label: string | null
+}
+
 export interface CultEvent {
   id: string
   title: string
