@@ -42,7 +42,7 @@ export function useSavedEvents(): {
 
     let active = true
 
-    async function loadSavedEvents() {
+    async function loadSavedEvents(activeUserId: string) {
       try {
         const results: EventWithDetails[] = []
         let page = 1
@@ -53,11 +53,13 @@ export function useSavedEvents(): {
           hasNextPage = Boolean(response.next)
           page += 1
         }
-        if (active) setState({ userId, events: results, loading: false, error: null })
+        if (active) {
+          setState({ userId: activeUserId, events: results, loading: false, error: null })
+        }
       } catch (cause) {
         if (!active) return
         setState({
-          userId,
+          userId: activeUserId,
           events: [],
           loading: false,
           error: cause instanceof ApiError ? cause.message : 'Não foi possível carregar seus eventos salvos.',
@@ -65,7 +67,7 @@ export function useSavedEvents(): {
       }
     }
 
-    void loadSavedEvents()
+    void loadSavedEvents(userId)
     return () => {
       active = false
     }
