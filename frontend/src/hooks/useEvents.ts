@@ -29,21 +29,18 @@ export function useSavedEvents(): {
   error: string | null
 } {
   const user = useCurrentUser()
-  const [savedEvents, setSavedEvents] = useState<EventWithDetails[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const userId = user?.id
+  const [state, setState] = useState<{
+    userId: string
+    events: EventWithDetails[]
+    loading: boolean
+    error: string | null
+  } | null>(null)
 
   useEffect(() => {
-    if (!user) {
-      setSavedEvents([])
-      setError(null)
-      setLoading(false)
-      return
-    }
+    if (!userId) return
 
     let active = true
-    setLoading(true)
-    setError(null)
 
     async function loadSavedEvents() {
       try {
@@ -56,16 +53,18 @@ export function useSavedEvents(): {
           hasNextPage = Boolean(response.next)
           page += 1
         }
-        if (active) setSavedEvents(results)
+        if (active) setState({ userId, events: results, loading: false, error: null })
       } catch (cause) {
         if (!active) return
-        setError(
-          cause instanceof ApiError
-            ? cause.message
-            : 'Não foi possível carregar seus eventos salvos.',
-        )
-      } finally {
-        if (active) setLoading(false)
+        setState({
+          userId,
+          events: [],
+          loading: false,
+          error:
+            cause instanceof ApiError
+              ? cause.message
+              : 'Não foi possível carregar seus eventos salvos.',
+        })
       }
     }
 
@@ -73,7 +72,9 @@ export function useSavedEvents(): {
     return () => {
       active = false
     }
-  }, [user])
+  }, [userId])
 
-  return { events: savedEvents, loading, error }
+  if (!userId) return { events: [], loading: false, error: null }
+  if (!state || state.userId !== userId) return { events: [], loading: true, error: null }
+  return state
 }
