@@ -120,9 +120,8 @@ export default function OriginMap({
 
   return (
     <figure className={className}>
-      <div
+      <section
         ref={container}
-        role="region"
         aria-label="Mapa para escolher o ponto de partida"
         className="isolate h-[min(690px,70vh)] w-full overflow-hidden rounded-3xl border border-border max-md:h-80 max-sm:rounded-2xl"
       />
