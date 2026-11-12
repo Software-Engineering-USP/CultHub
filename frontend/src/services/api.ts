@@ -1,5 +1,5 @@
 import type { ApiEvent, Paginated } from '@/services/catalog'
-import type { CategoryId, RouteOption } from '@/types'
+import type { CategoryId } from '@/types'
 
 // A conta usa as APIs reais; os demais fluxos ainda são simulados abaixo.
 
