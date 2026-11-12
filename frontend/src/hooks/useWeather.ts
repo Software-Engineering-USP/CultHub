@@ -37,5 +37,6 @@ export function useWeather(event: CultEvent) {
     return () => controller.abort()
   }, [city, event.eventDate, event.eventTime, event.id, hasLocation, key, latitude, longitude])
 
-  return state.key === key ? state : { key, status: 'loading' }
+  const loadingState: WeatherState = { key, status: 'loading' }
+  return state.key === key ? state : loadingState
 }
