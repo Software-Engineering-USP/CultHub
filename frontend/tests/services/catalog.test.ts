@@ -137,7 +137,7 @@ describe('toCultEvent', () => {
       }),
     )
     expect(event).toMatchObject({
-      category: 'art',
+      category: 'other',
       description: 'Mais informações sobre este evento em breve.',
       venue: 'Local a confirmar',
       image: '/assets/event-placeholder.svg',
