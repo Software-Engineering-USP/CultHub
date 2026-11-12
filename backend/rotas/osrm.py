@@ -1,13 +1,11 @@
 import http.client
 import json
 import math
-import urllib.error
 import urllib.parse
-import urllib.request
 
 from django.conf import settings
 
-from rotas.photon import USER_AGENT
+from rotas.transporte import RESPOSTA_INVALIDA, numero, obter_json
 
 TIMEOUT = 10
 TENTATIVAS = 2
@@ -33,10 +31,6 @@ class ErroOSRM(Exception):
     """Erro controlado ao consultar o OSRM."""
 
 
-class _FalhaPassageira(ErroOSRM):
-    """Falha que vale tentar de novo (rede, tempo esgotado, HTTP 5xx)."""
-
-
 def _codigo(dados):
     """Campo `code` da resposta, só se for texto."""
     codigo = dados.get("code")
@@ -45,6 +39,8 @@ def _codigo(dados):
 
 def _corpo_sem_rota(erro):
     """Corpo de um HTTP 400 que diz "sem rota", ou None."""
+    if erro.code != 400:
+        return None
     try:
         dados = json.loads(erro.read())
     except (OSError, ValueError, http.client.HTTPException):
@@ -52,39 +48,6 @@ def _corpo_sem_rota(erro):
     if isinstance(dados, dict) and _codigo(dados) in SEM_ROTA:
         return dados
     return None
-
-
-def _requisitar(url):
-    try:
-        requisicao = urllib.request.Request(
-            url, headers={"User-Agent": USER_AGENT}
-        )
-    except ValueError:
-        raise ErroOSRM("URL do OSRM inválida") from None
-    try:
-        with urllib.request.urlopen(requisicao, timeout=TIMEOUT) as resposta:
-            return json.load(resposta)
-    except urllib.error.HTTPError as erro:
-        mensagem = f"OSRM respondeu HTTP {erro.code}"
-        if erro.code >= 500:
-            raise _FalhaPassageira(mensagem) from None
-        if erro.code == 400:
-            dados = _corpo_sem_rota(erro)
-            if dados is not None:
-                return dados
-        raise ErroOSRM(mensagem) from None
-    except urllib.error.URLError as erro:
-        raise _FalhaPassageira(
-            f"falha de rede ({type(erro.reason).__name__})"
-        ) from None
-    except TimeoutError:
-        raise _FalhaPassageira("tempo esgotado") from None
-    except (OSError, http.client.HTTPException) as erro:
-        raise _FalhaPassageira(
-            f"falha de transporte ({type(erro).__name__})"
-        ) from None
-    except ValueError:
-        raise ErroOSRM("resposta inválida") from None
 
 
 def _ponto(coordenada):
@@ -96,30 +59,18 @@ def _consultar(modo, origem, destino):
     """JSON da rota do OSRM; `origem`/`destino` são (latitude, longitude)."""
     nome, perfil = MODOS[modo]
     base = getattr(settings, nome).rstrip("/")
-    url = (
+    dados = obter_json(
         f"{base}/route/v1/{perfil}/{_ponto(origem)};{_ponto(destino)}"
-        f"?{urllib.parse.urlencode(PARAMETROS)}"
+        f"?{urllib.parse.urlencode(PARAMETROS)}",
+        servico="OSRM",
+        erro=ErroOSRM,
+        timeout=TIMEOUT,
+        tentativas=TENTATIVAS,
+        ler_erro_http=_corpo_sem_rota,
     )
-    for tentativa in range(1, TENTATIVAS + 1):
-        try:
-            dados = _requisitar(url)
-            break
-        except _FalhaPassageira as erro:
-            if tentativa == TENTATIVAS:
-                raise ErroOSRM(str(erro)) from None
-
     if not isinstance(dados, dict):
-        raise ErroOSRM("resposta inválida")
+        raise ErroOSRM(RESPOSTA_INVALIDA)
     return dados
-
-
-def _numero(valor):
-    if not isinstance(valor, (int, float)) or isinstance(valor, bool):
-        return False
-    try:
-        return math.isfinite(valor)
-    except OverflowError:
-        return False
 
 
 def _arredondar(valor):
@@ -131,13 +82,13 @@ def _encaixes(dados):
     """Distâncias (m) da origem e do destino até a via usada pelo OSRM."""
     pontos = dados.get("waypoints")
     if not isinstance(pontos, list) or len(pontos) < 2:
-        raise ErroOSRM("resposta inválida")
+        raise ErroOSRM(RESPOSTA_INVALIDA)
     distancias = [
         ponto.get("distance") if isinstance(ponto, dict) else None
         for ponto in pontos[:2]
     ]
-    if not all(_numero(distancia) for distancia in distancias):
-        raise ErroOSRM("resposta inválida")
+    if not all(numero(distancia) for distancia in distancias):
+        raise ErroOSRM(RESPOSTA_INVALIDA)
     return distancias
 
 
@@ -147,7 +98,7 @@ def _converter_rota(rota):
         return None
     distancia = rota.get("distance")
     duracao = rota.get("duration")
-    if not all(_numero(v) and v >= 0 for v in (distancia, duracao)):
+    if not all(numero(v) and v >= 0 for v in (distancia, duracao)):
         return None
     geometria = rota.get("geometry")
     if (
@@ -177,7 +128,7 @@ def calcular_rotas(modo, origem, destino):
     if codigo in SEM_ROTA:
         return []
     if codigo != "Ok":
-        raise ErroOSRM("resposta inválida")
+        raise ErroOSRM(RESPOSTA_INVALIDA)
 
     encaixe_origem, encaixe_destino = _encaixes(dados)
     if encaixe_destino > LIMITE_ENCAIXE_METROS:
@@ -187,12 +138,12 @@ def calcular_rotas(modo, origem, destino):
 
     rotas = dados.get("routes")
     if not isinstance(rotas, list):
-        raise ErroOSRM("resposta inválida")
+        raise ErroOSRM(RESPOSTA_INVALIDA)
     convertidas = [
         convertida
         for convertida in map(_converter_rota, rotas)
         if convertida is not None
     ]
     if not convertidas:
-        raise ErroOSRM("resposta inválida")
+        raise ErroOSRM(RESPOSTA_INVALIDA)
     return convertidas[:MAXIMO_ROTAS]

@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 from django.test import SimpleTestCase, override_settings
 
 from rotas.osrm import ErroOSRM, _consultar, calcular_rotas
-from rotas.photon import USER_AGENT
+from rotas.transporte import USER_AGENT
 
 ORIGEM = (-23.5874, -46.6576)
 DESTINO = (-23.5615, -46.6559)
