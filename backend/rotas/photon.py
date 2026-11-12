@@ -139,14 +139,6 @@ def _converter(feature):
     return rotulo, latitude, longitude
 
 
-def _do_brasil(feature):
-    return (
-        isinstance(feature, dict)
-        and isinstance(feature.get("properties"), dict)
-        and feature["properties"].get("countrycode") == "BR"
-    )
-
-
 def buscar_enderecos(texto, latitude=None, longitude=None):
     """Sugestões de endereço no Brasil para o autocomplete."""
     parametros = {"q": texto, "limit": LIMITE_PHOTON, "bbox": BBOX_BRASIL}
@@ -158,12 +150,15 @@ def buscar_enderecos(texto, latitude=None, longitude=None):
     resultados = []
     vistos = set()
     for feature in dados["features"]:
-        if not _do_brasil(feature):
-            continue
         convertida = _converter(feature)
-        if convertida is None or convertida[0] in vistos:
+        if convertida is None:
             continue
         rotulo, lat, lon = convertida
+        # _converter já garantiu que feature["properties"] é um dict.
+        if feature["properties"].get("countrycode") != "BR":
+            continue
+        if rotulo in vistos:
+            continue
         vistos.add(rotulo)
         resultados.append(
             {"rotulo": rotulo, "latitude": lat, "longitude": lon}
