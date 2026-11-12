@@ -13,7 +13,7 @@ def registro(*args):
 
 class OcultarConsultaDeRotasTest(SimpleTestCase):
     def filtrar(self, registro_):
-        self.assertTrue(OcultarConsultaDeRotas().filter(registro_))
+        self.assertIs(OcultarConsultaDeRotas().filter(registro_), registro_)
         return registro_
 
     def test_tira_query_string_das_rotas(self):
