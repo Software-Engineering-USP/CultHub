@@ -13,7 +13,7 @@ import { renderWithRouter } from '@tests/render'
 
 function renderEvent(
   id = 'sp-jazz-blues-festival',
-  authUser?: Parameters<typeof renderWithRouter>[1]['authUser'],
+  authUser?: NonNullable<Parameters<typeof renderWithRouter>[1]>['authUser'],
   overrides: Partial<ApiEvent> = {},
 ) {
   vi.spyOn(catalogApi, 'event').mockResolvedValue(
