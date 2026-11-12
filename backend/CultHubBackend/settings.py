@@ -38,6 +38,17 @@ TICKETMASTER_PAIS = os.environ.get("TICKETMASTER_PAIS", "BR")
 # também quando PHOTON_URL está em branco no .env).
 PHOTON_URL = os.environ.get("PHOTON_URL") or "https://photon.komoot.io"
 
+# Rotas de carro e a pé: servidores do OSRM (padrão: routing.openstreetmap.de,
+# também quando a variável está em branco no .env).
+OSRM_CARRO_URL = (
+    os.environ.get("OSRM_CARRO_URL")
+    or "https://routing.openstreetmap.de/routed-car"
+)
+OSRM_A_PE_URL = (
+    os.environ.get("OSRM_A_PE_URL")
+    or "https://routing.openstreetmap.de/routed-foot"
+)
+
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
 
 
