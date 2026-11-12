@@ -42,6 +42,19 @@ class OcultarConsultaDeRotasTest(SimpleTestCase):
             '"GET /api/rotas/origem/reversa/ HTTP/1.1" 200 312',
         )
 
+    def test_rota_do_evento_tambem(self):
+        caminho = "/api/rotas/eventos/0b7e0c52-5d0f-4a8f-9c55-0f1f3f1b2c3d/"
+        linha = (
+            f"GET {caminho}?latitude=-23.58&longitude=-46.65&modo=carro "
+            "HTTP/1.1"
+        )
+
+        filtrado = self.filtrar(registro(linha, "200", "312"))
+
+        self.assertEqual(
+            filtrado.getMessage(), f'"GET {caminho} HTTP/1.1" 200 312'
+        )
+
     def test_linha_mal_formada_com_espaco_na_consulta(self):
         linha = "GET /api/rotas/origem/busca/?q=rua augusta 1500 HTTP/1.1"
 

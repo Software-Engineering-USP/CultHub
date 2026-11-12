@@ -1,6 +1,6 @@
 from django.urls import path
 
-from rotas.views import OrigemBuscaView, OrigemReversaView
+from rotas.views import OrigemBuscaView, OrigemReversaView, RotaEventoView
 
 urlpatterns = [
     path(
@@ -10,5 +10,10 @@ urlpatterns = [
         "origem/reversa/",
         OrigemReversaView.as_view(),
         name="rotas-origem-reversa",
+    ),
+    path(
+        "eventos/<uuid:evento_id>/",
+        RotaEventoView.as_view(),
+        name="rotas-evento",
     ),
 ]

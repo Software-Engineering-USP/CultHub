@@ -2,6 +2,7 @@ import hashlib
 import json
 
 from django.core.cache import cache
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import (
     OpenApiParameter,
     OpenApiResponse,
@@ -12,6 +13,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from catalogo.models import Evento
+from rotas.osrm import ErroOSRM, calcular_rotas
 from rotas.photon import (
     ErroPhoton,
     buscar_endereco_reverso,
@@ -21,7 +24,13 @@ from rotas.photon import (
 ERRO_UPSTREAM = {
     "detail": "Não foi possível consultar o serviço de endereços."
 }
+ERRO_ROTA = {"detail": "Não foi possível calcular a rota."}
+LOCAL_SEM_COORDENADAS = {"detail": "O local deste evento não tem coordenadas."}
+LOCAL_FORA_DO_MAPA = {
+    "detail": "Não foi possível localizar o local deste evento no mapa."
+}
 VALIDADE_CACHE = 24 * 60 * 60
+MODOS_DE_ROTA = ("carro", "a_pe")
 MINIMO_TEXTO = 3
 MAXIMO_TEXTO = 200
 
@@ -166,3 +175,92 @@ class OrigemReversaView(APIView):
         except ErroPhoton:
             return Response(ERRO_UPSTREAM, status=502)
         return Response({"rotulo": rotulo})
+
+
+class RotaEventoSerializer(serializers.Serializer):
+    latitude = _latitude()
+    longitude = _longitude()
+    modo = serializers.ChoiceField(choices=MODOS_DE_ROTA)
+
+
+@extend_schema(
+    parameters=[
+        *(
+            OpenApiParameter(
+                nome,
+                float,
+                required=True,
+                description=f"{descricao} Ponto de partida (o pino).",
+            )
+            for nome, descricao in PARAMETROS_COORDENADA
+        ),
+        OpenApiParameter(
+            "modo",
+            str,
+            required=True,
+            enum=MODOS_DE_ROTA,
+            description="Meio de transporte.",
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(
+            description=(
+                "modo, destino (latitude e longitude do local) e até 3 "
+                "rotas, cada uma com distancia_metros, duracao_segundos e "
+                "geometria (GeoJSON LineString, em [longitude, latitude]). "
+                "rotas vazia quando não há trajeto a partir desse ponto."
+            )
+        ),
+        400: OpenApiResponse(description="Parâmetro inválido."),
+        404: OpenApiResponse(description="Evento não encontrado."),
+        422: OpenApiResponse(
+            description=(
+                "O local do evento não tem coordenadas ou não fica perto "
+                "de nenhuma via."
+            )
+        ),
+        502: OpenApiResponse(description="Falha no serviço de rotas."),
+    },
+)
+class RotaEventoView(APIView):
+    """Rota de carro ou a pé do ponto de partida até o local do evento."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request, evento_id):
+        parametros = RotaEventoSerializer(data=request.query_params)
+        parametros.is_valid(raise_exception=True)
+        modo = parametros.validated_data["modo"]
+        evento = get_object_or_404(
+            Evento.objects.select_related("local"), pk=evento_id
+        )
+        local = evento.local
+        if local is None or local.latitude is None or local.longitude is None:
+            return Response(LOCAL_SEM_COORDENADAS, status=422)
+
+        origem = (
+            round(parametros.validated_data["latitude"], 4),
+            round(parametros.validated_data["longitude"], 4),
+        )
+        destino = (float(local.latitude), float(local.longitude))
+        chave = (
+            f"osrm:{modo}:{origem[0]:.4f}:{origem[1]:.4f}:"
+            f"{destino[0]:.6f}:{destino[1]:.6f}"
+        )
+        try:
+            rotas = cache.get_or_set(
+                chave,
+                lambda: calcular_rotas(modo, origem, destino),
+                timeout=VALIDADE_CACHE,
+            )
+        except ErroOSRM:
+            return Response(ERRO_ROTA, status=502)
+        if rotas is None:
+            return Response(LOCAL_FORA_DO_MAPA, status=422)
+        return Response(
+            {
+                "modo": modo,
+                "destino": {"latitude": destino[0], "longitude": destino[1]},
+                "rotas": rotas,
+            }
+        )

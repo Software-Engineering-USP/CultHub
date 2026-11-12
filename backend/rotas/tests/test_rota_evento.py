@@ -1,0 +1,211 @@
+import uuid
+from datetime import date
+from decimal import Decimal
+from unittest.mock import patch
+
+from django.core.cache import cache
+from django.urls import reverse
+from django.utils import timezone
+from rest_framework.test import APITestCase
+
+from catalogo.models import Evento, Local
+from rotas.osrm import ErroOSRM
+from rotas.views import ERRO_ROTA, LOCAL_FORA_DO_MAPA, LOCAL_SEM_COORDENADAS
+
+ROTA = {
+    "distancia_metros": 6614,
+    "duracao_segundos": 773,
+    "geometria": {
+        "type": "LineString",
+        "coordinates": [[-46.6, -23.5], [-46.7, -23.6]],
+    },
+}
+PARAMS = {"latitude": -23.5874, "longitude": -46.6576, "modo": "carro"}
+DESTINO = (-23.5615, -46.6559)
+
+
+def url(evento_id):
+    return reverse("rotas-evento", args=[evento_id])
+
+
+@patch("rotas.views.calcular_rotas", return_value=[ROTA])
+class RotaEventoTest(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.local = Local.objects.create(
+            nome="MASP",
+            latitude=Decimal("-23.561500"),
+            longitude=Decimal("-46.655900"),
+        )
+        self.evento = Evento.objects.create(
+            titulo="E", local=self.local, data_inicio=date(2026, 11, 20)
+        )
+
+    def get(self, evento=None, **parametros):
+        evento_id = (evento or self.evento).pk
+        return self.client.get(url(evento_id), {**PARAMS, **parametros})
+
+    def test_rota_publica_nos_dois_modos(self, calcular):
+        for modo in ("carro", "a_pe"):
+            with self.subTest(modo=modo):
+                cache.clear()
+
+                resposta = self.get(modo=modo)
+
+                self.assertEqual(resposta.status_code, 200)
+                self.assertEqual(
+                    resposta.json(),
+                    {
+                        "modo": modo,
+                        "destino": {
+                            "latitude": -23.5615,
+                            "longitude": -46.6559,
+                        },
+                        "rotas": [ROTA],
+                    },
+                )
+
+    def test_origem_vai_arredondada_em_quatro_casas(self, calcular):
+        self.get(latitude=-23.58745678, longitude=-46.65761234)
+
+        calcular.assert_called_once_with(
+            "carro", (-23.5875, -46.6576), DESTINO
+        )
+
+    def test_destino_do_banco_vai_como_float(self, calcular):
+        self.get()
+        self.get()
+
+        calcular.assert_called_once()
+        _, _, destino = calcular.call_args.args
+        self.assertIs(type(destino[0]), float)
+        self.assertIs(type(destino[1]), float)
+
+    def test_origem_zero_e_valida(self, calcular):
+        resposta = self.get(latitude=0, longitude=0)
+
+        self.assertEqual(resposta.status_code, 200)
+        calcular.assert_called_once_with("carro", (0.0, 0.0), DESTINO)
+
+    def test_sem_rota_devolve_lista_vazia(self, calcular):
+        calcular.return_value = []
+
+        resposta = self.get()
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["rotas"], [])
+
+    def test_evento_removido_tambem_responde(self, calcular):
+        self.evento.removido_em = timezone.now()
+        self.evento.save()
+
+        self.assertEqual(self.get().status_code, 200)
+
+    def test_parametros_invalidos_dao_400_sem_chamar_cliente(self, calcular):
+        casos = [
+            {"latitude": ""},
+            {"latitude": 91},
+            {"longitude": "x"},
+            {"latitude": "nan"},
+            {"modo": ""},
+            {"modo": "onibus"},
+        ]
+        for parametros in casos:
+            with self.subTest(parametros=parametros):
+                resposta = self.get(**parametros)
+
+                self.assertEqual(resposta.status_code, 400)
+        sem_latitude = {k: v for k, v in PARAMS.items() if k != "latitude"}
+        sem_modo = {k: v for k, v in PARAMS.items() if k != "modo"}
+        for parametros in (sem_latitude, sem_modo):
+            with self.subTest(parametros=parametros):
+                resposta = self.client.get(url(self.evento.pk), parametros)
+
+                self.assertEqual(resposta.status_code, 400)
+        calcular.assert_not_called()
+
+    def test_evento_inexistente_da_404(self, calcular):
+        resposta = self.client.get(url(uuid.uuid4()), PARAMS)
+        self.assertEqual(resposta.status_code, 404)
+
+        resposta = self.client.get("/api/rotas/eventos/abc/", PARAMS)
+        self.assertEqual(resposta.status_code, 404)
+        calcular.assert_not_called()
+
+    def test_local_sem_coordenadas_da_422(self, calcular):
+        sem_local = Evento.objects.create(
+            titulo="S", data_inicio=date(2026, 11, 20)
+        )
+        sem_latitude = Evento.objects.create(
+            titulo="L",
+            data_inicio=date(2026, 11, 20),
+            local=Local.objects.create(
+                nome="A", longitude=Decimal("-46.655900")
+            ),
+        )
+        sem_longitude = Evento.objects.create(
+            titulo="G",
+            data_inicio=date(2026, 11, 20),
+            local=Local.objects.create(
+                nome="B", latitude=Decimal("-23.561500")
+            ),
+        )
+        for evento in (sem_local, sem_latitude, sem_longitude):
+            with self.subTest(evento=evento.titulo):
+                resposta = self.get(evento)
+
+                self.assertEqual(resposta.status_code, 422)
+                self.assertEqual(resposta.json(), LOCAL_SEM_COORDENADAS)
+        calcular.assert_not_called()
+
+    def test_local_na_coordenada_zero_e_valido(self, calcular):
+        self.local.latitude = Decimal("0.000000")
+        self.local.save()
+
+        resposta = self.get()
+
+        self.assertEqual(resposta.status_code, 200)
+        calcular.assert_called_once_with(
+            "carro", (-23.5874, -46.6576), (0.0, -46.6559)
+        )
+
+    def test_destino_fora_da_via_da_422_e_fica_no_cache(self, calcular):
+        calcular.return_value = None
+
+        primeira = self.get()
+        segunda = self.get()
+
+        self.assertEqual(primeira.status_code, 422)
+        self.assertEqual(primeira.json(), LOCAL_FORA_DO_MAPA)
+        self.assertEqual(segunda.status_code, 422)
+        calcular.assert_called_once()
+
+    def test_erro_do_osrm_da_502_e_nao_vai_para_o_cache(self, calcular):
+        calcular.side_effect = [ErroOSRM("tempo esgotado"), [ROTA]]
+
+        primeira = self.get()
+        segunda = self.get()
+
+        self.assertEqual(primeira.status_code, 502)
+        self.assertEqual(primeira.json(), ERRO_ROTA)
+        self.assertNotIn("tempo esgotado", primeira.content.decode())
+        self.assertEqual(segunda.status_code, 200)
+        self.assertEqual(calcular.call_count, 2)
+
+    def test_cache_separa_modo_e_reaproveita_origem_proxima(self, calcular):
+        self.get(latitude=-23.58741)
+        self.get(latitude=-23.58744)
+        self.assertEqual(calcular.call_count, 1)
+
+        self.get(latitude=-23.58744, modo="a_pe")
+        self.assertEqual(calcular.call_count, 2)
+
+    def test_editar_local_muda_a_chave(self, calcular):
+        self.get()
+        self.local.latitude = Decimal("-23.561600")
+        self.local.save()
+
+        self.get()
+
+        self.assertEqual(calcular.call_count, 2)
+        self.assertEqual(calcular.call_args.args[2], (-23.5616, -46.6559))
