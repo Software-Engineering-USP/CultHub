@@ -42,6 +42,58 @@ class OcultarConsultaDeRotasTest(SimpleTestCase):
             '"GET /api/rotas/origem/reversa/ HTTP/1.1" 200 312',
         )
 
+    def test_linha_mal_formada_com_espaco_na_consulta(self):
+        linha = "GET /api/rotas/origem/busca/?q=rua augusta 1500 HTTP/1.1"
+
+        filtrado = self.filtrar(registro(linha, "400", "-"))
+
+        self.assertEqual(
+            filtrado.getMessage(),
+            '"GET /api/rotas/origem/busca/ HTTP/1.1" 400 -',
+        )
+
+    def test_linha_mal_formada_sem_protocolo(self):
+        linha = "GET /api/rotas/origem/busca/?q=rua augusta"
+
+        filtrado = self.filtrar(registro(linha, "400", "-"))
+
+        self.assertEqual(
+            filtrado.getMessage(), '"GET /api/rotas/origem/busca/" 400 -'
+        )
+
+    def test_mensagem_de_erro_do_servidor_tambem(self):
+        mensagem = (
+            "Bad request syntax ('GET /api/rotas/origem/busca/"
+            "?q=rua augusta 1500 HTTP/1.1')"
+        )
+        registro_ = logging.LogRecord(
+            "django.server",
+            logging.INFO,
+            __file__,
+            1,
+            "code %d, message %s",
+            (400, mensagem),
+            None,
+        )
+
+        filtrado = self.filtrar(registro_)
+
+        self.assertEqual(
+            filtrado.getMessage(),
+            "code 400, message Bad request syntax "
+            "('GET /api/rotas/origem/busca/ HTTP/1.1')",
+        )
+
+    def test_consulta_com_http_no_meio_some_inteira(self):
+        linha = "GET /api/rotas/origem/busca/?q=a HTTP/1.1 b HTTP/1.1"
+
+        filtrado = self.filtrar(registro(linha, "400", "-"))
+
+        self.assertEqual(
+            filtrado.getMessage(),
+            '"GET /api/rotas/origem/busca/ HTTP/1.1" 400 -',
+        )
+
     def test_outras_rotas_ficam_iguais(self):
         linha = "GET /api/eventos/?q=jazz HTTP/1.1"
 
