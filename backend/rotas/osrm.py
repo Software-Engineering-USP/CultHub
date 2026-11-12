@@ -1,5 +1,6 @@
 import http.client
 import json
+import math
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -10,6 +11,9 @@ from rotas.photon import USER_AGENT
 
 TIMEOUT = 10
 TENTATIVAS = 2
+# Distância máxima entre o ponto pedido e a via onde o OSRM o encaixou.
+LIMITE_ENCAIXE_METROS = 1000
+MAXIMO_ROTAS = 3
 # Modo → (nome do setting com a URL base, perfil no caminho).
 MODOS = {
     "carro": ("OSRM_CARRO_URL", "driving"),
@@ -101,3 +105,86 @@ def _consultar(modo, origem, destino):
     if not isinstance(dados, dict):
         raise ErroOSRM("resposta inválida")
     return dados
+
+
+def _numero(valor):
+    return (
+        isinstance(valor, (int, float))
+        and not isinstance(valor, bool)
+        and math.isfinite(valor)
+    )
+
+
+def _arredondar(valor):
+    """Inteiro mais próximo, com meio para cima (772,5 → 773)."""
+    return math.floor(valor + 0.5)
+
+
+def _encaixes(dados):
+    """Distâncias (m) da origem e do destino até a via usada pelo OSRM."""
+    pontos = dados.get("waypoints")
+    if not isinstance(pontos, list) or len(pontos) < 2:
+        raise ErroOSRM("resposta inválida")
+    distancias = [
+        ponto.get("distance") if isinstance(ponto, dict) else None
+        for ponto in pontos[:2]
+    ]
+    if not all(_numero(distancia) for distancia in distancias):
+        raise ErroOSRM("resposta inválida")
+    return distancias
+
+
+def _converter_rota(rota):
+    """Rota do OSRM → formato do CultHub, ou None se estiver malformada."""
+    if not isinstance(rota, dict):
+        return None
+    distancia = rota.get("distance")
+    duracao = rota.get("duration")
+    if not all(_numero(v) and v >= 0 for v in (distancia, duracao)):
+        return None
+    geometria = rota.get("geometry")
+    if (
+        not isinstance(geometria, dict)
+        or geometria.get("type") != "LineString"
+        or not isinstance(geometria.get("coordinates"), list)
+        or len(geometria["coordinates"]) < 2
+    ):
+        return None
+    return {
+        "distancia_metros": _arredondar(distancia),
+        "duracao_segundos": _arredondar(duracao),
+        "geometria": geometria,
+    }
+
+
+def calcular_rotas(modo, origem, destino):
+    """Até 3 rotas de `origem` a `destino`, ambos (latitude, longitude).
+
+    Devolve `[]` quando não há rota (inclusive com a origem longe de
+    qualquer via: mover o pino resolve) e `None` quando o destino está longe
+    de qualquer via (a coordenada do local está errada). Levanta `ErroOSRM`
+    em falha do servidor ou resposta inválida.
+    """
+    dados = _consultar(modo, origem, destino)
+    if dados.get("code") in SEM_ROTA:
+        return []
+    if dados.get("code") != "Ok":
+        raise ErroOSRM("resposta inválida")
+
+    encaixe_origem, encaixe_destino = _encaixes(dados)
+    if encaixe_destino > LIMITE_ENCAIXE_METROS:
+        return None
+    if encaixe_origem > LIMITE_ENCAIXE_METROS:
+        return []
+
+    rotas = dados.get("routes")
+    if not isinstance(rotas, list):
+        raise ErroOSRM("resposta inválida")
+    convertidas = [
+        convertida
+        for convertida in map(_converter_rota, rotas)
+        if convertida is not None
+    ]
+    if not convertidas:
+        raise ErroOSRM("resposta inválida")
+    return convertidas[:MAXIMO_ROTAS]

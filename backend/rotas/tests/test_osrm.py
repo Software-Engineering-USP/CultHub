@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from django.test import SimpleTestCase, override_settings
 
-from rotas.osrm import ErroOSRM, _consultar
+from rotas.osrm import ErroOSRM, _consultar, calcular_rotas
 from rotas.photon import USER_AGENT
 
 ORIGEM = (-23.5874, -46.6576)
@@ -157,3 +157,174 @@ class TransporteTest(SimpleTestCase):
         with self.assertRaises(ErroOSRM) as contexto:
             _consultar("carro", ORIGEM, DESTINO)
         self.assertNotIn("23.58", str(contexto.exception))
+
+
+GEOMETRIA = {
+    "type": "LineString",
+    "coordinates": [[-46.6567, -23.5878], [-46.6559, -23.5615]],
+}
+
+
+def rota(distancia=6614, duracao=772.5, geometria=GEOMETRIA):
+    return {"distance": distancia, "duration": duracao, "geometry": geometria}
+
+
+def resposta(rotas, encaixe_origem=10.0, encaixe_destino=5.0):
+    return {
+        "code": "Ok",
+        "routes": rotas,
+        "waypoints": [
+            {"distance": encaixe_origem},
+            {"distance": encaixe_destino},
+        ],
+    }
+
+
+@patch("rotas.osrm._consultar")
+class CalcularRotasTest(SimpleTestCase):
+    def test_converte_rota(self, consultar):
+        consultar.return_value = resposta([rota()])
+
+        rotas = calcular_rotas("carro", ORIGEM, DESTINO)
+
+        self.assertEqual(
+            rotas,
+            [
+                {
+                    "distancia_metros": 6614,
+                    "duracao_segundos": 773,
+                    "geometria": GEOMETRIA,
+                }
+            ],
+        )
+        consultar.assert_called_once_with("carro", ORIGEM, DESTINO)
+
+    def test_arredonda_meio_para_cima(self, consultar):
+        consultar.return_value = resposta(
+            [rota(3973.9, 3179.5), rota(0.4, 0.5)]
+        )
+
+        rotas = calcular_rotas("a_pe", ORIGEM, DESTINO)
+
+        self.assertEqual(
+            [(r["distancia_metros"], r["duracao_segundos"]) for r in rotas],
+            [(3974, 3180), (0, 1)],
+        )
+
+    def test_rota_de_distancia_zero_e_valida(self, consultar):
+        parado = {"type": "LineString", "coordinates": [[-46.6, -23.5]] * 2}
+        consultar.return_value = resposta([rota(0, 0, parado)])
+
+        rotas = calcular_rotas("carro", DESTINO, DESTINO)
+
+        self.assertEqual(
+            rotas,
+            [
+                {
+                    "distancia_metros": 0,
+                    "duracao_segundos": 0,
+                    "geometria": parado,
+                }
+            ],
+        )
+
+    def test_corta_em_tres_depois_do_descarte(self, consultar):
+        ponto = {"type": "Point", "coordinates": [-46.6, -23.5]}
+        consultar.return_value = resposta(
+            [rota(1, geometria=ponto), rota(2), rota(3), rota(4), rota(5)]
+        )
+
+        rotas = calcular_rotas("carro", ORIGEM, DESTINO)
+
+        self.assertEqual([r["distancia_metros"] for r in rotas], [2, 3, 4])
+
+    def test_descarta_rotas_malformadas(self, consultar):
+        sem_geometria = rota()
+        del sem_geometria["geometry"]
+        um_ponto = {"type": "LineString", "coordinates": [[-46.6, -23.5]]}
+        malformadas = [
+            None,
+            "rota",
+            sem_geometria,
+            rota(geometria=um_ponto),
+            rota(geometria={"type": "LineString", "coordinates": None}),
+            rota(distancia="x"),
+            rota(distancia=True),
+            rota(distancia=float("nan")),
+            rota(distancia=-1),
+            rota(duracao=float("inf")),
+            rota(duracao=None),
+        ]
+        consultar.return_value = resposta([*malformadas, rota(42)])
+
+        rotas = calcular_rotas("carro", ORIGEM, DESTINO)
+
+        self.assertEqual([r["distancia_metros"] for r in rotas], [42])
+
+    def test_ok_sem_rota_valida_e_erro(self, consultar):
+        for rotas in ([], [None, rota(distancia="x")]):
+            with self.subTest(rotas=rotas):
+                consultar.return_value = resposta(rotas)
+
+                with self.assertRaises(ErroOSRM):
+                    calcular_rotas("carro", ORIGEM, DESTINO)
+
+    def test_sem_rota_devolve_lista_vazia(self, consultar):
+        for codigo in ("NoRoute", "NoSegment"):
+            with self.subTest(codigo=codigo):
+                consultar.return_value = {"code": codigo, "message": "m"}
+
+                self.assertEqual(calcular_rotas("carro", ORIGEM, DESTINO), [])
+
+    def test_codigo_inesperado_e_erro(self, consultar):
+        for dados in ({"code": "InvalidUrl"}, {}, {"code": None}):
+            with self.subTest(dados=dados):
+                consultar.return_value = dados
+
+                with self.assertRaises(ErroOSRM):
+                    calcular_rotas("carro", ORIGEM, DESTINO)
+
+    def test_origem_longe_da_via_e_sem_rota(self, consultar):
+        consultar.return_value = resposta([rota()], encaixe_origem=1000.1)
+        self.assertEqual(calcular_rotas("carro", ORIGEM, DESTINO), [])
+
+        consultar.return_value = resposta([rota()], encaixe_origem=1000)
+        self.assertEqual(len(calcular_rotas("carro", ORIGEM, DESTINO)), 1)
+
+    def test_destino_longe_da_via_e_none(self, consultar):
+        consultar.return_value = resposta([rota()], encaixe_destino=1000.1)
+        self.assertIsNone(calcular_rotas("carro", ORIGEM, DESTINO))
+
+        consultar.return_value = resposta(
+            [rota()], encaixe_origem=302218.3, encaixe_destino=1500
+        )
+        self.assertIsNone(calcular_rotas("carro", ORIGEM, DESTINO))
+
+        consultar.return_value = resposta([rota()], encaixe_destino=1000)
+        self.assertEqual(len(calcular_rotas("carro", ORIGEM, DESTINO)), 1)
+
+    def test_waypoints_malformados_sao_resposta_invalida(self, consultar):
+        sem_waypoints = resposta([rota()])
+        del sem_waypoints["waypoints"]
+        um_waypoint = resposta([rota()])
+        um_waypoint["waypoints"] = um_waypoint["waypoints"][:1]
+        casos = [
+            sem_waypoints,
+            um_waypoint,
+            resposta([rota()], encaixe_origem=None),
+            resposta([rota()], encaixe_destino="10"),
+            resposta([rota()], encaixe_destino=True),
+            {**resposta([rota()]), "waypoints": [None, None]},
+        ]
+        for dados in casos:
+            with self.subTest(dados=dados):
+                consultar.return_value = dados
+
+                with self.assertRaises(ErroOSRM):
+                    calcular_rotas("carro", ORIGEM, DESTINO)
+
+    def test_routes_que_nao_e_lista_e_erro(self, consultar):
+        consultar.return_value = {**resposta([]), "routes": None}
+
+        with self.assertRaises(ErroOSRM):
+            calcular_rotas("carro", ORIGEM, DESTINO)
