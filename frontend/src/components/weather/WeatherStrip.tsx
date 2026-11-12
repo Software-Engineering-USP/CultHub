@@ -49,7 +49,8 @@ export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) 
             {event.eventTime ? 'Clima no horário do evento' : 'Previsão para o dia do evento'}
           </h2>
           <p
-            role={result.status === 'unavailable' ? 'status' : undefined}
+            aria-live="polite"
+            aria-atomic="true"
             className="mt-1 text-sm text-muted-foreground"
           >
             {result.status === 'loading' ? 'Consultando a previsão do evento…' : result.message}

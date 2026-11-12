@@ -24,7 +24,9 @@ export function useWeather(event: CultEvent) {
       event.eventTime,
       controller.signal,
     )
-      .then((weather) => setState({ key, status: 'ready', weather }))
+      .then((weather) => {
+        if (!controller.signal.aborted) setState({ key, status: 'ready', weather })
+      })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
           setState({
@@ -38,5 +40,10 @@ export function useWeather(event: CultEvent) {
   }, [city, event.eventDate, event.eventTime, event.id, hasLocation, key, latitude, longitude])
 
   const loadingState: WeatherState = { key, status: 'loading' }
-  return state.key === key ? state : loadingState
+  const currentState = state.key === key ? state : loadingState
+  if (currentState.status === 'ready') return { status: 'ready', weather: currentState.weather }
+  if (currentState.status === 'unavailable') {
+    return { status: 'unavailable', message: currentState.message }
+  }
+  return { status: 'loading' as const }
 }
