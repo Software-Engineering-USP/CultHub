@@ -20,7 +20,14 @@ export interface ApiEvent {
   data_fim: string | null
   hora_fim: string | null
   fuso: string
-  local: { nome: string; endereco: string; cidade: string; estado: string } | null
+  local: {
+    nome: string
+    endereco: string
+    cidade: string
+    estado: string
+    latitude?: number | null
+    longitude?: number | null
+  } | null
   situacao_preco: 'gratuito' | 'pago' | 'desconhecido'
   faixas_preco: { minimo: number | null; maximo: number | null; moeda: string }[]
   imagens: { url: string; proporcao: string; largura: number | null; altura: number | null }[]
@@ -156,6 +163,15 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
     image: image?.url ?? '/assets/event-placeholder.svg',
     imageAlt: `Imagem do evento ${event.titulo}`,
     availability: availability(event),
+    weatherLocation: event.local
+      ? {
+          latitude: event.local.latitude ?? null,
+          longitude: event.local.longitude ?? null,
+          city: event.local.cidade,
+        }
+      : undefined,
+    eventDate: event.data_inicio,
+    eventTime: event.hora_inicio,
     details: {
       about: [event.descricao || 'Mais informações sobre este evento em breve.'],
       startTime: event.hora_inicio?.slice(0, 5) ?? 'Horário a confirmar',

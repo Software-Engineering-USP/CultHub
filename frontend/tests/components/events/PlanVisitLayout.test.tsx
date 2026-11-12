@@ -51,6 +51,6 @@ describe('PlanVisitLayout', () => {
     expect(screen.getByRole('region', { name: 'Resumo do evento' })).toHaveTextContent(event.title)
     expect(screen.getByRole('region', { name: 'Painel de teste' })).toHaveTextContent('Conteúdo do painel')
     expect(screen.getByRole('figure')).toHaveTextContent('Mapa estático.')
-    expect(screen.getByRole('complementary', { name: /Condições climáticas fictícias/ })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Previsão do tempo para o evento' })).toBeInTheDocument()
   })
 })
