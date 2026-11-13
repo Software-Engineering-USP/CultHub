@@ -48,6 +48,42 @@ describe('rotasApi', () => {
     expect(fetch.mock.calls[0][0]).toBe('/api/rotas/origem/reversa/?latitude=-23.58&longitude=-46.65')
   })
 
+  it('calcula a rota até o evento e devolve a lista de trajetos', async () => {
+    const rotas = [
+      { distancia_metros: 6400, duracao_segundos: 720, geometria: { type: 'LineString', coordinates: [] } },
+    ]
+    const fetch = vi.fn().mockResolvedValue(response({ modo: 'a_pe', destino: {}, rotas }))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(rotasApi.rota('evento/1', { latitude: -23.6, longitude: -46.7 }, 'a_pe')).resolves.toEqual(
+      rotas,
+    )
+    expect(fetch.mock.calls[0][0]).toBe(
+      '/api/rotas/eventos/evento%2F1/?latitude=-23.6&longitude=-46.7&modo=a_pe',
+    )
+  })
+
+  it.each([
+    [422, { detail: 'O local do evento não tem coordenadas.' }, 'O local do evento não tem coordenadas.'],
+    [
+      502,
+      { detail: 'Não foi possível calcular a rota.' },
+      'O serviço de rotas está ocupado agora. Tente de novo em alguns segundos.',
+    ],
+    [
+      429,
+      { detail: 'Pedido foi suprimido.' },
+      'Muitas consultas seguidas. Aguarde um instante e tente de novo.',
+    ],
+    [500, {}, 'Não foi possível calcular a rota.'],
+  ])('na rota, HTTP %i mostra a mensagem certa', async (status, body, message) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(body, status)))
+    await expect(rotasApi.rota('e', { latitude: 0, longitude: 0 }, 'carro')).rejects.toMatchObject({
+      status,
+      message,
+    })
+  })
+
   it.each([
     [429, /Muitas consultas seguidas/],
     [502, /serviço de endereços está indisponível/],

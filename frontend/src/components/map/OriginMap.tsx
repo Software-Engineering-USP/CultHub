@@ -1,32 +1,8 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
+import { CENTRO_PADRAO, createMap, pin, toCoordinates, toLatLng } from '@/lib/leaflet'
 import type { Coordinates } from '@/types'
-
-/** Centro de São Paulo, usado quando o local do evento não tem coordenadas. */
-const CENTRO_PADRAO: Coordinates = { latitude: -23.5505, longitude: -46.6333 }
-
-const OSM_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-
-const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-function pin(className: string, label: string) {
-  // Montado pelo DOM (e não por string HTML): o label vem de APIs externas e não pode virar markup.
-  const span = document.createElement('span')
-  span.setAttribute('role', 'img')
-  span.setAttribute('aria-label', label)
-  span.className = `block size-5 rounded-full border-[3px] border-white shadow-md ${className}`
-  return L.divIcon({ className: '', html: span, iconSize: [20, 20], iconAnchor: [10, 10] })
-}
-
-function toLatLng({ latitude, longitude }: Coordinates): L.LatLngTuple {
-  return [latitude, longitude]
-}
-
-function toCoordinates(latLng: L.LatLng): Coordinates {
-  return { latitude: latLng.lat, longitude: latLng.lng }
-}
 
 interface OriginMapProps {
   /** Local do evento; também é o centro inicial do mapa */
@@ -62,9 +38,7 @@ export default function OriginMap({
   // O mapa é criado uma vez; destino e origem só atualizam marcadores, sem recarregar os tiles.
   useEffect(() => {
     if (!container.current) return
-    const instance = L.map(container.current, { scrollWheelZoom: false })
-    instance.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>')
-    L.tileLayer(TILE_URL, { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(instance)
+    const instance = createMap(container.current)
     instance.on('click', (event: L.LeafletMouseEvent) => onChange.current(toCoordinates(event.latlng)))
     map.current = instance
     return () => {

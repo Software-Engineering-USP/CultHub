@@ -1,74 +1,66 @@
-import { ArrowUpRight } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
-import DemoNote from '@/components/common/DemoNote'
+import { ArrowUpRight, Route } from 'lucide-react'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import Eyebrow from '@/components/common/Eyebrow'
-import StaticMap from '@/components/common/StaticMap'
 import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
+import RouteMap from '@/components/map/RouteMap'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useRouteOptions } from '@/hooks/useRouteOptions'
-import { logDemoAction } from '@/lib/demo'
+import { useEventRoutes } from '@/hooks/useEventRoutes'
+import type { RouteState } from '@/hooks/useEventRoutes'
 import { originSearch, parseMode, parseOrigin } from '@/lib/origin'
 import { paths } from '@/lib/paths'
+import { formatDistance, formatDuration, googleMapsUrl, routeMode, routeModes } from '@/lib/route'
 import { cn } from '@/lib/utils'
-import type { EventWithDetails, RouteOption } from '@/types'
-
-const modeText: Record<RouteOption['id'], string> = {
-  carro: 'de carro',
-  onibus: 'de ônibus',
-  ape: 'a pé',
-}
+import type { EventWithDetails, RouteMode } from '@/types'
 
 const dotBase =
   "relative pl-5.5 before:absolute before:top-2 before:left-0 before:size-2 before:rounded-full before:border-2 before:border-maroon before:content-['']"
 
+function cardSummary(mode: RouteMode, state: RouteState | undefined): { main: string; detail: string } {
+  if (mode === 'onibus') return { main: 'Ver', detail: 'no Google Maps' }
+  if (!state || state.status === 'loading') return { main: '…', detail: 'calculando' }
+  if (state.status === 'error') return { main: '—', detail: 'indisponível' }
+  const [route] = state.routes
+  if (!route) return { main: '—', detail: 'sem trajeto' }
+  return { main: formatDuration(route.duracao_segundos), detail: formatDistance(route.distancia_metros) }
+}
+
 export default function RoutePlan({ event }: { event: EventWithDetails }) {
-  const routeOptions = useRouteOptions(event.id)
   const [searchParams] = useSearchParams()
   const origin = parseOrigin(searchParams)
-  const mode = parseMode(searchParams)
-  const changeOrigin = paths.eventOrigin(event.id, origin ? originSearch(origin, mode) : '')
-  useDocumentTitle('Rota de exemplo | CultHub')
+  const mode = parseMode(searchParams) ?? 'carro'
+  const calculation = useEventRoutes(event.id, origin)
+  const routes = calculation?.routes
+  useDocumentTitle('Rota até o evento | CultHub')
 
-  const selected = routeOptions.find((route) => route.id === mode) ?? routeOptions[0]
-  const itinerary = [
-    {
-      title: origin ? `Parta de ${origin.label ?? 'ponto marcado no mapa'}` : 'Parta da origem fictícia',
-      detail: origin ? 'Partida que você escolheu.' : 'Ponto indicado no mapa.',
-    },
-    { title: 'Siga o trajeto destacado', detail: 'Percurso ilustrativo, sem vias confirmadas.' },
-    { title: `Chegue ao ${event.venue}`, detail: 'Confirme o acesso nos canais do local.' },
-  ]
+  if (!origin) return <Navigate to={paths.eventOrigin(event.id)} replace />
+
+  const changeOrigin = paths.eventOrigin(event.id, originSearch(origin, mode))
+  const state = mode === 'onibus' ? undefined : routes?.[mode]
+  const route = state?.status === 'ready' ? state.routes[0] : undefined
+  const destination = [event.venue, event.venueAddress].filter(Boolean).join(', ')
+  const mapsUrl = googleMapsUrl(origin, destination, mode)
 
   return (
     <PlanVisitLayout
       event={event}
-      description="Planeje seu caminho até a música. Compare as opções neste trajeto demonstrativo."
+      description="Compare as formas de chegar ao evento a partir da partida que você escolheu."
       status={
         <Badge variant="muted" size="md">
-          {origin ? 'Rota ilustrativa • partida definida' : 'Rota ilustrativa • origem fictícia'}
+          <Route className="size-3.5" />
+          {routeMode(mode).label}
+          {route && ` • ${formatDuration(route.duracao_segundos)}`}
         </Badge>
       }
       map={
-        <StaticMap
-          src="/assets/mapa-rota.png"
-          width={856}
-          height={690}
-          alt="Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real."
-          caption="Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um serviço de mapas atualizado."
-        />
+        <RouteMap origin={origin} destination={event.location} destinationLabel={event.venue} route={route} />
       }
     >
       <PlanVisitPanel aria-labelledby="trajeto-titulo" className="bg-cream">
-        <div className="mb-5 flex items-start justify-between gap-3.5">
-          <h2 id="trajeto-titulo" className="text-xl">
-            Seu trajeto
-          </h2>
-          <Eyebrow className="max-w-24 text-right text-2xs text-muted-foreground">
-            EXEMPLO ILUSTRATIVO
-          </Eyebrow>
-        </div>
+        <h2 id="trajeto-titulo" className="mb-5 text-xl">
+          Seu trajeto
+        </h2>
 
         <div className="mb-5.5 grid gap-4">
           <div className={dotBase}>
@@ -76,14 +68,7 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
               Alterar
             </Link>
             <small className="block text-2xs text-muted-foreground">Partida</small>
-            <strong className="block text-xs">
-              {origin ? (origin.label ?? 'Ponto marcado no mapa') : 'Sua localização • exemplo'}
-            </strong>
-            {origin && (
-              <small className="block text-2xs text-muted-foreground">
-                Endereço © OpenStreetMap contributors
-              </small>
-            )}
+            <strong className="block text-xs">{origin.label ?? 'Ponto marcado no mapa'}</strong>
           </div>
           <div className={cn(dotBase, 'before:bg-maroon')}>
             <small className="block text-2xs text-muted-foreground">Destino</small>
@@ -91,78 +76,103 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
           </div>
         </div>
 
-        <ul
-          aria-label="Comparação ilustrativa de transportes, sem seleção interativa"
-          className="mb-5.5 grid grid-cols-3 gap-2"
-        >
-          {routeOptions.map((route) => (
-            <li
-              key={route.id}
-              className={cn(
-                'rounded-xl border px-1 py-3 text-center max-md:px-2.5 max-md:py-3.5',
-                route.id === selected.id ? 'border-sun/70 bg-primary/30' : 'border-border bg-card',
-              )}
-            >
-              <strong className="block text-2xs">{route.label}</strong>
-              <span className="mt-1 block text-lg font-bold text-maroon">{route.time}</span>
-              <small className="block text-2xs text-muted-foreground">
-                {route.detail}
-                {route.id === selected.id && ' • em destaque'}
-              </small>
-            </li>
-          ))}
-        </ul>
+        <nav aria-label="Formas de chegar" className="mb-5.5">
+          <ul className="grid grid-cols-3 gap-2">
+            {routeModes.map((option) => {
+              const summary = cardSummary(option.id, option.id === 'onibus' ? undefined : routes?.[option.id])
+              const selected = option.id === mode
+              return (
+                <li key={option.id}>
+                  <Link
+                    to={paths.eventRoute(event.id, originSearch(origin, option.id))}
+                    replace
+                    aria-current={selected ? 'true' : undefined}
+                    className={cn(
+                      'block rounded-xl border px-1 py-3 text-center no-underline max-md:px-2.5 max-md:py-3.5',
+                      selected ? 'border-sun/70 bg-primary/30' : 'border-border bg-card hover:bg-accent',
+                    )}
+                  >
+                    <strong className="block text-2xs">{option.label}</strong>
+                    <span className="mt-1 block text-lg font-bold text-maroon">{summary.main}</span>
+                    <small className="block text-2xs text-muted-foreground">{summary.detail}</small>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
 
-        <div className="mb-6 flex items-center justify-between gap-3.5 border-t border-maroon/10 pt-5">
-          <div>
-            <strong className="block text-3xl tracking-tighter text-maroon">{selected.time}</strong>
-            <small className="text-2xs">
-              {selected.detail} • {modeText[selected.id]}
-            </small>
-          </div>
-          <span className="max-w-24 rounded-lg bg-muted px-2 py-1 text-center text-2xs text-muted-foreground">
-            {selected.tag} no exemplo
-          </span>
+        <div aria-live="polite" className="mb-6 border-t border-maroon/10 pt-5">
+          <RouteSummary mode={mode} state={state} changeOrigin={changeOrigin} onRetry={calculation?.retry} />
         </div>
 
-        <div>
-          <h3 className="text-sm">Itinerário demonstrativo</h3>
-          <ol className="mt-4 mb-5.5">
-            {itinerary.map((step, index) => (
-              <li key={step.title} className="relative pb-5 pl-8 text-xs last:pb-0">
-                <span
-                  aria-hidden="true"
-                  className="absolute top-px left-0 grid size-5.5 place-items-center rounded-full bg-muted text-2xs font-bold text-maroon"
-                >
-                  {index + 1}
-                </span>
-                <strong className="block">{step.title}</strong>
-                <span className="mt-1 block text-2xs text-muted-foreground">{step.detail}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <Button
-          block
-          aria-describedby="navegacao-aviso"
-          onClick={() => logDemoAction('Abrir rota no app de mapas', { eventId: event.id })}
-        >
-          Abrir no app de mapas <ArrowUpRight />
+        <Button asChild block>
+          <a href={mapsUrl} target="_blank" rel="noreferrer">
+            {mode === 'onibus' ? 'Ver ônibus no Google Maps' : 'Abrir no Google Maps'} <ArrowUpRight />
+            <span className="sr-only"> (abre em outra aba)</span>
+          </a>
         </Button>
-        <DemoNote id="navegacao-aviso" size="xs" className="mt-2.5">
-          Navegação real exige um serviço externo e consentimento de localização. Nesta demonstração, o botão
-          só registra a ação no console.
-        </DemoNote>
 
-        <DemoNote size="xs" className="mt-4.5 border-t border-border pt-4">
-          {origin
-            ? 'A partida é a que você escolheu; trajeto, distâncias e tempos ainda são fictícios.'
-            : 'Origem, distâncias e tempos são fictícios.'}{' '}
-          Não há consulta de trânsito ou cálculo de percurso.{' '}
-          <Link to={changeOrigin}>Voltar à definição de origem</Link>.
-        </DemoNote>
+        <p className="mt-4.5 border-t border-border pt-4 text-2xs text-muted-foreground">
+          Endereços, mapa e rotas © OpenStreetMap contributors. A partida só serve para traçar a rota e não
+          fica guardada.
+        </p>
       </PlanVisitPanel>
     </PlanVisitLayout>
+  )
+}
+
+/** Fica dentro de um aria-live, por isso os textos não têm role próprio. */
+function RouteSummary({
+  mode,
+  state,
+  changeOrigin,
+  onRetry,
+}: Readonly<{ mode: RouteMode; state: RouteState | undefined; changeOrigin: string; onRetry?: () => void }>) {
+  if (mode === 'onibus') {
+    return (
+      <p className="text-xs">
+        O CultHub ainda não calcula trajetos de ônibus. Veja linhas, horários e baldeações no Google Maps.
+      </p>
+    )
+  }
+  if (!state || state.status === 'loading') return <p className="text-xs">Calculando a rota…</p>
+  if (state.status === 'error') {
+    return (
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-maroon">{state.message}</p>
+        {onRetry && (
+          <Button variant="outline" size="sm" onClick={onRetry} className="shrink-0">
+            Tentar de novo
+          </Button>
+        )}
+      </div>
+    )
+  }
+  const [route] = state.routes
+  if (!route) {
+    return (
+      <p className="text-xs">
+        Não encontramos um trajeto a partir desse ponto. <Link to={changeOrigin}>Mude a partida</Link> para
+        uma rua próxima e tente de novo.
+      </p>
+    )
+  }
+  return (
+    <div className="flex items-end justify-between gap-3.5">
+      <div>
+        <strong className="block text-3xl tracking-tighter text-maroon">
+          {formatDuration(route.duracao_segundos)}
+        </strong>
+        <small className="text-2xs">
+          {formatDistance(route.distancia_metros)} • {mode === 'carro' ? 'de carro' : 'a pé'}
+        </small>
+      </div>
+      {mode === 'carro' && (
+        <Eyebrow className="max-w-32 text-right text-2xs text-muted-foreground">
+          Sem trânsito em tempo real
+        </Eyebrow>
+      )}
+    </div>
   )
 }

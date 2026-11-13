@@ -14,17 +14,44 @@ export const MAXIMO_BUSCA = 200
 /** Status 0: a requisição nem chegou ao backend (sem rede ou servidor fora do ar). */
 export const SEM_CONEXAO = 0
 
-const mensagens: Record<number, string> = {
-  [SEM_CONEXAO]: 'Não foi possível conectar ao CultHub. Verifique sua conexão e tente de novo.',
-  429: 'Muitas consultas seguidas. Aguarde um instante e tente de novo.',
-  502: 'O serviço de endereços está indisponível agora. Use sua localização ou marque o ponto no mapa.',
+export interface RotaCalculada {
+  distancia_metros: number
+  duracao_segundos: number
+  /** GeoJSON: os pares vêm como [longitude, latitude] */
+  geometria: { type: 'LineString'; coordinates: [number, number][] }
 }
 
-async function get<T>(path: string, params: URLSearchParams, signal?: AbortSignal): Promise<T> {
+export type ModoCalculado = 'carro' | 'a_pe'
+
+const mensagens: Record<number, string> = {
+  [SEM_CONEXAO]: 'Não foi possível conectar ao CultHub. Verifique sua conexão e tente de novo.',
+  // O `detail` do 429 vem com a tradução padrão do DRF, pouco clara para quem usa.
+  429: 'Muitas consultas seguidas. Aguarde um instante e tente de novo.',
+}
+
+const enderecos = {
+  extras: {
+    502: 'O serviço de endereços está indisponível agora. Use sua localização ou marque o ponto no mapa.',
+  },
+  padrao: 'Não foi possível consultar o endereço.',
+}
+
+// No 400 e no 422 o `detail` já é uma mensagem pronta; o do 502 é genérico.
+const calculoDeRota = {
+  extras: { 502: 'O serviço de rotas está ocupado agora. Tente de novo em alguns segundos.' },
+  padrao: 'Não foi possível calcular a rota.',
+}
+
+async function get<T>(
+  path: string,
+  params: URLSearchParams,
+  signal: AbortSignal | undefined,
+  { extras, padrao }: { extras: Record<number, string>; padrao: string },
+): Promise<T> {
   try {
     return await apiGet<T>(`/rotas${path}?${params.toString()}`, {
       signal,
-      describe: (status, detail) => mensagens[status] ?? detail ?? 'Não foi possível consultar o endereço.',
+      describe: (status, detail) => extras[status] ?? mensagens[status] ?? detail ?? padrao,
     })
   } catch (error) {
     // Abortos seguem como estão; outras falhas do fetch (ex.: "Failed to fetch") viram ApiError.
@@ -44,7 +71,12 @@ export const rotasApi = {
   /** Autocomplete do endereço de partida; `perto` só puxa os resultados para perto desse ponto. */
   buscarOrigem: async (texto: string, perto?: Coordinates, signal?: AbortSignal) => {
     const params = new URLSearchParams([['q', texto.trim()], ...(perto ? coordenada(perto) : [])])
-    const { resultados } = await get<{ resultados: EnderecoSugerido[] }>('/origem/busca/', params, signal)
+    const { resultados } = await get<{ resultados: EnderecoSugerido[] }>(
+      '/origem/busca/',
+      params,
+      signal,
+      enderecos,
+    )
     return resultados
   },
 
@@ -54,7 +86,20 @@ export const rotasApi = {
       '/origem/reversa/',
       new URLSearchParams(coordenada(ponto)),
       signal,
+      enderecos,
     )
     return rotulo
+  },
+
+  /** Até 3 trajetos da partida ao local do evento; lista vazia quando não há caminho a partir do ponto. */
+  rota: async (eventoId: string, partida: Coordinates, modo: ModoCalculado, signal?: AbortSignal) => {
+    const params = new URLSearchParams([...coordenada(partida), ['modo', modo]])
+    const { rotas } = await get<{ rotas: RotaCalculada[] }>(
+      `/eventos/${encodeURIComponent(eventoId)}/`,
+      params,
+      signal,
+      calculoDeRota,
+    )
+    return rotas
   },
 }

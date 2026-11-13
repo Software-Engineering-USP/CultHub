@@ -8,6 +8,7 @@ import EventDetail from '@/pages/EventDetail'
 import { ApiError as ActionApiError, api } from '@/services/api'
 import { catalogApi, ApiError as CatalogApiError, toCultEvent } from '@/services/catalog'
 import type { ApiEvent } from '@/services/catalog'
+import { rotasApi } from '@/services/rotas'
 import { apiEvent } from '@tests/fixtures/catalog'
 import { renderWithRouter } from '@tests/render'
 
@@ -16,6 +17,7 @@ function renderEvent(
   authUser?: NonNullable<Parameters<typeof renderWithRouter>[1]>['authUser'],
   overrides: Partial<ApiEvent> = {},
 ) {
+  vi.spyOn(rotasApi, 'rota').mockResolvedValue([])
   vi.spyOn(catalogApi, 'event').mockResolvedValue(
     apiEvent({
       id,
@@ -62,9 +64,9 @@ describe('EventDetail', () => {
       'href',
       paths.eventOrigin(id),
     )
-    expect(screen.getByRole('link', { name: 'Ver rota completa de exemplo' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Escolher outra partida' })).toHaveAttribute(
       'href',
-      paths.eventRoute(id),
+      paths.eventOrigin(id),
     )
     expect(screen.getByRole('heading', { name: 'Clima no horário do evento' })).toBeInTheDocument()
   })

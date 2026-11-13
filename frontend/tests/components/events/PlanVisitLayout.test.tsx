@@ -1,6 +1,5 @@
 import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import StaticMap from '@/components/common/StaticMap'
 import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
 import { findEvent } from '@/data/events'
 import { paths } from '@/lib/paths'
@@ -14,15 +13,7 @@ function renderLayout() {
       event={event}
       description="Descrição da página"
       status={<span>Selo</span>}
-      map={
-        <StaticMap
-          src="/assets/mapa.png"
-          alt="Mapa de teste"
-          width={856}
-          height={690}
-          caption="Mapa estático."
-        />
-      }
+      map={<img src="/assets/mapa.png" alt="Mapa de teste" />}
     >
       <PlanVisitPanel aria-label="Painel de teste">Conteúdo do painel</PlanVisitPanel>
     </PlanVisitLayout>,
@@ -53,7 +44,7 @@ describe('PlanVisitLayout', () => {
     expect(screen.getByText('Selo')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Resumo do evento' })).toHaveTextContent(event.title)
     expect(screen.getByRole('region', { name: 'Painel de teste' })).toHaveTextContent('Conteúdo do painel')
-    expect(screen.getByRole('figure')).toHaveTextContent('Mapa estático.')
+    expect(screen.getByRole('img', { name: 'Mapa de teste' })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'Previsão do tempo para o evento' })).toBeInTheDocument()
   })
 })

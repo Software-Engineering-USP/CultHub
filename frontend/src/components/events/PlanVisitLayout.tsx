@@ -25,13 +25,13 @@ interface PlanVisitLayoutProps {
   description: string
   /** Selo à direita do título */
   status: ReactNode
-  /** Mapa da coluna da direita (StaticMap ou OriginMap) */
+  /** Mapa da coluna da direita (OriginMap ou RouteMap) */
   map: ReactNode
   /** Painel da coluna da esquerda (use PlanVisitPanel) */
   children: ReactNode
 }
 
-/** Estrutura comum às páginas "Como chegar": definir origem e rota de exemplo. */
+/** Estrutura comum às páginas "Como chegar": definir origem e ver a rota. */
 export default function PlanVisitLayout({
   event,
   description,

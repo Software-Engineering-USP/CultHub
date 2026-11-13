@@ -1,16 +1,31 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Surface from '@/components/common/Surface'
 import { Button } from '@/components/ui/button'
-import { useRouteOptions } from '@/hooks/useRouteOptions'
+import { useEventRoutes } from '@/hooks/useEventRoutes'
+import type { RouteState } from '@/hooks/useEventRoutes'
+import { usePreviewOrigin } from '@/hooks/usePreviewOrigin'
+import { originSearch } from '@/lib/origin'
 import { paths } from '@/lib/paths'
+import { formatDistance, formatDuration, googleMapsUrl, routeModes } from '@/lib/route'
 import type { CultEvent } from '@/types'
 
-/** Resumo de rotas na página do evento. */
+function summary(state: RouteState | undefined): { time: string; detail: string } {
+  if (!state || state.status === 'loading') return { time: '…', detail: 'Calculando' }
+  if (state.status === 'error') return { time: '—', detail: 'Indisponível desta partida' }
+  const [route] = state.routes
+  if (!route) return { time: '—', detail: 'Sem trajeto desta partida' }
+  return { time: formatDuration(route.duracao_segundos), detail: formatDistance(route.distancia_metros) }
+}
+
+/** Tempos na página do evento, a partir de uma partida estimada (ver usePreviewOrigin). */
 export default function RoutePreview({ event }: Readonly<{ event: CultEvent }>) {
-  const routeOptions = useRouteOptions(event.id)
+  const preview = usePreviewOrigin(event.location)
+  const calculation = useEventRoutes(event.id, preview?.origin)
+  const routes = calculation?.routes
+  const failed = routes && Object.values(routes).some((state) => state.status === 'error')
+  const destination = [event.venue, event.venueAddress].filter(Boolean).join(', ')
 
   return (
     <Surface as="section" aria-labelledby="rota-titulo" className="bg-cream">
@@ -18,38 +33,72 @@ export default function RoutePreview({ event }: Readonly<{ event: CultEvent }>) 
         <h3 id="rota-titulo" className="text-lg">
           Planejar rota
         </h3>
-        <Eyebrow className="text-2xs text-muted-foreground">{event.details?.startTime} · EXEMPLO</Eyebrow>
-      </div>
-      <p className="mt-2 text-xs">De sua localização até o {event.venue}</p>
-
-      <div className="my-5 grid gap-2.5">
-        {routeOptions.map((route) => (
-          <div
-            key={route.id}
-            className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-xs"
-          >
-            <div>
-              <strong className="block">{route.label}</strong>
-              <span className="text-muted-foreground">
-                {route.detail} • {route.tag}
-              </span>
-            </div>
-            <div className="text-right text-base font-bold text-maroon">
-              {route.time}
-              <small className="block text-2xs font-medium text-muted-foreground">Tempo ilustrativo</small>
-            </div>
-          </div>
-        ))}
+        {preview && (
+          <Eyebrow className="text-right text-2xs text-muted-foreground">
+            {preview.source === 'device' ? 'Da sua localização' : 'Do centro de SP'}
+          </Eyebrow>
+        )}
       </div>
 
-      <Button asChild block>
-        <Link to={paths.eventRoute(event.id)} aria-label="Ver rota completa de exemplo">
-          Ver rota completa <ArrowRight />
-        </Link>
-      </Button>
-      <DemoNote className="mt-2">
-        Rota de exemplo, com origem fictícia. Nenhum endereço, trânsito ou tempo de viagem foi calculado.
-      </DemoNote>
+      {preview === undefined && <p className="mt-2 text-xs text-muted-foreground">Calculando os tempos…</p>}
+      {preview && (
+        <>
+          <ul aria-label="Tempo até o local" aria-live="polite" className="my-5 grid gap-2.5">
+            {routeModes.map((mode) => {
+              const row = mode.id === 'onibus' ? null : summary(routes?.[mode.id])
+              return (
+                <li
+                  key={mode.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-xs"
+                >
+                  <div>
+                    <strong className="block">{mode.label}</strong>
+                    <span className="text-muted-foreground">{row ? row.detail : 'Linhas e horários'}</span>
+                  </div>
+                  {row ? (
+                    <span className="text-base font-bold text-maroon">{row.time}</span>
+                  ) : (
+                    <a
+                      href={googleMapsUrl(preview.origin, destination, mode.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 font-semibold text-maroon"
+                    >
+                      Google Maps <ArrowUpRight className="size-3.5" />
+                      <span className="sr-only"> (abre em outra aba)</span>
+                    </a>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+
+          {failed && calculation && (
+            <Button variant="outline" size="sm" onClick={calculation.retry} className="mb-3">
+              Tentar de novo
+            </Button>
+          )}
+          <Button asChild block>
+            <Link to={paths.eventRoute(event.id, originSearch(preview.origin))}>
+              Ver rota completa <ArrowRight />
+            </Link>
+          </Button>
+          <Button asChild variant="link" className="mt-2 flex">
+            <Link to={paths.eventOrigin(event.id)}>Escolher outra partida</Link>
+          </Button>
+          <p className="mt-2 text-2xs text-muted-foreground">Tempos de carro sem trânsito em tempo real.</p>
+        </>
+      )}
+      {preview === null && (
+        <>
+          <p className="mt-2 text-xs">Escolha de onde vai sair para ver os tempos de carro, ônibus e a pé.</p>
+          <Button asChild block className="mt-5">
+            <Link to={paths.eventOrigin(event.id)}>
+              Definir partida <ArrowRight />
+            </Link>
+          </Button>
+        </>
+      )}
     </Surface>
   )
 }

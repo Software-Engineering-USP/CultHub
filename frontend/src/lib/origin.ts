@@ -1,9 +1,8 @@
-import type { RouteOption, RouteOrigin } from '@/types'
-
-const modos: RouteOption['id'][] = ['carro', 'onibus', 'ape']
+import { routeModes } from '@/lib/route'
+import type { RouteMode, RouteOrigin } from '@/types'
 
 /** Converte a origem (e o modo) em query string para levar entre as páginas "Como chegar". */
-export function originSearch(origin: RouteOrigin, mode?: RouteOption['id']): string {
+export function originSearch(origin: RouteOrigin, mode?: RouteMode): string {
   const params = new URLSearchParams({
     latitude: String(origin.latitude),
     longitude: String(origin.longitude),
@@ -28,7 +27,7 @@ export function parseOrigin(params: URLSearchParams): RouteOrigin | undefined {
 }
 
 /** Lê o modo de transporte da query string. */
-export function parseMode(params: URLSearchParams): RouteOption['id'] | undefined {
+export function parseMode(params: URLSearchParams): RouteMode | undefined {
   const mode = params.get('modo')
-  return modos.find((value) => value === mode)
+  return routeModes.find((value) => value.id === mode)?.id
 }
