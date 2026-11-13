@@ -51,11 +51,38 @@ describe('rotasApi', () => {
   it.each([
     [429, /Muitas consultas seguidas/],
     [502, /serviço de endereços está indisponível/],
-    [400, /Não foi possível consultar o endereço/],
+    [500, /Não foi possível consultar o endereço/],
   ])('transforma HTTP %i em ApiError com mensagem para a pessoa', async (status, message) => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ detail: 'x' }, status)))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, status)))
     const promise = rotasApi.reversa({ latitude: 0, longitude: 0 })
     await expect(promise).rejects.toBeInstanceOf(ApiError)
     await expect(promise).rejects.toMatchObject({ status, message: expect.stringMatching(message) })
+  })
+
+  it('mostra o detalhe que o backend manda num 400', async () => {
+    const detalhe = { non_field_errors: ['Informe latitude e longitude juntas, ou nenhuma das duas.'] }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(detalhe, 400)))
+    await expect(rotasApi.buscarOrigem('augusta')).rejects.toMatchObject({
+      status: 400,
+      message: 'Informe latitude e longitude juntas, ou nenhuma das duas.',
+    })
+  })
+
+  it('transforma falha de rede em ApiError com mensagem em português', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    const promise = rotasApi.reversa({ latitude: 0, longitude: 0 })
+    await expect(promise).rejects.toBeInstanceOf(ApiError)
+    await expect(promise).rejects.toMatchObject({
+      status: 0,
+      message: expect.stringMatching(/conectar ao CultHub/),
+    })
+  })
+
+  it('deixa o cancelamento passar como está', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const abort = new DOMException('Aborted', 'AbortError')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort))
+    await expect(rotasApi.reversa({ latitude: 0, longitude: 0 }, controller.signal)).rejects.toBe(abort)
   })
 })

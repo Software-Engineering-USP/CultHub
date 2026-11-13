@@ -168,6 +168,15 @@ describe('Origin', () => {
     expect(screen.getByRole('option', { name: paulista.rotulo })).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('mostra mensagem em português quando a busca falha sem ser erro da API', async () => {
+    vi.spyOn(rotasApi, 'buscarOrigem').mockRejectedValue(new TypeError('Failed to fetch'))
+    const { user } = renderOrigin()
+    const campo = await screen.findByRole('combobox', { name: 'Endereço de partida' })
+    await user.type(campo, 'augusta')
+    expect(await screen.findByText('Não foi possível buscar o endereço.')).toBeInTheDocument()
+    expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument()
+  })
+
   it('não busca com menos de 3 letras e avisa quando o serviço de endereços falha', async () => {
     const busca = vi
       .spyOn(rotasApi, 'buscarOrigem')

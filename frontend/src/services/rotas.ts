@@ -1,4 +1,4 @@
-import { ApiError } from '@/services/catalog'
+import { ApiError, apiGet } from '@/services/catalog'
 import type { Coordinates } from '@/types'
 
 /** Sugestão de endereço do autocomplete (`GET /api/rotas/origem/busca/`). */
@@ -11,23 +11,26 @@ export const MINIMO_BUSCA = 3
 /** Tamanho máximo do texto aceito pela busca de endereços. */
 export const MAXIMO_BUSCA = 200
 
+/** Status 0: a requisição nem chegou ao backend (sem rede ou servidor fora do ar). */
+export const SEM_CONEXAO = 0
+
 const mensagens: Record<number, string> = {
+  [SEM_CONEXAO]: 'Não foi possível conectar ao CultHub. Verifique sua conexão e tente de novo.',
   429: 'Muitas consultas seguidas. Aguarde um instante e tente de novo.',
   502: 'O serviço de endereços está indisponível agora. Use sua localização ou marque o ponto no mapa.',
 }
 
 async function get<T>(path: string, params: URLSearchParams, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`/api/rotas${path}?${params.toString()}`, {
-    credentials: 'include',
-    signal,
-  })
-  if (!response.ok) {
-    throw new ApiError(
-      mensagens[response.status] ?? 'Não foi possível consultar o endereço.',
-      response.status,
-    )
+  try {
+    return await apiGet<T>(`/rotas${path}?${params.toString()}`, {
+      signal,
+      describe: (status, detail) => mensagens[status] ?? detail ?? 'Não foi possível consultar o endereço.',
+    })
+  } catch (error) {
+    // Abortos seguem como estão; outras falhas do fetch (ex.: "Failed to fetch") viram ApiError.
+    if (error instanceof ApiError || signal?.aborted) throw error
+    throw new ApiError(mensagens[SEM_CONEXAO], SEM_CONEXAO)
   }
-  return response.json() as Promise<T>
 }
 
 function coordenada({ latitude, longitude }: Coordinates): [string, string][] {

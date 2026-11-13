@@ -63,19 +63,37 @@ export class ApiError extends Error {
   }
 }
 
-async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+/** Texto de erro enviado pelo backend no corpo JSON, ou `null` se não houver. */
+async function errorDetail(response: Response): Promise<string | null> {
+  try {
+    const body: unknown = await response.json()
+    if (body && typeof body === 'object') return Object.values(body).flat().join(' ') || null
+  } catch {
+    // Resposta sem JSON: fica a mensagem padrão.
+  }
+  return null
+}
+
+/**
+ * GET em `/api{path}` com a sessão. Respostas não-2xx viram `ApiError`, com a mensagem
+ * montada por `describe` a partir do status e do detalhe enviado pelo backend.
+ */
+export async function apiGet<T>(
+  path: string,
+  { signal, describe }: { signal?: AbortSignal; describe: (status: number, detail: string | null) => string },
+): Promise<T> {
   const response = await fetch(`/api${path}`, { credentials: 'include', signal })
   if (!response.ok) {
-    let message = 'Falha ao carregar o catálogo.'
-    try {
-      const body: unknown = await response.json()
-      if (body && typeof body === 'object') message = Object.values(body).flat().join(' ')
-    } catch {
-      // Mantém a mensagem HTTP quando a resposta não contém JSON.
-    }
-    throw new ApiError(`${message} (${response.status})`, response.status)
+    throw new ApiError(describe(response.status, await errorDetail(response)), response.status)
   }
   return response.json() as Promise<T>
+}
+
+function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return apiGet<T>(path, {
+    signal,
+    describe: (status, detail) => `${detail ?? 'Falha ao carregar o catálogo.'} (${status})`,
+  })
 }
 
 export const catalogApi = {

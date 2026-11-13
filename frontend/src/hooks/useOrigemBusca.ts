@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { ApiError } from '@/services/catalog'
 import { MAXIMO_BUSCA, MINIMO_BUSCA, rotasApi } from '@/services/rotas'
 import type { EnderecoSugerido } from '@/services/rotas'
 import type { Coordinates } from '@/types'
@@ -8,7 +9,7 @@ import type { Coordinates } from '@/types'
 export const ESPERA_DIGITACAO_MS = 400
 
 interface Resposta {
-  /** Consulta a que esta resposta se refere */
+  /** Consulta a que esta resposta se refere (ver `chaveDe`) */
   chave: string
   resultados: EnderecoSugerido[]
   error: string | null
@@ -16,6 +17,10 @@ interface Resposta {
 
 function buscavel(texto: string) {
   return texto.length >= MINIMO_BUSCA && texto.length <= MAXIMO_BUSCA
+}
+
+function chaveDe(texto: string, latitude?: number, longitude?: number) {
+  return `${texto}|${latitude ?? ''}|${longitude ?? ''}`
 }
 
 /**
@@ -31,11 +36,11 @@ export function useOrigemBusca(
   const consulta = useDebouncedValue(digitado, ESPERA_DIGITACAO_MS)
   const latitude = perto?.latitude
   const longitude = perto?.longitude
-  const chave = `${consulta}|${latitude ?? ''}|${longitude ?? ''}`
   const [resposta, setResposta] = useState<Resposta>({ chave: '', resultados: [], error: null })
 
   useEffect(() => {
     if (!buscavel(consulta)) return
+    const chave = chaveDe(consulta, latitude, longitude)
     const controller = new AbortController()
     const ponto = latitude !== undefined && longitude !== undefined ? { latitude, longitude } : undefined
     rotasApi
@@ -46,13 +51,14 @@ export function useOrigemBusca(
         setResposta({
           chave,
           resultados: [],
-          error: error instanceof Error ? error.message : 'Não foi possível buscar o endereço.',
+          error: error instanceof ApiError ? error.message : 'Não foi possível buscar o endereço.',
         })
       })
     return () => controller.abort()
-  }, [chave, consulta, latitude, longitude])
+  }, [consulta, latitude, longitude])
 
-  const atual = buscavel(consulta) && digitado === consulta && resposta.chave === chave
+  // Só há respostas para textos buscáveis, então isto também cobre o texto curto e a espera do debounce.
+  const atual = resposta.chave === chaveDe(digitado, latitude, longitude)
   return {
     resultados: atual ? resposta.resultados : [],
     error: atual ? resposta.error : null,
