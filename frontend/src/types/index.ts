@@ -26,6 +26,8 @@ export interface CultEvent {
   category: CategoryId
   description: string
   venue: string
+  /** Endereço, cidade e estado do local, quando o catálogo informa */
+  venueAddress?: string
   /** Coordenadas do local, quando o catálogo as conhece */
   location?: Coordinates
   schedule: string
@@ -77,14 +79,6 @@ export interface EventComment {
 }
 
 export type RouteMode = 'carro' | 'onibus' | 'ape'
-
-export interface RouteOption {
-  id: 'carro' | 'onibus' | 'ape'
-  label: string
-  time: string
-  detail: string
-  tag: string
-}
 
 export interface Weather {
   condition: string

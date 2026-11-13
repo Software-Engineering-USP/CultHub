@@ -114,6 +114,20 @@ describe('toCultEvent', () => {
     ).toBeUndefined()
   })
 
+  it('junta endereço, cidade e estado do local, sem partes vazias', () => {
+    const local = {
+      nome: 'Qualistage',
+      endereco: 'Av. Ayrton Senna, 3000',
+      cidade: 'Rio de Janeiro',
+      estado: 'RJ',
+    }
+    expect(toCultEvent(apiEvent({ local })).venueAddress).toBe('Av. Ayrton Senna, 3000, Rio de Janeiro, RJ')
+    expect(toCultEvent(apiEvent({ local: { ...local, endereco: '' } })).venueAddress).toBe(
+      'Rio de Janeiro, RJ',
+    )
+    expect(toCultEvent(apiEvent({ local: null })).venueAddress).toBeUndefined()
+  })
+
   it('representa evento gratuito sem depender das faixas de preço', () => {
     const event = toCultEvent(apiEvent({ situacao_preco: 'gratuito', faixas_preco: [] }))
     expect(event.price).toBe('Gratuito')

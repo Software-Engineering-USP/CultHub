@@ -180,6 +180,9 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
     category,
     description: event.descricao || 'Mais informações sobre este evento em breve.',
     venue,
+    venueAddress:
+      [event.local?.endereco, event.local?.cidade, event.local?.estado].filter(Boolean).join(', ') ||
+      undefined,
     location:
       typeof latitude === 'number' && typeof longitude === 'number' ? { latitude, longitude } : undefined,
     schedule: formatSchedule(event),

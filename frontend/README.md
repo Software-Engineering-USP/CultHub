@@ -31,7 +31,7 @@ src/
 │   ├── events/      EventCard, FeaturedCarousel, EventFilters, CommentItem...
 │   └── weather/     WeatherCard, WeatherStrip, WeatherStats
 ├── pages/           uma página por rota
-├── data/            dados demonstrativos de perfil, comentários, clima e rotas
+├── data/            dados demonstrativos de perfil, comentários e clima
 ├── types/           tipos compartilhados (CultEvent, User, CategoryId...)
 ├── hooks/           leitura de dados (useEvents, useCurrentUser...), useActiveSection e useDocumentTitle
 ├── lib/             rotas (paths), filtros, cn() e outras funções auxiliares
@@ -58,7 +58,7 @@ Os componentes de `ui/` devem ser usados diretamente (`import { Button } from '@
 
 O catálogo consome o backend Django pelos endpoints `/api/eventos/`, `/api/eventos/{uuid}/` e `/api/categorias/`. Busca e filtros são mantidos na URL (`q`, `categorias` e `preco`) e a listagem respeita a paginação da API. O Vite encaminha `/api` para `localhost:8000`; no Docker, `API_PROXY_TARGET` aponta para o serviço `backend`.
 
-- **Ações ainda demonstrativas** (login, perfil, salvar evento, comentários, rotas, clima e geolocalização) usam dados locais ou registram ações no console. Elas ainda não fazem parte da integração do catálogo.
+- **Ações ainda demonstrativas** (login, perfil, salvar evento, comentários, clima e geolocalização) usam dados locais ou registram ações no console. Elas ainda não fazem parte da integração do catálogo.
 - **Ações do próprio navegador** (pedir localização, compartilhar, abrir o app de mapas...) usam `logDemoAction`, de `src/lib/demo.ts`, e aparecem como `[CultHub demo] ...`.
 
 Para desenvolver com os dois serviços, rode `docker compose up --build` na raiz do projeto. O frontend ficará em `http://localhost:5173` e o backend em `http://localhost:8000`.
@@ -70,7 +70,7 @@ Para desenvolver com os dois serviços, rode `docker compose up --build` na raiz
 | `/`                   | Mapa, destaques e todos os eventos |
 | `/eventos/:id`        | Detalhes do evento                 |
 | `/eventos/:id/origem` | Definir origem ("Como chegar")     |
-| `/eventos/:id/rota`   | Rota de exemplo                    |
+| `/eventos/:id/rota`   | Rota até o evento                  |
 | `/entrar`             | Entrar / criar conta               |
 | `/conta`              | Minha conta                        |
 
@@ -80,21 +80,17 @@ As URLs são definidas apenas em `src/lib/paths.ts`. Nos links, use `paths` em v
 <Link to={paths.event(event.id)}>...</Link>
 ```
 
-Eventos retornados pelo catálogo têm páginas de detalhes. Os dados de exemplo continuam sendo usados nas áreas ainda não conectadas, como perfil salvo, comentários, clima e rotas.
+Eventos retornados pelo catálogo têm páginas de detalhes. Os dados de exemplo continuam sendo usados nas áreas ainda não conectadas, como perfil salvo, comentários e clima.
 
 ## Rota até o evento
 
-O backend já calcula a rota de carro e a pé até o local do evento, mas a página `/eventos/:id/rota` ainda usa os dados de exemplo de `data/routes.ts`. A API é `GET /api/rotas/eventos/{uuid}/?latitude=&longitude=&modo=carro|a_pe`: `latitude` e `longitude` são o ponto de partida, e a comparação dos modos pede uma chamada por modo. Ao integrar:
+A página `/eventos/:id/rota` recebe a partida pela URL (`latitude`, `longitude`, `rotulo` e `modo`, montados por `lib/origin.ts`) e, sem ela, volta para a definição de origem. Carro e a pé são calculados pelo backend em `GET /api/rotas/eventos/{uuid}/?latitude=&longitude=&modo=carro|a_pe`, uma chamada por modo (`useEventRoutes`), e o trajeto é desenhado no `RouteMap`. Ônibus não tem rota no backend: o botão abre o trajeto de transporte público no Google Maps. Alguns cuidados:
 
-- **Atribuição obrigatória:** mostre "© OpenStreetMap contributors" e um link para corrigir o mapa ([openstreetmap.org/fixthemap](https://www.openstreetmap.org/fixthemap)) onde a rota aparece. É exigência da licença dos dados (ODbL) e da política do servidor de rotas (`routing.openstreetmap.de`).
-- **Ordem das coordenadas:** `geometria` é um GeoJSON `LineString`, com pares `[longitude, latitude]`. O Leaflet espera `[lat, lng]`: inverta cada par ou use `L.geoJSON`, que já lê GeoJSON. O MapLibre usa o GeoJSON direto.
-- **Lista vazia:** `rotas` pode vir `[]` quando não há trajeto a partir daquele ponto. Não é erro: avise e deixe a pessoa mover o pino. Hoje o `RoutePlan.tsx` usa `routeOptions[0]` sem checar se a lista está vazia.
-- **Erros a tratar:**
-  - **400:** parâmetro inválido (formato do DRF, com a lista de erros por campo) ou partida a mais de 150 km (carro) ou 30 km (a pé) do local, em linha reta. Neste último caso, `detail` traz uma mensagem pronta para mostrar.
-  - **429:** limite de pedidos atingido (30 rotas por minuto por IP; a busca e a reversa de endereço dividem 60 por minuto). O cabeçalho `Retry-After` diz quantos segundos esperar. Use uma mensagem própria, porque o `detail` vem com a tradução padrão do DRF ("Pedido foi suprimido...").
-  - **422:** o local do evento não tem coordenadas ou está fora do mapa (`detail` com mensagem pronta).
-  - **502:** o serviço de rotas falhou (`detail` com mensagem pronta).
-- **Duração sem trânsito:** o tempo de carro é estimado pela velocidade das vias, sem trânsito em tempo real. Deixe isso claro na tela.
+- **Atribuição obrigatória:** o mapa mostra "© OpenStreetMap contributors" e o link [Corrigir o mapa](https://www.openstreetmap.org/fixthemap), exigidos pela licença dos dados (ODbL) e pela política do servidor de rotas (`routing.openstreetmap.de`).
+- **Ordem das coordenadas:** `geometria` é um GeoJSON `LineString`, com pares `[longitude, latitude]`; o `L.geoJSON` do Leaflet já lê nesse formato.
+- **Lista vazia:** `rotas` pode vir `[]` quando não há trajeto a partir daquele ponto. Não é erro: a página avisa e sugere mudar a partida.
+- **Erros:** em 400 (partida longe demais), 422 (local sem coordenadas ou fora do mapa) e 502 (serviço de rotas fora do ar), o `detail` do backend já é uma mensagem pronta e é mostrado como está. O 429 (30 rotas por minuto por IP) usa uma mensagem própria, porque o `detail` vem com a tradução padrão do DRF.
+- **Duração sem trânsito:** o tempo de carro é estimado pela velocidade das vias, e a página avisa que não considera o trânsito em tempo real.
 
 ## Cores, tamanhos e Tailwind
 

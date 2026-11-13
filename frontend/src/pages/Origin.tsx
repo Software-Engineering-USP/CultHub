@@ -1,6 +1,6 @@
 import { ArrowRight, LocateFixed, MapPin } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import IconTile from '@/components/common/IconTile'
 import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
@@ -9,15 +9,15 @@ import OriginMap from '@/components/map/OriginMap'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { peerFocusRing } from '@/lib/classes'
 import { onFormSubmit, text } from '@/lib/forms'
 import { originSearch, parseMode, parseOrigin } from '@/lib/origin'
 import { paths } from '@/lib/paths'
+import { routeModes } from '@/lib/route'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/services/catalog'
 import { rotasApi } from '@/services/rotas'
-import type { Coordinates, EventWithDetails, RouteOption, RouteOrigin } from '@/types'
+import type { Coordinates, EventWithDetails, RouteMode, RouteOrigin } from '@/types'
 
 type GeoStatus = 'idle' | 'locating' | 'denied' | 'unavailable'
 
@@ -35,7 +35,6 @@ function sameCoordinates(a: Coordinates | null, b: Coordinates) {
 
 export default function Origin({ event }: { event: EventWithDetails }) {
   const navigate = useNavigate()
-  const routeOptions = useRouteOptions(event.id)
   const [searchParams] = useSearchParams()
   const [origin, setOrigin] = useState<RouteOrigin | null>(() => parseOrigin(searchParams) ?? null)
   const [query, setQuery] = useState(() => origin?.label ?? '')
@@ -188,7 +187,7 @@ export default function Origin({ event }: { event: EventWithDetails }) {
               document.getElementById('endereco')?.focus()
               return
             }
-            const mode = text(data, 'transporte') as RouteOption['id']
+            const mode = text(data, 'transporte') as RouteMode
             navigate(paths.eventRoute(event.id, originSearch(origin, mode)))
           })}
         >
@@ -236,7 +235,7 @@ export default function Origin({ event }: { event: EventWithDetails }) {
           <fieldset aria-describedby="transporte-aviso" className="mb-4.5 min-w-0">
             <legend className="mb-2 text-xs font-semibold">Como você quer ir?</legend>
             <div className="grid grid-cols-3 gap-2">
-              {routeOptions.map((route) => (
+              {routeModes.map((route) => (
                 <div key={route.id} className="relative">
                   <input
                     id={route.id}
@@ -261,7 +260,7 @@ export default function Origin({ event }: { event: EventWithDetails }) {
           </fieldset>
 
           <DemoNote id="transporte-aviso" size="xs" className="mt-2.5 mb-3.5">
-            O trajeto e os tempos de cada transporte ainda são de exemplo.
+            Carro e a pé têm o trajeto calculado aqui; ônibus abre no Google Maps.
           </DemoNote>
 
           {submitError && (
@@ -274,12 +273,6 @@ export default function Origin({ event }: { event: EventWithDetails }) {
             Traçar rota <ArrowRight />
           </Button>
         </form>
-
-        <Button asChild variant="link" className="mt-4 flex">
-          <Link to={paths.eventRoute(event.id)}>
-            Ver rota de exemplo <ArrowRight />
-          </Link>
-        </Button>
 
         <DemoNote size="xs" className="mt-4.5 border-t border-border pt-4">
           Endereços e mapa © OpenStreetMap contributors. O endereço digitado e o ponto marcado só servem para

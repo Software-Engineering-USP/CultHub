@@ -83,7 +83,7 @@ describe('Origin', () => {
     Reflect.deleteProperty(navigator, 'geolocation')
   })
 
-  it('mostra o caminho até "Como chegar", o destino, o mapa e o link para a rota de exemplo', async () => {
+  it('mostra o caminho até "Como chegar", o destino e o mapa', async () => {
     renderOrigin()
     expect(await screen.findByRole('heading', { level: 1, name: 'Como chegar' })).toBeInTheDocument()
     await waitFor(() => expect(document.title).toBe('Defina sua origem | CultHub'))
@@ -97,10 +97,6 @@ describe('Origin', () => {
     expect(panel).toHaveTextContent('© OpenStreetMap contributors')
     expect(screen.getByLabelText('Carro')).toBeChecked()
     expect(screen.getByTestId('pino')).toHaveTextContent('sem pino')
-    expect(screen.getByRole('link', { name: /Ver rota de exemplo/ })).toHaveAttribute(
-      'href',
-      paths.eventRoute(id),
-    )
   })
 
   it('mostra o aviso quando a API responde que o evento não existe', async () => {
