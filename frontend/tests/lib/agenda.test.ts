@@ -24,7 +24,7 @@ describe('agenda', () => {
       toCultEvent(apiEvent({ id: 'a', data_inicio: '2026-11-03' })),
       toCultEvent(apiEvent({ id: 'b', data_inicio: '2026-11-05' })),
       toCultEvent(apiEvent({ id: 'c', data_inicio: '2026-11-03' })),
-      { ...toCultEvent(apiEvent({ id: 'd' })), startDate: undefined },
+      { ...toCultEvent(apiEvent({ id: 'd' })), eventDate: undefined },
     ]
     const days = groupByDay(events)
 
@@ -33,5 +33,18 @@ describe('agenda', () => {
       ['2026-11-05', ['b']],
     ])
     expect(days[0].label).toBe('terça-feira, 3 de novembro')
+  })
+
+  it('coloca no primeiro dia do período os eventos que começaram antes dele', () => {
+    const events = [
+      toCultEvent(apiEvent({ id: 'em-andamento', data_inicio: '2026-10-28', data_fim: '2026-11-05' })),
+      toCultEvent(apiEvent({ id: 'dia-1', data_inicio: '2026-11-01' })),
+      toCultEvent(apiEvent({ id: 'dia-3', data_inicio: '2026-11-03' })),
+    ]
+
+    expect(groupByDay(events, '2026-11-01').map((day) => [day.date, day.events.map((e) => e.id)])).toEqual([
+      ['2026-11-01', ['em-andamento', 'dia-1']],
+      ['2026-11-03', ['dia-3']],
+    ])
   })
 })

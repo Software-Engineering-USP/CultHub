@@ -8,11 +8,7 @@ interface ListStatusProps {
 /** Carregando, erro ou lista vazia; não renderiza nada quando há itens para mostrar. */
 export default function ListStatus({ loading, error, empty, emptyMessage }: Readonly<ListStatusProps>) {
   if (loading) {
-    return (
-      <p role="status" className="text-xs text-muted-foreground">
-        Carregando…
-      </p>
-    )
+    return <output className="block text-xs text-muted-foreground">Carregando…</output>
   }
   if (error) {
     return (

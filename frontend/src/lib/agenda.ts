@@ -38,12 +38,15 @@ export function monthLabel({ year, month }: Month): string {
   return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(year, month, 1))
 }
 
-/** Agrupa pelo dia de início, na ordem da API. Eventos de vários dias aparecem só no dia em que começam. */
-export function groupByDay(events: EventWithDetails[]): AgendaDay[] {
+/**
+ * Agrupa pelo dia de início, na ordem da API. Eventos de vários dias aparecem só no primeiro dia;
+ * os que começaram antes de `from` (já em andamento) ficam no próprio `from`.
+ */
+export function groupByDay(events: EventWithDetails[], from?: string): AgendaDay[] {
   const days = new Map<string, AgendaDay>()
   for (const event of events) {
-    const date = event.startDate
-    if (!date) continue
+    if (!event.eventDate) continue
+    const date = from && event.eventDate < from ? from : event.eventDate
     const day = days.get(date) ?? { date, label: dayLabel(date), events: [] }
     day.events.push(event)
     days.set(date, day)

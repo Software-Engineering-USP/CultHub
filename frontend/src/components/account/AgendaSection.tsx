@@ -14,7 +14,7 @@ export default function AgendaSection() {
   const [month, setMonth] = useState(currentMonth)
   const { from, to } = monthRange(month)
   const { events, loading, error } = useCalendar(from, to)
-  const days = groupByDay(events)
+  const days = groupByDay(events, from)
   const label = monthLabel(month)
 
   return (
