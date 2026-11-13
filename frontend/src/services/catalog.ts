@@ -154,6 +154,7 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
     description: event.descricao || 'Mais informações sobre este evento em breve.',
     venue,
     schedule: formatSchedule(event),
+    startDate: event.data_inicio,
     price,
     priceValue,
     image: image?.url ?? '/assets/event-placeholder.svg',
