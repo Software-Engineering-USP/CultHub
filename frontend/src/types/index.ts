@@ -41,6 +41,14 @@ export interface CultEvent {
   attendanceCount?: number
   /** Situação que torna o evento indisponível para uma nova visita. */
   availability?: EventAvailability
+  /** Dados do evento usados para consultar a previsão do tempo no local e horário. */
+  weatherLocation?: {
+    latitude: number | null
+    longitude: number | null
+    city: string
+  }
+  eventDate?: string
+  eventTime?: string | null
   /** Só eventos com detalhes têm página própria */
   details?: EventDetails
 }
@@ -78,8 +86,12 @@ export interface RouteOption {
 
 export interface Weather {
   condition: string
+  iconSlug: string
+  theme: 'clear' | 'partly-cloudy' | 'cloudy' | 'fog' | 'rain' | 'storm' | 'snow'
   temperature: string
-  feelsLike: string
-  humidity: string
-  wind: string
+  feelsLike?: string
+  humidity?: string
+  wind?: string
+  precipitation?: string
+  forecastType: 'hourly' | 'daily'
 }

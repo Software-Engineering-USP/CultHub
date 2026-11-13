@@ -191,6 +191,15 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
     attending: event.presenca ?? false,
     attendanceCount: event.total_presencas ?? 0,
     availability: availability(event),
+    weatherLocation: event.local
+      ? {
+          latitude: event.local.latitude ?? null,
+          longitude: event.local.longitude ?? null,
+          city: event.local.cidade,
+        }
+      : undefined,
+    eventDate: event.data_inicio,
+    eventTime: event.hora_inicio,
     details: {
       about: [event.descricao || 'Mais informações sobre este evento em breve.'],
       startTime: event.hora_inicio?.slice(0, 5) ?? 'Horário a confirmar',

@@ -52,6 +52,10 @@ def buscar_previsao(latitude, longitude, dias=1):
             "temperature_2m,relative_humidity_2m,apparent_temperature,"
             "is_day,precipitation,weather_code,wind_speed_10m"
         ),
+        "hourly": (
+            "temperature_2m,relative_humidity_2m,apparent_temperature,"
+            "precipitation_probability,weather_code,wind_speed_10m,is_day"
+        ),
         "daily": (
             "weather_code,temperature_2m_max,temperature_2m_min,"
             "precipitation_probability_max"

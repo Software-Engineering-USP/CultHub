@@ -11,7 +11,8 @@ export default function WeatherStats({ weather, variant }: Readonly<WeatherStats
     { label: 'Sensação', value: weather.feelsLike },
     { label: 'Umidade', value: weather.humidity },
     { label: 'Vento', value: weather.wind },
-  ]
+    { label: weather.forecastType === 'hourly' ? 'Chuva' : 'Chance de chuva', value: weather.precipitation },
+  ].filter((stat): stat is { label: string; value: string } => Boolean(stat.value))
 
   return (
     <dl
