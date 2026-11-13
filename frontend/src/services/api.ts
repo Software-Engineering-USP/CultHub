@@ -67,6 +67,14 @@ async function apiRequest<T>(path: string, method: Method = 'GET', body?: object
   return data as T
 }
 
+export type AttendanceWhen = 'futuras' | 'passadas'
+
+function listPath(path: string, filters: Record<string, string>, page: number): string {
+  const params = new URLSearchParams(filters)
+  if (page > 1) params.set('page', String(page))
+  return params.size ? `${path}?${params.toString()}` : path
+}
+
 // Mock: só registra a chamada. Devolve uma Promise para manter a mesma assinatura do fetch real.
 function request(method: Method, path: string, body?: Record<string, unknown>): Promise<void> {
   const safeBody = body && 'senha' in body ? { ...body, senha: '***' } : body
@@ -106,12 +114,13 @@ export const api = {
   },
 
   agenda: {
-    savedEvents: (page = 1) => {
-      const params = new URLSearchParams()
-      if (page > 1) params.set('page', String(page))
-      const suffix = params.size ? `?${params.toString()}` : ''
-      return apiRequest<Paginated<ApiEvent>>(`/eu/salvos/${suffix}`)
-    },
+    savedEvents: (page = 1) => apiRequest<Paginated<ApiEvent>>(listPath('/eu/salvos/', {}, page)),
+    /** Eventos com presença marcada: futuros (do mais próximo) ou passados (do mais recente). */
+    attendances: (when: AttendanceWhen, page = 1) =>
+      apiRequest<Paginated<ApiEvent>>(listPath('/eu/presencas/', { quando: when }, page)),
+    /** Salvos e presenças que acontecem no período (datas AAAA-MM-DD, até 366 dias). */
+    calendar: (from: string, to: string, page = 1) =>
+      apiRequest<Paginated<ApiEvent>>(listPath('/eu/agenda/', { de: from, ate: to }, page)),
   },
 
   events: {

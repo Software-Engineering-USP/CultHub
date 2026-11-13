@@ -29,6 +29,8 @@ export interface CultEvent {
   /** Coordenadas do local, quando o catálogo as conhece */
   location?: Coordinates
   schedule: string
+  /** Data de início (AAAA-MM-DD), quando o evento vem do catálogo */
+  startDate?: string
   /* Preço em texto para exibição na UI */
   price: string
   priceValue: number

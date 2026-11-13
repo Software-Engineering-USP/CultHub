@@ -183,6 +183,7 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
     location:
       typeof latitude === 'number' && typeof longitude === 'number' ? { latitude, longitude } : undefined,
     schedule: formatSchedule(event),
+    startDate: event.data_inicio,
     price,
     priceValue,
     image: image?.url ?? '/assets/event-placeholder.svg',
