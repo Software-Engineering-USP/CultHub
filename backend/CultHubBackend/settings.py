@@ -38,6 +38,31 @@ TICKETMASTER_PAIS = os.environ.get("TICKETMASTER_PAIS", "BR")
 # também quando PHOTON_URL está em branco no .env).
 PHOTON_URL = os.environ.get("PHOTON_URL") or "https://photon.komoot.io"
 
+# Rotas de carro e a pé: servidores do OSRM (padrão: routing.openstreetmap.de,
+# também quando a variável está em branco no .env).
+OSRM_CARRO_URL = (
+    os.environ.get("OSRM_CARRO_URL")
+    or "https://routing.openstreetmap.de/routed-car"
+)
+OSRM_A_PE_URL = (
+    os.environ.get("OSRM_A_PE_URL")
+    or "https://routing.openstreetmap.de/routed-foot"
+)
+
+# Cache em memória (por processo). As rotas ficam num cache à parte: cada
+# uma leva a linha inteira do trajeto e não deve expulsar as buscas de
+# endereço do cache padrão.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+    "rotas": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "rotas",
+        "OPTIONS": {"MAX_ENTRIES": 500},
+    },
+}
+
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
 
 
@@ -124,6 +149,16 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Limites por usuário logado ou, sem login, por IP (endpoints públicos
+    # que gastam a cota do Photon e do OSRM). Por escopo, ver rotas/views.
+    "DEFAULT_THROTTLE_RATES": {
+        "endereco": "60/min",
+        "rota": "30/min",
+    },
+    # IP do throttle = o da conexão, nunca o X-Forwarded-For (o cliente
+    # poderia inventar um a cada pedido). Atrás de proxy reverso, usar o
+    # número de proxies na frente do Django.
+    "NUM_PROXIES": 0,
 }
 
 SPECTACULAR_SETTINGS = {

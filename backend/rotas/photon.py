@@ -1,16 +1,9 @@
-import http.client
-import json
-import math
-import urllib.error
 import urllib.parse
-import urllib.request
 
 from django.conf import settings
 
-USER_AGENT = (
-    "CultHub/1.0 (MAC0332 USP; "
-    "+https://github.com/Software-Engineering-USP/CultHub)"
-)
+from rotas.transporte import RESPOSTA_INVALIDA, numero, obter_json
+
 TIMEOUT = 5
 TENTATIVAS = 2
 # Retângulo do Brasil (minLon,minLat,maxLon,maxLat).
@@ -23,54 +16,19 @@ class ErroPhoton(Exception):
     """Erro controlado ao consultar o Photon."""
 
 
-class _FalhaPassageira(ErroPhoton):
-    """Falha que vale tentar de novo (rede, tempo esgotado, HTTP 5xx)."""
-
-
-def _requisitar(url):
-    try:
-        requisicao = urllib.request.Request(
-            url, headers={"User-Agent": USER_AGENT}
-        )
-    except ValueError:
-        raise ErroPhoton("PHOTON_URL inválida") from None
-    try:
-        with urllib.request.urlopen(requisicao, timeout=TIMEOUT) as resposta:
-            return json.load(resposta)
-    except urllib.error.HTTPError as erro:
-        mensagem = f"Photon respondeu HTTP {erro.code}"
-        if erro.code >= 500:
-            raise _FalhaPassageira(mensagem) from None
-        raise ErroPhoton(mensagem) from None
-    except urllib.error.URLError as erro:
-        raise _FalhaPassageira(
-            f"falha de rede ({type(erro.reason).__name__})"
-        ) from None
-    except TimeoutError:
-        raise _FalhaPassageira("tempo esgotado") from None
-    except (OSError, http.client.HTTPException) as erro:
-        raise _FalhaPassageira(
-            f"falha de transporte ({type(erro).__name__})"
-        ) from None
-    except ValueError:
-        raise ErroPhoton("resposta inválida") from None
-
-
 def _get_json(caminho, parametros):
     base = settings.PHOTON_URL.rstrip("/")
-    url = f"{base}{caminho}?{urllib.parse.urlencode(parametros)}"
-    for tentativa in range(1, TENTATIVAS + 1):
-        try:
-            dados = _requisitar(url)
-            break
-        except _FalhaPassageira as erro:
-            if tentativa == TENTATIVAS:
-                raise ErroPhoton(str(erro)) from None
-
+    dados = obter_json(
+        f"{base}{caminho}?{urllib.parse.urlencode(parametros)}",
+        servico="Photon",
+        erro=ErroPhoton,
+        timeout=TIMEOUT,
+        tentativas=TENTATIVAS,
+    )
     if not isinstance(dados, dict) or not isinstance(
         dados.get("features"), list
     ):
-        raise ErroPhoton("resposta inválida")
+        raise ErroPhoton(RESPOSTA_INVALIDA)
     return dados
 
 
@@ -108,14 +66,6 @@ def montar_rotulo(propriedades):
     return ", ".join(rotulo) or None
 
 
-def _numero(valor):
-    return (
-        isinstance(valor, (int, float))
-        and not isinstance(valor, bool)
-        and math.isfinite(valor)
-    )
-
-
 def _converter(feature):
     """Feature do Photon → (rótulo, latitude, longitude), ou None."""
     if not isinstance(feature, dict):
@@ -128,7 +78,7 @@ def _converter(feature):
     if (
         not isinstance(coordenadas, list)
         or len(coordenadas) < 2
-        or not all(_numero(valor) for valor in coordenadas[:2])
+        or not all(numero(valor) for valor in coordenadas[:2])
     ):
         return None
     longitude, latitude = coordenadas[:2]

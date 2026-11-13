@@ -9,13 +9,13 @@ from django.test import SimpleTestCase
 
 from rotas.photon import (
     BBOX_BRASIL,
-    USER_AGENT,
     ErroPhoton,
     _get_json,
     buscar_endereco_reverso,
     buscar_enderecos,
     montar_rotulo,
 )
+from rotas.transporte import USER_AGENT
 
 
 def resposta_json(dados):
@@ -327,12 +327,15 @@ class BuscaTest(SimpleTestCase):
         nao_finita["geometry"]["coordinates"] = [float("nan"), 1.0]
         infinita = feature({"name": "Inf"})
         infinita["geometry"]["coordinates"] = [1.0, float("inf")]
+        gigante = feature({"name": "Gigante"})
+        gigante["geometry"]["coordinates"] = [10**400, 1.0]
         fora_do_mundo = feature({"name": "Fora"}, lon=500, lat=900)
         latitude_impossivel = feature({"name": "Lat"}, lon=-46.6, lat=-91)
         nome_numerico = feature({"name": 123})
         urlopen.return_value = colecao(
             nao_finita,
             infinita,
+            gigante,
             fora_do_mundo,
             latitude_impossivel,
             nome_numerico,
