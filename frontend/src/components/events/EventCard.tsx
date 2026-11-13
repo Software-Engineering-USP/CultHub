@@ -2,7 +2,7 @@ import { ArrowUpRight, Calendar, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { categories } from '@/lib/categories'
-import { shortName } from '@/lib/events'
+import { shortName, unavailableLabel } from '@/lib/events'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 import type { CultEvent } from '@/types'
@@ -24,6 +24,7 @@ export default function EventCard({
   detailsLink = true,
 }: Readonly<EventCardProps>) {
   const category = categories[event.category]
+  const unavailable = unavailableLabel(event)
   const href = paths.event(event.id)
   const info = [
     { icon: MapPin, text: event.venue },
@@ -58,6 +59,11 @@ export default function EventCard({
         <Badge className={cn('absolute bottom-3 left-3 bg-card/90 font-medium shadow-badge', category.text)}>
           {category.label}
         </Badge>
+        {unavailable && (
+          <Badge variant="muted" className="absolute top-3 right-3 border-maroon/30 text-maroon shadow-badge">
+            {unavailable}
+          </Badge>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-5">

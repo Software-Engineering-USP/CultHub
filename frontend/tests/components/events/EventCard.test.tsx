@@ -51,6 +51,11 @@ describe('EventCard', () => {
     expect(screen.getByText('Preço não informado')).toHaveClass('text-maroon')
   })
 
+  it('mostra um selo quando o evento foi cancelado ou removido', () => {
+    renderWithRouter(<EventCard event={toCultEvent(apiEvent({ removido: true }))} />)
+    expect(screen.getByText('Removido')).toBeInTheDocument()
+  })
+
   it('carrega a imagem com lazy loading, exceto quando priority', () => {
     const { unmount } = renderWithRouter(<EventCard event={jazz} />)
     expect(screen.getByRole('img')).toHaveAttribute('loading', 'lazy')
