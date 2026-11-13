@@ -61,9 +61,7 @@ describe('useWeather', () => {
 
   it('mostra carregamento ao trocar de evento enquanto a nova previsão chega', async () => {
     let completeRequest: ((value: Weather) => void) | undefined
-    getEventWeatherMock.mockImplementationOnce(
-      () => new Promise((resolve) => (completeRequest = resolve)),
-    )
+    getEventWeatherMock.mockImplementationOnce(() => new Promise((resolve) => (completeRequest = resolve)))
     const { result, rerender } = renderHook(({ currentEvent }) => useWeather(currentEvent), {
       initialProps: { currentEvent: event },
     })

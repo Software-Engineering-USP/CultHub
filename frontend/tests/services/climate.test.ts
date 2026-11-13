@@ -56,19 +56,22 @@ describe('getEventWeather', () => {
     [86, 1, 'Pancadas de neve', 'snow', 'snow'],
     [95, 1, 'Tempestade', 'thunderstorms-day-rain', 'storm'],
     [999, 1, 'Condição não identificada', 'not-available', 'cloudy'],
-  ] as const)('mapeia a condição %s para a apresentação correta', async (
-    code,
-    isDay,
-    condition,
-    iconSlug,
-    theme,
-  ) => {
-    mockFetch(jsonResponse(forecast(code, isDay)))
+  ] as const)(
+    'mapeia a condição %s para a apresentação correta',
+    async (code, isDay, condition, iconSlug, theme) => {
+      mockFetch(jsonResponse(forecast(code, isDay)))
 
-    const weather = await getEventWeather(location, date, '20:00', new AbortController().signal)
+      const weather = await getEventWeather(location, date, '20:00', new AbortController().signal)
 
-    expect(weather).toMatchObject({ condition, iconSlug, theme, temperature: '22°C', forecastType: 'hourly' })
-  })
+      expect(weather).toMatchObject({
+        condition,
+        iconSlug,
+        theme,
+        temperature: '22°C',
+        forecastType: 'hourly',
+      })
+    },
+  )
 
   it('usa o resumo diário quando o evento não tem horário', async () => {
     mockFetch(jsonResponse(forecast(3)))

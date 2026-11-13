@@ -48,11 +48,7 @@ export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) 
           <h2 className="text-base max-sm:text-sm">
             {event.eventTime ? 'Clima no horário do evento' : 'Previsão para o dia do evento'}
           </h2>
-          <p
-            aria-live="polite"
-            aria-atomic="true"
-            className="mt-1 text-sm text-muted-foreground"
-          >
+          <p aria-live="polite" aria-atomic="true" className="mt-1 text-sm text-muted-foreground">
             {result.status === 'loading' ? 'Consultando a previsão do evento…' : result.message}
           </p>
         </div>

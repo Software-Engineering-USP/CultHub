@@ -62,8 +62,9 @@ describe('WeatherCard', () => {
       `https://cdn.meteocons.com/3.0.0-next.10/svg/line/${weather.iconSlug}.svg`,
     )
     expect(screen.getByText(weather.temperature)).toBeInTheDocument()
-    expect(screen.getByText('Previsão fornecida pelo Open-Meteo; pode mudar conforme a data se aproxima.'))
-      .toBeInTheDocument()
+    expect(
+      screen.getByText('Previsão fornecida pelo Open-Meteo; pode mudar conforme a data se aproxima.'),
+    ).toBeInTheDocument()
   })
 
   it('mostra carregamento', () => {
