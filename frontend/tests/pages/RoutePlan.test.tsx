@@ -45,6 +45,8 @@ describe('RoutePlan', () => {
     expect(options.getAllByRole('listitem')).toHaveLength(3)
     expect(options.getByText(/em destaque/)).toBeInTheDocument()
     expect(panel.getByText('Chegue ao Auditório Ibirapuera')).toBeInTheDocument()
+    expect(panel.getByText('Parta da origem fictícia')).toBeInTheDocument()
+    expect(panel.getByText('6,4 km • de carro')).toBeInTheDocument()
 
     expect(panel.getByRole('link', { name: 'Alterar' })).toHaveAttribute('href', paths.eventOrigin(id))
     expect(panel.getByRole('link', { name: 'Voltar à definição de origem' })).toHaveAttribute(
@@ -61,6 +63,12 @@ describe('RoutePlan', () => {
     expect(panel.getByText('Rua Augusta, 1500')).toBeInTheDocument()
     expect(panel.getByText(/OpenStreetMap contributors/)).toBeInTheDocument()
     expect(screen.getByText('Rota ilustrativa • partida definida')).toBeInTheDocument()
+    expect(panel.getByText('Parta de Rua Augusta, 1500')).toBeInTheDocument()
+    expect(panel.queryByText(/origem fictícia/)).not.toBeInTheDocument()
+    // O modo escolhido (a pé) é o destacado e o resumido.
+    expect(panel.getByText(/em destaque/).closest('li')).toHaveTextContent('A pé')
+    expect(panel.getByText('2,8 km • a pé')).toBeInTheDocument()
+    expect(panel.getByText('Ativo no exemplo')).toBeInTheDocument()
     expect(panel.getByRole('link', { name: 'Alterar' })).toHaveAttribute(
       'href',
       paths.eventOrigin(id, '?latitude=-23.6&longitude=-46.7&rotulo=Rua+Augusta%2C+1500&modo=ape'),
