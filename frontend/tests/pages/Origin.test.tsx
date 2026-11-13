@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import EventPage from '@/components/events/EventPage'
@@ -166,6 +166,56 @@ describe('Origin', () => {
     await screen.findByRole('option', { name: paulista.rotulo })
     await user.keyboard('{ArrowUp}')
     expect(screen.getByRole('option', { name: paulista.rotulo })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('editar o endereço depois de escolher desfaz a partida', async () => {
+    vi.spyOn(rotasApi, 'buscarOrigem').mockResolvedValue([augusta])
+    const { user } = renderOrigin()
+    const campo = await screen.findByRole('combobox', { name: 'Endereço de partida' })
+    await user.type(campo, 'augusta')
+    await user.click(await screen.findByRole('option', { name: augusta.rotulo }))
+
+    await user.clear(campo)
+    await user.type(campo, 'Rua Outra 500{Escape}{Enter}')
+    expect(screen.getByRole('alert')).toHaveTextContent('Escolha uma das sugestões de endereço')
+    expect(screen.getByTestId('pino')).toHaveTextContent('sem pino')
+    expect(screen.queryByRole('heading', { name: 'Página da rota' })).not.toBeInTheDocument()
+  })
+
+  it('ignora a localização que chega depois de a pessoa escolher um endereço', async () => {
+    let entregar: (() => void) | undefined
+    stubGeolocation((success) => {
+      entregar = () => success({ coords: { latitude: -23.58, longitude: -46.65 } } as GeolocationPosition)
+    })
+    const reversa = vi.spyOn(rotasApi, 'reversa')
+    vi.spyOn(rotasApi, 'buscarOrigem').mockResolvedValue([augusta])
+    const { user } = renderOrigin()
+
+    await user.click(await screen.findByRole('button', { name: 'Usar minha localização' }))
+    const campo = screen.getByRole('combobox', { name: 'Endereço de partida' })
+    await user.type(campo, 'augusta')
+    await user.click(await screen.findByRole('option', { name: augusta.rotulo }))
+
+    act(() => entregar?.())
+    expect(reversa).not.toHaveBeenCalled()
+    expect(campo).toHaveValue(augusta.rotulo)
+    expect(screen.getByTestId('pino')).toHaveTextContent('-23.5565,-46.6586')
+    expect(screen.getByRole('button', { name: 'Usar minha localização' })).toBeEnabled()
+  })
+
+  it('não troca o texto digitado pelo endereço do ponto que chega depois', async () => {
+    let responder: ((rotulo: string) => void) | undefined
+    vi.spyOn(rotasApi, 'reversa').mockImplementation(
+      () => new Promise<string | null>((resolve) => (responder = resolve)),
+    )
+    vi.spyOn(rotasApi, 'buscarOrigem').mockResolvedValue([])
+    const { user } = renderOrigin()
+    await user.click(await screen.findByRole('button', { name: 'Marcar ponto no mapa' }))
+    const campo = screen.getByRole('combobox', { name: 'Endereço de partida' })
+    await user.type(campo, 'rua')
+
+    await act(async () => responder?.('Rua X, Moema'))
+    expect(campo).toHaveValue('rua')
   })
 
   it('mostra mensagem em português quando a busca falha sem ser erro da API', async () => {

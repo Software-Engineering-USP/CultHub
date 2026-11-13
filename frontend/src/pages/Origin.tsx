@@ -15,6 +15,7 @@ import { onFormSubmit, text } from '@/lib/forms'
 import { originSearch, parseMode, parseOrigin } from '@/lib/origin'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
+import { ApiError } from '@/services/catalog'
 import { rotasApi } from '@/services/rotas'
 import type { Coordinates, EventWithDetails, RouteOption, RouteOrigin } from '@/types'
 
@@ -46,37 +47,57 @@ export default function Origin({ event }: { event: EventWithDetails }) {
   })
   const [submitError, setSubmitError] = useState<string | null>(null)
   const reverseRequest = useRef<AbortController | null>(null)
+  /** Muda a cada ação da pessoa; uma geolocalização pedida antes disso é descartada ao chegar. */
+  const geoRequest = useRef(0)
   useDocumentTitle('Defina sua origem | CultHub')
 
-  useEffect(() => () => reverseRequest.current?.abort(), [])
+  useEffect(
+    () => () => {
+      reverseRequest.current?.abort()
+      geoRequest.current += 1
+    },
+    [],
+  )
+
+  /** Descarta a busca reversa e a geolocalização em andamento: a pessoa já agiu depois delas. */
+  const cancelPending = useCallback(() => {
+    reverseRequest.current?.abort()
+    reverseRequest.current = null
+    geoRequest.current += 1
+    setReverse({ loading: false, error: null })
+  }, [])
 
   /** Coloca o pino num ponto e busca o endereço dele só para a pessoa conferir. */
-  const placeOrigin = useCallback((point: Coordinates) => {
-    setOrigin({ ...point, label: null })
-    setQuery('')
-    setSubmitError(null)
-    reverseRequest.current?.abort()
-    const controller = new AbortController()
-    reverseRequest.current = controller
-    setReverse({ loading: true, error: null })
-    rotasApi
-      .reversa(point, controller.signal)
-      .then((label) => {
-        setOrigin((current) => (sameCoordinates(current, point) ? { ...point, label } : current))
-        setQuery(label ?? '')
-        setReverse({ loading: false, error: null })
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return
-        setReverse({
-          loading: false,
-          error:
-            error instanceof Error
-              ? `${error.message} O ponto marcado ainda pode ser usado.`
-              : 'Não conseguimos o endereço deste ponto, mas ele ainda pode ser usado.',
+  const placeOrigin = useCallback(
+    (point: Coordinates) => {
+      cancelPending()
+      setOrigin({ ...point, label: null })
+      setQuery('')
+      setSubmitError(null)
+      const controller = new AbortController()
+      reverseRequest.current = controller
+      setReverse({ loading: true, error: null })
+      rotasApi
+        .reversa(point, controller.signal)
+        .then((label) => {
+          setOrigin((current) => (sameCoordinates(current, point) ? { ...point, label } : current))
+          // Não sobrescreve o que a pessoa já tenha começado a digitar.
+          setQuery((current) => (current === '' ? (label ?? '') : current))
+          setReverse({ loading: false, error: null })
         })
-      })
-  }, [])
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return
+          setReverse({
+            loading: false,
+            error:
+              error instanceof ApiError
+                ? `${error.message} O ponto marcado ainda pode ser usado.`
+                : 'Não conseguimos o endereço deste ponto, mas ele ainda pode ser usado.',
+          })
+        })
+    },
+    [cancelPending],
+  )
 
   function requestMyLocation() {
     if (!('geolocation' in navigator)) {
@@ -84,12 +105,18 @@ export default function Origin({ event }: { event: EventWithDetails }) {
       return
     }
     setGeo('locating')
+    const request = ++geoRequest.current
+    const stale = () => request !== geoRequest.current
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setGeo('idle')
+        if (stale()) return
         placeOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude })
       },
-      (error) => setGeo(error.code === PERMISSAO_NEGADA ? 'denied' : 'unavailable'),
+      (error) => {
+        if (stale()) setGeo('idle')
+        else setGeo(error.code === PERMISSAO_NEGADA ? 'denied' : 'unavailable')
+      },
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
     )
   }
@@ -171,15 +198,17 @@ export default function Origin({ event }: { event: EventWithDetails }) {
             help="Digite ao menos 3 letras e escolha uma das sugestões."
             value={query}
             onValueChange={(value) => {
+              cancelPending()
               setQuery(value)
               setSubmitError(null)
+              // Texto diferente da origem atual: ela deixa de valer até a pessoa escolher outra.
+              if (origin && value.trim() !== (origin.label ?? '').trim()) setOrigin(null)
             }}
             confirmed={origin?.label}
             near={event.location}
             invalid={Boolean(submitError)}
             onSelect={(sugestao) => {
-              reverseRequest.current?.abort()
-              setReverse({ loading: false, error: null })
+              cancelPending()
               setOrigin({
                 latitude: sugestao.latitude,
                 longitude: sugestao.longitude,
