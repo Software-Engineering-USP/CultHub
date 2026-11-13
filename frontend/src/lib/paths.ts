@@ -16,6 +16,7 @@ export const paths = {
   signIn: routes.signIn,
   account: routes.account,
   event: (id: string) => generatePath(routes.event, { id }),
-  eventOrigin: (id: string) => generatePath(routes.eventOrigin, { id }),
-  eventRoute: (id: string) => generatePath(routes.eventRoute, { id }),
+  /** `search` (ver lib/origin) leva a origem escolhida entre as páginas "Como chegar". */
+  eventOrigin: (id: string, search = '') => generatePath(routes.eventOrigin, { id }) + search,
+  eventRoute: (id: string, search = '') => generatePath(routes.eventRoute, { id }) + search,
 }

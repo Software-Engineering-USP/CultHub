@@ -1,27 +1,42 @@
 import { ArrowUpRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
+import StaticMap from '@/components/common/StaticMap'
 import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { logDemoAction } from '@/lib/demo'
+import { originSearch, parseMode, parseOrigin } from '@/lib/origin'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
-import type { EventWithDetails } from '@/types'
+import type { EventWithDetails, RouteOption } from '@/types'
+
+const modeText: Record<RouteOption['id'], string> = {
+  carro: 'de carro',
+  onibus: 'de ônibus',
+  ape: 'a pé',
+}
 
 const dotBase =
   "relative pl-5.5 before:absolute before:top-2 before:left-0 before:size-2 before:rounded-full before:border-2 before:border-maroon before:content-['']"
 
 export default function RoutePlan({ event }: { event: EventWithDetails }) {
   const routeOptions = useRouteOptions(event.id)
+  const [searchParams] = useSearchParams()
+  const origin = parseOrigin(searchParams)
+  const mode = parseMode(searchParams)
+  const changeOrigin = paths.eventOrigin(event.id, origin ? originSearch(origin, mode) : '')
   useDocumentTitle('Rota de exemplo | CultHub')
 
-  const selected = routeOptions[0]
+  const selected = routeOptions.find((route) => route.id === mode) ?? routeOptions[0]
   const itinerary = [
-    { title: 'Parta da origem fictícia', detail: 'Ponto indicado no mapa.' },
+    {
+      title: origin ? `Parta de ${origin.label ?? 'ponto marcado no mapa'}` : 'Parta da origem fictícia',
+      detail: origin ? 'Partida que você escolheu.' : 'Ponto indicado no mapa.',
+    },
     { title: 'Siga o trajeto destacado', detail: 'Percurso ilustrativo, sem vias confirmadas.' },
     { title: `Chegue ao ${event.venue}`, detail: 'Confirme o acesso nos canais do local.' },
   ]
@@ -32,17 +47,18 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
       description="Planeje seu caminho até a música. Compare as opções neste trajeto demonstrativo."
       status={
         <Badge variant="muted" size="md">
-          Rota ilustrativa • origem fictícia
+          {origin ? 'Rota ilustrativa • partida definida' : 'Rota ilustrativa • origem fictícia'}
         </Badge>
       }
-      map={{
-        src: '/assets/mapa-rota.png',
-        width: 856,
-        height: 690,
-        alt: 'Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real.',
-        caption:
-          'Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um serviço de mapas atualizado.',
-      }}
+      map={
+        <StaticMap
+          src="/assets/mapa-rota.png"
+          width={856}
+          height={690}
+          alt="Mapa ilustrativo de uma rota destacada entre uma origem fictícia e o destino. O percurso e os controles desenhados são estáticos, sem navegação real."
+          caption="Imagem estática do trajeto de exemplo. Não use este mapa para navegação: confirme o percurso em um serviço de mapas atualizado."
+        />
+      }
     >
       <PlanVisitPanel aria-labelledby="trajeto-titulo" className="bg-cream">
         <div className="mb-5 flex items-start justify-between gap-3.5">
@@ -56,11 +72,18 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
 
         <div className="mb-5.5 grid gap-4">
           <div className={dotBase}>
-            <Link to={paths.eventOrigin(event.id)} className="float-right text-2xs text-maroon underline">
+            <Link to={changeOrigin} className="float-right text-2xs text-maroon underline">
               Alterar
             </Link>
             <small className="block text-2xs text-muted-foreground">Partida</small>
-            <strong className="block text-xs">Sua localização • exemplo</strong>
+            <strong className="block text-xs">
+              {origin ? (origin.label ?? 'Ponto marcado no mapa') : 'Sua localização • exemplo'}
+            </strong>
+            {origin && (
+              <small className="block text-2xs text-muted-foreground">
+                Endereço © OpenStreetMap contributors
+              </small>
+            )}
           </div>
           <div className={cn(dotBase, 'before:bg-maroon')}>
             <small className="block text-2xs text-muted-foreground">Destino</small>
@@ -72,19 +95,19 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
           aria-label="Comparação ilustrativa de transportes, sem seleção interativa"
           className="mb-5.5 grid grid-cols-3 gap-2"
         >
-          {routeOptions.map((route, index) => (
+          {routeOptions.map((route) => (
             <li
               key={route.id}
               className={cn(
                 'rounded-xl border px-1 py-3 text-center max-md:px-2.5 max-md:py-3.5',
-                index === 0 ? 'border-sun/70 bg-primary/30' : 'border-border bg-card',
+                route.id === selected.id ? 'border-sun/70 bg-primary/30' : 'border-border bg-card',
               )}
             >
               <strong className="block text-2xs">{route.label}</strong>
               <span className="mt-1 block text-lg font-bold text-maroon">{route.time}</span>
               <small className="block text-2xs text-muted-foreground">
                 {route.detail}
-                {index === 0 && ' • em destaque'}
+                {route.id === selected.id && ' • em destaque'}
               </small>
             </li>
           ))}
@@ -93,10 +116,12 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
         <div className="mb-6 flex items-center justify-between gap-3.5 border-t border-maroon/10 pt-5">
           <div>
             <strong className="block text-3xl tracking-tighter text-maroon">{selected.time}</strong>
-            <small className="text-2xs">{selected.detail} • de carro</small>
+            <small className="text-2xs">
+              {selected.detail} • {modeText[selected.id]}
+            </small>
           </div>
           <span className="max-w-24 rounded-lg bg-muted px-2 py-1 text-center text-2xs text-muted-foreground">
-            Mais rápido no exemplo
+            {selected.tag} no exemplo
           </span>
         </div>
 
@@ -131,9 +156,11 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
         </DemoNote>
 
         <DemoNote size="xs" className="mt-4.5 border-t border-border pt-4">
-          Origem, distâncias e tempos são fictícios. Não há consulta de trânsito, cálculo de percurso ou
-          compartilhamento de localização.{' '}
-          <Link to={paths.eventOrigin(event.id)}>Voltar à definição de origem</Link>.
+          {origin
+            ? 'A partida é a que você escolheu; trajeto, distâncias e tempos ainda são fictícios.'
+            : 'Origem, distâncias e tempos são fictícios.'}{' '}
+          Não há consulta de trânsito ou cálculo de percurso.{' '}
+          <Link to={changeOrigin}>Voltar à definição de origem</Link>.
         </DemoNote>
       </PlanVisitPanel>
     </PlanVisitLayout>

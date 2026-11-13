@@ -1,5 +1,5 @@
 import type { ApiEvent, Paginated } from '@/services/catalog'
-import type { CategoryId, RouteOption } from '@/types'
+import type { CategoryId } from '@/types'
 
 // A conta usa as APIs reais; os demais fluxos ainda são simulados abaixo.
 
@@ -136,11 +136,5 @@ export const api = {
     update: (commentId: string, text: string) =>
       request('PATCH', `/comentarios/${encodeURIComponent(commentId)}/`, { texto: text }),
     remove: (commentId: string) => request('DELETE', `/comentarios/${encodeURIComponent(commentId)}/`),
-  },
-
-  /** Provisório */
-  routes: {
-    plan: (data: { eventId: string; origin: string; mode: RouteOption['id'] }) =>
-      request('POST', '/rotas/', { evento_id: data.eventId, origem: data.origin, transporte: data.mode }),
   },
 }
