@@ -76,6 +76,8 @@ export interface EventComment {
   text: string
 }
 
+export type RouteMode = 'carro' | 'onibus' | 'ape'
+
 export interface RouteOption {
   id: 'carro' | 'onibus' | 'ape'
   label: string
