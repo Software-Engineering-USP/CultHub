@@ -12,12 +12,12 @@ const OSM_ATTRIBUTION =
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 
 function pin(className: string, label: string) {
-  return L.divIcon({
-    className: '',
-    html: `<span role="img" aria-label="${label}" class="block size-5 rounded-full border-[3px] border-white shadow-md ${className}"></span>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-  })
+  // Montado pelo DOM (e não por string HTML): o label vem de APIs externas e não pode virar markup.
+  const span = document.createElement('span')
+  span.setAttribute('role', 'img')
+  span.setAttribute('aria-label', label)
+  span.className = `block size-5 rounded-full border-[3px] border-white shadow-md ${className}`
+  return L.divIcon({ className: '', html: span, iconSize: [20, 20], iconAnchor: [10, 10] })
 }
 
 function toLatLng({ latitude, longitude }: Coordinates): L.LatLngTuple {
@@ -59,31 +59,39 @@ export default function OriginMap({
   const destinationLat = destination?.latitude
   const destinationLng = destination?.longitude
 
+  // O mapa é criado uma vez; destino e origem só atualizam marcadores, sem recarregar os tiles.
   useEffect(() => {
     if (!container.current) return
-    const center =
-      destinationLat !== undefined && destinationLng !== undefined
-        ? { latitude: destinationLat, longitude: destinationLng }
-        : undefined
-    const instance = L.map(container.current, { scrollWheelZoom: false }).setView(
-      toLatLng(center ?? CENTRO_PADRAO),
-      center ? 15 : 12,
-    )
+    const instance = L.map(container.current, { scrollWheelZoom: false })
     instance.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>')
     L.tileLayer(TILE_URL, { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(instance)
-    if (center) {
-      L.marker(toLatLng(center), {
-        icon: pin('bg-maroon', `Destino: ${destinationLabel}`),
-        title: `Destino: ${destinationLabel}`,
-        keyboard: false,
-      }).addTo(instance)
-    }
     instance.on('click', (event: L.LeafletMouseEvent) => onChange.current(toCoordinates(event.latlng)))
     map.current = instance
     return () => {
       instance.remove()
       map.current = null
       originMarker.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const center =
+      destinationLat !== undefined && destinationLng !== undefined
+        ? { latitude: destinationLat, longitude: destinationLng }
+        : undefined
+    map.current?.setView(toLatLng(center ?? CENTRO_PADRAO), center ? 15 : 12)
+  }, [destinationLat, destinationLng])
+
+  useEffect(() => {
+    const instance = map.current
+    if (!instance || destinationLat === undefined || destinationLng === undefined) return
+    const marker = L.marker([destinationLat, destinationLng], {
+      icon: pin('bg-maroon', `Destino: ${destinationLabel}`),
+      title: `Destino: ${destinationLabel}`,
+      keyboard: false,
+    }).addTo(instance)
+    return () => {
+      marker.remove()
     }
   }, [destinationLat, destinationLng, destinationLabel])
 
