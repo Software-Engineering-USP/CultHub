@@ -183,6 +183,7 @@
 
 .weather-surface[data-weather='cloudy'] {
   background: linear-gradient(135deg, #cbd5e1 0%, #f1f5f9 100%);
+  --color-slate: #334155;
 }
 
 .weather-surface[data-weather='fog'] {
@@ -191,6 +192,7 @@
 
 .weather-surface[data-weather='rain'] {
   background: linear-gradient(135deg, #bfdbfe 0%, #eff6ff 100%);
+  --color-slate: #334155;
 }
 
 .weather-surface[data-weather='storm'] {

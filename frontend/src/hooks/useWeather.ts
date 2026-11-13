@@ -7,8 +7,11 @@ type WeatherState =
   | { key: string; status: 'ready'; weather: Weather }
   | { key: string; status: 'unavailable'; message: string }
 
+type WeatherResult =
+  { status: 'loading' } | { status: 'ready'; weather: Weather } | { status: 'unavailable'; message: string }
+
 /** Consulta a previsão do evento pela localização e data recebidas do catálogo. */
-export function useWeather(event: CultEvent) {
+export function useWeather(event: CultEvent): WeatherResult {
   const latitude = event.weatherLocation?.latitude ?? null
   const longitude = event.weatherLocation?.longitude ?? null
   const city = event.weatherLocation?.city ?? ''

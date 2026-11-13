@@ -32,7 +32,9 @@ const weather: Weather = {
 
 const getEventWeatherMock = vi.mocked(getEventWeather)
 
-beforeEach(() => getEventWeatherMock.mockReset())
+beforeEach(() => {
+  getEventWeatherMock.mockReset()
+})
 afterEach(() => vi.restoreAllMocks())
 
 describe('useWeather', () => {

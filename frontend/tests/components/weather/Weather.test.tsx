@@ -57,7 +57,7 @@ describe('WeatherCard', () => {
 
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: heading })).toHaveAttribute('data-weather', weather.theme)
-    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: weather.condition })).toHaveAttribute(
       'src',
       `https://cdn.meteocons.com/3.0.0-next.10/svg/line/${weather.iconSlug}.svg`,
     )
@@ -93,7 +93,7 @@ describe('WeatherStrip', () => {
       weather.theme,
     )
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
-    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: weather.condition })).toHaveAttribute(
       'src',
       `https://cdn.meteocons.com/3.0.0-next.10/svg/line/${weather.iconSlug}.svg`,
     )

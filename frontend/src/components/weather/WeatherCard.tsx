@@ -38,8 +38,7 @@ export default function WeatherCard({ event }: Readonly<{ event: CultEvent }>) {
       <div className="mt-6 mb-4 flex items-center gap-4.5">
         <img
           src={`https://cdn.meteocons.com/3.0.0-next.10/svg/line/${weather.iconSlug}.svg`}
-          alt=""
-          aria-hidden="true"
+          alt={weather.condition}
           loading="lazy"
           width="76"
           height="76"

@@ -18,8 +18,7 @@ export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) 
         <>
           <img
             src={`https://cdn.meteocons.com/3.0.0-next.10/svg/line/${result.weather.iconSlug}.svg`}
-            alt=""
-            aria-hidden="true"
+            alt={result.weather.condition}
             loading="lazy"
             width="60"
             height="60"
