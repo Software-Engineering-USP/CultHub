@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useCalendar } from '@/hooks/useUserEvents'
 import { addMonths, currentMonth, groupByDay, monthLabel, monthRange } from '@/lib/agenda'
+import { unavailableLabel } from '@/lib/events'
 import { paths } from '@/lib/paths'
 
 export default function AgendaSection() {
@@ -70,6 +71,11 @@ export default function AgendaSection() {
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1.5">
+                    {unavailableLabel(event) && (
+                      <Badge variant="muted" className="border-maroon/30 text-maroon">
+                        {unavailableLabel(event)}
+                      </Badge>
+                    )}
                     {event.attending && <Badge variant="success">Vou</Badge>}
                     {event.saved && <Badge variant="muted">Salvo</Badge>}
                   </div>

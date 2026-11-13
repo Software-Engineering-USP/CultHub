@@ -44,6 +44,34 @@ describe('AgendaSection', () => {
     expect(within(secondDay).queryByText('Vou')).not.toBeInTheDocument()
   })
 
+  it('mostra no dia 1 o evento que começou no mês anterior e marca os cancelados', async () => {
+    vi.spyOn(api.agenda, 'calendar').mockResolvedValue(
+      apiPage([
+        apiEvent({
+          id: 'expo',
+          titulo: 'Exposição',
+          data_inicio: '2026-10-20',
+          data_fim: '2026-11-20',
+          salvo: true,
+        }),
+        apiEvent({
+          id: 'show',
+          titulo: 'Show cancelado',
+          data_inicio: '2026-11-14',
+          situacao: 'cancelled',
+          presenca: true,
+        }),
+      ]),
+    )
+    renderWithRouter(<AgendaSection />)
+
+    await screen.findByRole('link', { name: 'Exposição' })
+    const firstDay = screen.getByRole('heading', { name: 'domingo, 1 de novembro' }).closest('li')!
+    expect(within(firstDay).getByRole('link', { name: 'Exposição' })).toBeInTheDocument()
+    const showDay = screen.getByRole('heading', { name: 'sábado, 14 de novembro' }).closest('li')!
+    expect(within(showDay).getByText('Cancelado')).toBeInTheDocument()
+  })
+
   it('troca de mês pelos botões e avisa quando não há nada', async () => {
     const calendar = vi.spyOn(api.agenda, 'calendar').mockResolvedValue(apiPage([]))
     const { user } = renderWithRouter(<AgendaSection />)
