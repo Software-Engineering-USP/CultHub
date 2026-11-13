@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { categories, categoryOrder } from '@/lib/categories'
@@ -34,6 +35,10 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
   if (initialPrice === 'gratuito') initialPriceMode = 'free'
   else if (initialPrice === 'pago') initialPriceMode = 'paid'
   const [price, setPrice] = useState<PriceMode>(initialPriceMode)
+  const [from, setFrom] = useState(searchParams.get('de') ?? '')
+  const [to, setTo] = useState(searchParams.get('ate') ?? '')
+  // Digitando a data, dá para passar por cima do min/max do campo.
+  const invalidPeriod = Boolean(from && to && from > to)
 
   function toggleCategory(id: CategoryId, checked: boolean) {
     setSelected((current) => {
@@ -50,6 +55,13 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
     else params.set('categorias', selected.join(','))
     if (price === 'all') params.delete('preco')
     else params.set('preco', price === 'free' ? 'gratuito' : 'pago')
+    for (const [key, value] of [
+      ['de', from],
+      ['ate', to],
+    ]) {
+      if (value) params.set(key, value)
+      else params.delete(key)
+    }
     navigate({ pathname: paths.home, search: params.toString() })
     onClose()
   }
@@ -99,6 +111,45 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
         </ToggleGroup>
       </fieldset>
 
+      <fieldset className="mt-4">
+        <legend className="mb-2 text-xs font-bold">Período</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-1">
+            <Label htmlFor="filtro-de" className="text-xs font-normal">
+              De
+            </Label>
+            <Input
+              id="filtro-de"
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(event) => setFrom(event.target.value)}
+              className="min-h-9 py-2"
+            />
+          </div>
+          <div className="grid gap-1">
+            <Label htmlFor="filtro-ate" className="text-xs font-normal">
+              Até
+            </Label>
+            <Input
+              id="filtro-ate"
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(event) => setTo(event.target.value)}
+              aria-invalid={invalidPeriod}
+              aria-describedby={invalidPeriod ? 'filtro-periodo-erro' : undefined}
+              className="min-h-9 py-2"
+            />
+          </div>
+        </div>
+        {invalidPeriod && (
+          <p id="filtro-periodo-erro" role="alert" className="mt-1.5 text-xs text-destructive">
+            A data final não pode ser anterior à inicial.
+          </p>
+        )}
+      </fieldset>
+
       <div className="mt-5 flex gap-2">
         <Button
           variant="outline"
@@ -106,12 +157,14 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
           onClick={() => {
             setSelected([...categoryOrder])
             setPrice('all')
+            setFrom('')
+            setTo('')
           }}
           className="border-maroon/30 text-maroon"
         >
           Limpar
         </Button>
-        <Button size="sm" onClick={apply} className="flex-1">
+        <Button size="sm" onClick={apply} disabled={invalidPeriod} className="flex-1">
           Aplicar filtros
         </Button>
       </div>

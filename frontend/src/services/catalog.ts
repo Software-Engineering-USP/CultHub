@@ -43,6 +43,9 @@ export interface CatalogQuery {
   q?: string
   categorias?: CategoryId[]
   preco?: 'gratuito' | 'pago' | 'desconhecido'
+  /** Período (AAAA-MM-DD); entram os eventos que acontecem em algum dia dele */
+  de?: string
+  ate?: string
   page?: number
 }
 
@@ -78,6 +81,8 @@ export const catalogApi = {
     if (query.q?.trim()) params.set('q', query.q.trim())
     if (query.categorias?.length) params.set('categorias', query.categorias.join(','))
     if (query.preco) params.set('preco', query.preco)
+    if (query.de) params.set('de', query.de)
+    if (query.ate) params.set('ate', query.ate)
     if (query.page && query.page > 1) params.set('page', String(query.page))
     const suffix = params.size ? `?${params.toString()}` : ''
     return get<Paginated<ApiEvent>>(`/eventos/${suffix}`, signal)

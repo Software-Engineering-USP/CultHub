@@ -42,11 +42,20 @@ describe('Home', () => {
 
   it('serializa os filtros da URL no contrato do backend', async () => {
     const events = vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([]))
-    renderWithRouter(<Home />, { route: '/?q=jazz&categorias=music,art&preco=gratuito' })
+    renderWithRouter(<Home />, {
+      route: '/?q=jazz&categorias=music,art&preco=gratuito&de=2026-12-01&ate=2026-12-31',
+    })
 
     await screen.findByText('Nenhum evento encontrado com esses filtros.')
     expect(events).toHaveBeenCalledWith(
-      { q: 'jazz', categorias: ['music', 'art'], preco: 'gratuito', page: 1 },
+      {
+        q: 'jazz',
+        categorias: ['music', 'art'],
+        preco: 'gratuito',
+        de: '2026-12-01',
+        ate: '2026-12-31',
+        page: 1,
+      },
       expect.any(AbortSignal),
     )
   })

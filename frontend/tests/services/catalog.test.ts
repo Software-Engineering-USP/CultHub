@@ -28,9 +28,16 @@ describe('catalogApi', () => {
     const fetch = vi.fn().mockResolvedValue(response({ count: 0, next: null, previous: null, results: [] }))
     vi.stubGlobal('fetch', fetch)
 
-    await catalogApi.events({ q: 'jazz & blues', categorias: ['music', 'art'], preco: 'gratuito', page: 2 })
+    await catalogApi.events({
+      q: 'jazz & blues',
+      categorias: ['music', 'art'],
+      preco: 'gratuito',
+      de: '2026-12-01',
+      ate: '2026-12-31',
+      page: 2,
+    })
     expect(fetch).toHaveBeenCalledWith(
-      '/api/eventos/?q=jazz+%26+blues&categorias=music%2Cart&preco=gratuito&page=2',
+      '/api/eventos/?q=jazz+%26+blues&categorias=music%2Cart&preco=gratuito&de=2026-12-01&ate=2026-12-31&page=2',
       { credentials: 'include', signal: undefined },
     )
   })

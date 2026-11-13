@@ -70,6 +70,18 @@ describe('useCatalog', () => {
     expect(events.mock.calls[0][1]?.aborted).toBe(true)
   })
 
+  it('busca de novo quando o período muda', async () => {
+    const events = vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([]))
+    const { rerender } = renderHook(({ ate }: { ate?: string }) => useCatalog({ de: '2026-12-01', ate }), {
+      initialProps: {},
+    })
+    await waitFor(() => expect(events).toHaveBeenCalledTimes(1))
+
+    rerender({ ate: '2026-12-31' })
+    await waitFor(() => expect(events).toHaveBeenCalledTimes(2))
+    expect(events.mock.calls[1][0]).toMatchObject({ de: '2026-12-01', ate: '2026-12-31' })
+  })
+
   it('não acrescenta uma página antiga depois que os filtros mudam', async () => {
     let resolveSecondPage!: (value: ReturnType<typeof apiPage>) => void
     const events = vi

@@ -16,7 +16,7 @@ export default function ListStatus({ loading, error, empty, emptyMessage }: Read
   }
   if (error) {
     return (
-      <p role="alert" className="border-destructive/30 bg-destructive/5 rounded-xl border p-4 text-sm">
+      <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
         {error}
       </p>
     )
