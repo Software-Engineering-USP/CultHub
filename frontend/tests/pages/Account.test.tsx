@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as demo from '@/lib/demo'
 import Account from '@/pages/Account'
 import { api } from '@/services/api'
 import type { ProfileResponse } from '@/services/api'
-import { apiEvent } from '@tests/fixtures/catalog'
+import { apiEvent, apiPage } from '@tests/fixtures/catalog'
 import { renderWithRouter } from '@tests/render'
 
 const profile: ProfileResponse = {
@@ -18,6 +18,11 @@ const profile: ProfileResponse = {
 }
 
 describe('Account', () => {
+  beforeEach(() => {
+    vi.spyOn(api.agenda, 'attendances').mockResolvedValue(apiPage([]))
+    vi.spyOn(api.agenda, 'calendar').mockResolvedValue(apiPage([]))
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -75,6 +80,8 @@ describe('Account', () => {
       'location',
     )
     expect(within(menu).getByRole('link', { name: 'Eventos salvos' })).not.toHaveAttribute('aria-current')
+    expect(within(menu).getByRole('link', { name: 'Minha agenda' })).toHaveAttribute('href', '#agenda')
+    expect(within(menu).getByRole('link', { name: 'Presenças' })).toHaveAttribute('href', '#presencas')
   })
 
   it('carrega eventos salvos da conta e permite abrir seus detalhes', async () => {
@@ -87,6 +94,6 @@ describe('Account', () => {
     renderWithRouter(<Account />)
 
     expect(await screen.findByRole('link', { name: 'Conhecer Show salvo' })).toBeInTheDocument()
-    expect(savedEvents).toHaveBeenCalledWith()
+    expect(savedEvents).toHaveBeenCalledWith(1)
   })
 })

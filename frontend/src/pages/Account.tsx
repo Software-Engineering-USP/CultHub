@@ -1,20 +1,23 @@
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import AgendaSection from '@/components/account/AgendaSection'
+import AttendanceSection from '@/components/account/AttendanceSection'
+import EventGrid from '@/components/account/EventGrid'
 import DemoNote from '@/components/common/DemoNote'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
 import InitialsAvatar from '@/components/common/InitialsAvatar'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
-import EventCard from '@/components/events/EventCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useActiveSection } from '@/hooks/useActiveSection'
 import { useAuth } from '@/hooks/useAuth'
 import { useUserComments } from '@/hooks/useComments'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEventById, useSavedEvents } from '@/hooks/useEvents'
+import { useEventById } from '@/hooks/useEvents'
+import { useSavedEvents } from '@/hooks/useUserEvents'
 import { categories } from '@/lib/categories'
 import { peerFocusRing } from '@/lib/classes'
 import { logDemoAction } from '@/lib/demo'
@@ -33,6 +36,8 @@ const sections = [
   { id: 'dados', label: 'Dados pessoais' },
   { id: 'preferencias', label: 'Preferências culturais' },
   { id: 'salvos', label: 'Eventos salvos' },
+  { id: 'agenda', label: 'Minha agenda' },
+  { id: 'presencas', label: 'Presenças' },
   { id: 'comentarios', label: 'Meus comentários' },
 ]
 const sectionIds = sections.map((section) => section.id)
@@ -53,7 +58,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
   const { updateUser, signOut } = useAuth()
   const navigate = useNavigate()
   const { active: activeSection, select: selectSection } = useActiveSection(sectionIds)
-  const { events: savedEvents, loading: savedEventsLoading, error: savedEventsError } = useSavedEvents()
+  const savedEvents = useSavedEvents()
   const [profileMessage, setProfileMessage] = useState('')
   const [preferencesMessage, setPreferencesMessage] = useState('')
   const [logoutMessage, setLogoutMessage] = useState('')
@@ -308,36 +313,20 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
               id="salvos-titulo"
               title="Eventos salvos"
               description={
-                savedEventsLoading
-                  ? 'Carregando eventos salvos…'
-                  : `${savedEvents.length} experiências salvas`
+                savedEvents.loading ? undefined : `${savedEvents.events.length} experiências salvas`
               }
-              marginClass="mb-5"
-              titleClassName="text-[24px]"
-            >
-              {savedEventsLoading && <span className="text-[12px] text-muted-foreground">Carregando…</span>}
-            </SectionHeading>
+              className="mb-5"
+              titleClassName="text-2xl"
+            />
 
-            {savedEventsError && (
-              <p
-                role="alert"
-                className="border-destructive/30 bg-destructive/5 mb-4 rounded-xl border p-4 text-sm"
-              >
-                {savedEventsError}
-              </p>
-            )}
-
-            <div className="grid grid-cols-2 gap-[22px] max-sm:grid-cols-[minmax(0,1fr)]">
-              {savedEvents.map((event) => (
-                <EventCard key={event.id} event={event} compact />
-              ))}
-            </div>
-            {!savedEventsLoading && !savedEventsError && savedEvents.length === 0 && (
-              <p className="mt-4 text-xs text-muted-foreground">
-                Você ainda não salvou nenhum evento. Explore o catálogo e salve os que quer acompanhar.
-              </p>
-            )}
+            <EventGrid
+              {...savedEvents}
+              emptyMessage="Você ainda não salvou nenhum evento. Explore o catálogo e salve os que quer acompanhar."
+            />
           </section>
+
+          <AgendaSection />
+          <AttendanceSection />
 
           <Surface as="section" id="comentarios" aria-labelledby="comentarios-titulo">
             <div className={panelHeading}>

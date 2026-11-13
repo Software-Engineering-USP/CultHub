@@ -24,6 +24,8 @@ export default function Home() {
     preco: (['gratuito', 'pago', 'desconhecido'] as const).find(
       (value) => value === searchParams.get('preco'),
     ),
+    de: searchParams.get('de') ?? undefined,
+    ate: searchParams.get('ate') ?? undefined,
   }
   const { events, count, loading, error, hasMore, loadMore } = useCatalog(query)
   useDocumentTitle('CultHub | Explore São Paulo')
@@ -96,7 +98,7 @@ export default function Home() {
         {error && (
           <p
             role="alert"
-            className="border-destructive/30 bg-destructive/5 mb-4 rounded-xl border p-4 text-sm"
+            className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
           >
             {error}
           </p>

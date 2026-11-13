@@ -58,6 +58,10 @@ describe('api', () => {
     await api.events.unattend('evento/42')
     await api.agenda.savedEvents()
     await api.agenda.savedEvents(2)
+    await api.agenda.attendances('futuras')
+    await api.agenda.attendances('passadas', 3)
+    await api.agenda.calendar('2026-11-01', '2026-11-30')
+    await api.agenda.calendar('2026-11-01', '2026-11-30', 2)
 
     expect(fetchMock.mock.calls.map(([url, options]) => [url, (options as RequestInit).method])).toEqual([
       ['/api/eventos/evento%2F42/salvar/', 'POST'],
@@ -66,6 +70,10 @@ describe('api', () => {
       ['/api/eventos/evento%2F42/presenca/', 'DELETE'],
       ['/api/eu/salvos/', 'GET'],
       ['/api/eu/salvos/?page=2', 'GET'],
+      ['/api/eu/presencas/?quando=futuras', 'GET'],
+      ['/api/eu/presencas/?quando=passadas&page=3', 'GET'],
+      ['/api/eu/agenda/?de=2026-11-01&ate=2026-11-30', 'GET'],
+      ['/api/eu/agenda/?de=2026-11-01&ate=2026-11-30&page=2', 'GET'],
     ])
   })
 
