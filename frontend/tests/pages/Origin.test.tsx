@@ -157,6 +157,17 @@ describe('Origin', () => {
     expect(campo).toHaveValue(augusta.rotulo)
   })
 
+  it('↑ sem nada selecionado vai para a última sugestão', async () => {
+    const paulista = { rotulo: 'Av. Paulista, 1000', latitude: -23.56, longitude: -46.65 }
+    vi.spyOn(rotasApi, 'buscarOrigem').mockResolvedValue([augusta, paulista])
+    const { user } = renderOrigin()
+    const campo = await screen.findByRole('combobox', { name: 'Endereço de partida' })
+    await user.type(campo, 'sao paulo')
+    await screen.findByRole('option', { name: paulista.rotulo })
+    await user.keyboard('{ArrowUp}')
+    expect(screen.getByRole('option', { name: paulista.rotulo })).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('não busca com menos de 3 letras e avisa quando o serviço de endereços falha', async () => {
     const busca = vi
       .spyOn(rotasApi, 'buscarOrigem')

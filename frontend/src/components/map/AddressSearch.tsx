@@ -56,7 +56,12 @@ export default function AddressSearch({
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       const step = event.key === 'ArrowDown' ? 1 : -1
-      setActive((current) => (current + step + resultados.length) % resultados.length)
+      const total = resultados.length
+      setActive((current) => {
+        // Sem item ativo, ↓ vai para o primeiro e ↑ para o último.
+        if (current < 0) return step > 0 ? 0 : total - 1
+        return (current + step + total) % total
+      })
     } else if (event.key === 'Enter' && active >= 0) {
       event.preventDefault()
       choose(resultados[active])
