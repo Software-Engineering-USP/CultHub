@@ -84,17 +84,15 @@ Eventos retornados pelo catálogo têm páginas de detalhes. Os dados de exemplo
 
 ## Rota até o evento
 
-O backend já calcula a rota de carro e a pé até o local do evento, mas a página `/eventos/:id/rota` ainda usa os dados de exemplo de `data/routes.ts`. A API é `GET /api/rotas/eventos/{uuid}/?latitude=&longitude=&modo=carro|a_pe`: `latitude` e `longitude` são o ponto de partida, e a comparação dos modos pede uma chamada por modo. Ao integrar:
+A página `/eventos/:id/rota` recebe a partida pela URL (`?latitude=&longitude=&rotulo=&modo=`, ver `lib/origin.ts`) e chama `GET /api/rotas/eventos/{uuid}/?latitude=&longitude=&modo=carro|a_pe` uma vez por modo (`hooks/useEventRoutes.ts`). O mapa (`components/map/RouteMap.tsx`) desenha a rota escolhida e as alternativas. Sem partida na URL, a página pede para escolher uma.
 
-- **Atribuição obrigatória:** mostre "© OpenStreetMap contributors" e um link para corrigir o mapa ([openstreetmap.org/fixthemap](https://www.openstreetmap.org/fixthemap)) onde a rota aparece. É exigência da licença dos dados (ODbL) e da política do servidor de rotas (`routing.openstreetmap.de`).
-- **Ordem das coordenadas:** `geometria` é um GeoJSON `LineString`, com pares `[longitude, latitude]`. O Leaflet espera `[lat, lng]`: inverta cada par ou use `L.geoJSON`, que já lê GeoJSON. O MapLibre usa o GeoJSON direto.
-- **Lista vazia:** `rotas` pode vir `[]` quando não há trajeto a partir daquele ponto. Não é erro: avise e deixe a pessoa mover o pino. Hoje o `RoutePlan.tsx` usa `routeOptions[0]` sem checar se a lista está vazia.
-- **Erros a tratar:**
-  - **400:** parâmetro inválido (formato do DRF, com a lista de erros por campo) ou partida a mais de 150 km (carro) ou 30 km (a pé) do local, em linha reta. Neste último caso, `detail` traz uma mensagem pronta para mostrar.
-  - **429:** limite de pedidos atingido (30 rotas por minuto por IP; a busca e a reversa de endereço dividem 60 por minuto). O cabeçalho `Retry-After` diz quantos segundos esperar. Use uma mensagem própria, porque o `detail` vem com a tradução padrão do DRF ("Pedido foi suprimido...").
-  - **422:** o local do evento não tem coordenadas ou está fora do mapa (`detail` com mensagem pronta).
-  - **502:** o serviço de rotas falhou (`detail` com mensagem pronta).
-- **Duração sem trânsito:** o tempo de carro é estimado pela velocidade das vias, sem trânsito em tempo real. Deixe isso claro na tela.
+- **Atribuição obrigatória:** o mapa mostra "© OpenStreetMap contributors" e o link "Corrigir o mapa" ([openstreetmap.org/fixthemap](https://www.openstreetmap.org/fixthemap)), como pedem a licença dos dados (ODbL) e a política do servidor de rotas (`routing.openstreetmap.de`). Mantenha os dois em qualquer lugar onde a rota apareça.
+- **Ordem das coordenadas:** `geometria` é um GeoJSON `LineString`, com pares `[longitude, latitude]`. O `RouteMap` usa `L.geoJSON`, que já lê nessa ordem; para usar os pares direto no Leaflet, inverta cada um.
+- **Lista vazia:** `rotas: []` quando não há trajeto a partir daquele ponto. A página avisa e oferece "Alterar partida".
+- **Erros:** o 429 tem mensagem própria, porque o `detail` vem com a tradução padrão do DRF. O 400 (partida a mais de 150 km de carro ou 30 km a pé), o 422 e o 502 mostram o `detail` do backend, que já vem pronto. Cada modo tem o próprio erro: se a pé falhar, carro continua aparecendo.
+- **Ônibus:** aparece como "em breve" e não pode ser escolhido. Um `modo=onibus` na URL cai no carro.
+- **Duração sem trânsito:** o tempo de carro é estimado pela velocidade das vias, sem trânsito em tempo real, e a página diz isso.
+- **Abrir no app de mapas:** o link leva ao site do OpenStreetMap, com o mesmo motor de rotas (`fossgis_osrm_car` ou `fossgis_osrm_foot`).
 
 ## Cores, tamanhos e Tailwind
 
