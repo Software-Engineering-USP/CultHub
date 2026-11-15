@@ -62,9 +62,9 @@ describe('EventDetail', () => {
       'href',
       paths.eventOrigin(id),
     )
-    expect(screen.getByRole('link', { name: 'Ver rota completa de exemplo' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Definir partida/ })).toHaveAttribute(
       'href',
-      paths.eventRoute(id),
+      paths.eventOrigin(id),
     )
     expect(screen.getByRole('heading', { name: 'Clima no horário do evento' })).toBeInTheDocument()
   })

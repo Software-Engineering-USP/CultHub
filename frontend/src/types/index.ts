@@ -76,14 +76,6 @@ export interface EventComment {
   text: string
 }
 
-export interface RouteOption {
-  id: 'carro' | 'onibus' | 'ape'
-  label: string
-  time: string
-  detail: string
-  tag: string
-}
-
 export type TransportModeId = 'carro' | 'onibus' | 'ape'
 
 /** Modo de transporte da tela "Como chegar"; `available: false` aparece como "em breve". */

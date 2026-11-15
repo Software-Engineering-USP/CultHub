@@ -1,6 +1,6 @@
 import { ArrowRight, LocateFixed, MapPin } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import DemoNote from '@/components/common/DemoNote'
 import IconTile from '@/components/common/IconTile'
 import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
@@ -9,15 +9,15 @@ import OriginMap from '@/components/map/OriginMap'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useRouteOptions } from '@/hooks/useRouteOptions'
 import { peerFocusRing } from '@/lib/classes'
 import { onFormSubmit, text } from '@/lib/forms'
-import { originSearch, parseMode, parseOrigin } from '@/lib/origin'
+import { originSearch, parseMode, parseOrigin, transportModes } from '@/lib/origin'
+import type { RoutableMode } from '@/lib/origin'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/services/catalog'
 import { rotasApi } from '@/services/rotas'
-import type { Coordinates, EventWithDetails, RouteOption, RouteOrigin } from '@/types'
+import type { Coordinates, EventWithDetails, RouteOrigin } from '@/types'
 
 type GeoStatus = 'idle' | 'locating' | 'denied' | 'unavailable'
 
@@ -35,7 +35,6 @@ function sameCoordinates(a: Coordinates | null, b: Coordinates) {
 
 export default function Origin({ event }: { event: EventWithDetails }) {
   const navigate = useNavigate()
-  const routeOptions = useRouteOptions(event.id)
   const [searchParams] = useSearchParams()
   const [origin, setOrigin] = useState<RouteOrigin | null>(() => parseOrigin(searchParams) ?? null)
   const [query, setQuery] = useState(() => origin?.label ?? '')
@@ -188,7 +187,7 @@ export default function Origin({ event }: { event: EventWithDetails }) {
               document.getElementById('endereco')?.focus()
               return
             }
-            const mode = text(data, 'transporte') as RouteOption['id']
+            const mode = text(data, 'transporte') as RoutableMode
             navigate(paths.eventRoute(event.id, originSearch(origin, mode)))
           })}
         >
@@ -233,36 +232,34 @@ export default function Origin({ event }: { event: EventWithDetails }) {
             </div>
           </div>
 
-          <fieldset aria-describedby="transporte-aviso" className="mb-4.5 min-w-0">
+          <fieldset className="mb-4.5 min-w-0">
             <legend className="mb-2 text-xs font-semibold">Como você quer ir?</legend>
             <div className="grid grid-cols-3 gap-2">
-              {routeOptions.map((route) => (
-                <div key={route.id} className="relative">
+              {transportModes.map((mode) => (
+                <div key={mode.id} className="relative">
                   <input
-                    id={route.id}
+                    id={mode.id}
                     name="transporte"
                     type="radio"
-                    value={route.id}
-                    defaultChecked={route.id === initialMode}
+                    value={mode.id}
+                    disabled={!mode.available}
+                    defaultChecked={mode.id === initialMode}
                     className="peer absolute top-3 left-2.5 mt-0.5 size-3 accent-maroon"
                   />
                   <label
-                    htmlFor={route.id}
+                    htmlFor={mode.id}
                     className={cn(
-                      'block rounded-xl border border-border bg-card py-2.5 pr-2 pl-7 text-center text-2xs peer-checked:border-sun/70 peer-checked:bg-primary/30 peer-checked:font-bold peer-checked:text-maroon max-md:text-xs max-sm:text-2xs',
+                      'block rounded-xl border border-border bg-card py-2.5 pr-2 pl-7 text-center text-2xs peer-checked:border-sun/70 peer-checked:bg-primary/30 peer-checked:font-bold peer-checked:text-maroon peer-disabled:cursor-not-allowed peer-disabled:opacity-60 max-md:text-xs max-sm:text-2xs',
                       peerFocusRing,
                     )}
                   >
-                    {route.label}
+                    {mode.label}
+                    {!mode.available && <small className="block text-2xs">em breve</small>}
                   </label>
                 </div>
               ))}
             </div>
           </fieldset>
-
-          <DemoNote id="transporte-aviso" size="xs" className="mt-2.5 mb-3.5">
-            O trajeto e os tempos de cada transporte ainda são de exemplo.
-          </DemoNote>
 
           {submitError && (
             <p role="alert" className="mb-3 text-xs text-maroon">
@@ -274,12 +271,6 @@ export default function Origin({ event }: { event: EventWithDetails }) {
             Traçar rota <ArrowRight />
           </Button>
         </form>
-
-        <Button asChild variant="link" className="mt-4 flex">
-          <Link to={paths.eventRoute(event.id)}>
-            Ver rota de exemplo <ArrowRight />
-          </Link>
-        </Button>
 
         <DemoNote size="xs" className="mt-4.5 border-t border-border pt-4">
           Endereços e mapa © OpenStreetMap contributors. O endereço digitado e o ponto marcado só servem para
