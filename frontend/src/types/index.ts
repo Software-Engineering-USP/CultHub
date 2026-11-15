@@ -84,6 +84,23 @@ export interface RouteOption {
   tag: string
 }
 
+export type TransportModeId = 'carro' | 'onibus' | 'ape'
+
+/** Modo de transporte da tela "Como chegar"; `available: false` aparece como "em breve". */
+export interface TransportMode {
+  id: TransportModeId
+  label: string
+  available: boolean
+}
+
+/** Uma rota calculada pelo backend (`GET /api/rotas/eventos/<id>/`). */
+export interface CalculatedRoute {
+  distancia_metros: number
+  duracao_segundos: number
+  /** GeoJSON, com pares `[longitude, latitude]` */
+  geometria: { type: 'LineString'; coordinates: [number, number][] }
+}
+
 export interface Weather {
   condition: string
   iconSlug: string

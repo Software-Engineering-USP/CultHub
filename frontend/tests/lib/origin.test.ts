@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { originSearch, parseMode, parseOrigin } from '@/lib/origin'
+import {
+  formatDistance,
+  formatDuration,
+  openStreetMapDirections,
+  originSearch,
+  parseMode,
+  parseOrigin,
+} from '@/lib/origin'
 
 describe('origin', () => {
   it('leva a origem e o modo pela query string e volta igual', () => {
@@ -26,7 +33,36 @@ describe('origin', () => {
     expect(parseOrigin(new URLSearchParams(search))).toBeUndefined()
   })
 
-  it('ignora modo desconhecido', () => {
-    expect(parseMode(new URLSearchParams('?modo=aviao'))).toBeUndefined()
+  it.each(['aviao', 'onibus'])('ignora modo desconhecido ou indisponível (%s)', (modo) => {
+    expect(parseMode(new URLSearchParams({ modo }))).toBeUndefined()
+  })
+
+  it.each([
+    [30, '30 s'],
+    [0, '1 s'],
+    [1121, '19 min'],
+    [8700, '2 h 25 min'],
+    [10_800, '3 h'],
+  ])('formata %i segundos como "%s"', (seconds, text) => {
+    expect(formatDuration(seconds)).toBe(text)
+  })
+
+  it.each([
+    [850.4, '850 m'],
+    [1000, '1 km'],
+    [10_722, '10,7 km'],
+  ])('formata %i metros como "%s"', (meters, text) => {
+    expect(formatDistance(meters)).toBe(text)
+  })
+
+  it('monta o link de rota do OpenStreetMap com o motor do modo', () => {
+    const origem = { latitude: -23.5, longitude: -46.6 }
+    const destino = { latitude: -23.6, longitude: -46.7 }
+    const carro = new URL(openStreetMapDirections(origem, destino, 'carro'))
+    expect(carro.origin + carro.pathname).toBe('https://www.openstreetmap.org/directions')
+    expect(carro.searchParams.get('engine')).toBe('fossgis_osrm_car')
+    expect(carro.searchParams.get('route')).toBe('-23.5,-46.6;-23.6,-46.7')
+    const aPe = new URL(openStreetMapDirections(origem, destino, 'ape'))
+    expect(aPe.searchParams.get('engine')).toBe('fossgis_osrm_foot')
   })
 })

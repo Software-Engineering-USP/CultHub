@@ -85,4 +85,43 @@ describe('rotasApi', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort))
     await expect(rotasApi.reversa({ latitude: 0, longitude: 0 }, controller.signal)).rejects.toBe(abort)
   })
+  describe('rotaEvento', () => {
+    const partida = { latitude: -23.5874, longitude: -46.6576 }
+
+    it('pede a rota do evento a partir da partida, no modo da API', async () => {
+      const body = {
+        modo: 'a_pe',
+        destino: { latitude: -23.6, longitude: -46.72 },
+        rotas: [
+          {
+            distancia_metros: 10800,
+            duracao_segundos: 8700,
+            geometria: { type: 'LineString', coordinates: [[-46.65, -23.58]] },
+          },
+        ],
+      }
+      const fetch = vi.fn().mockResolvedValue(response(body))
+      vi.stubGlobal('fetch', fetch)
+
+      await expect(rotasApi.rotaEvento('ev 1', partida, 'a_pe')).resolves.toEqual(body)
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/rotas/eventos/ev%201/?latitude=-23.5874&longitude=-46.6576&modo=a_pe',
+        { credentials: 'include', signal: undefined },
+      )
+    })
+
+    it.each([
+      [400, { detail: 'Escolha um ponto de partida a até 30 km do local do evento.' }, /até 30 km/],
+      [422, { detail: 'O local deste evento não tem coordenadas.' }, /não tem coordenadas/],
+      [502, { detail: 'Não foi possível calcular a rota.' }, /Não foi possível calcular a rota/],
+      [502, {}, /Não foi possível calcular a rota/],
+      [429, { detail: 'Pedido foi suprimido.' }, /Muitas consultas seguidas/],
+    ])('transforma HTTP %i em ApiError com a mensagem certa', async (status, body, message) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(body, status)))
+      await expect(rotasApi.rotaEvento('ev', partida, 'carro')).rejects.toMatchObject({
+        status,
+        message: expect.stringMatching(message),
+      })
+    })
+  })
 })
