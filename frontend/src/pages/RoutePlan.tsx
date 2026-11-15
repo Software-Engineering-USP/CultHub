@@ -23,7 +23,12 @@ import {
 import type { RoutableMode } from '@/lib/origin'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
-import type { EventWithDetails, RouteOrigin } from '@/types'
+import type { CalculatedRoute, EventWithDetails, RouteOrigin } from '@/types'
+
+/** Chave estável de uma rota: rotas diferentes não têm a mesma distância, duração e número de pontos. */
+function routeKey(route: CalculatedRoute) {
+  return `${route.distancia_metros}:${route.duracao_segundos}:${route.geometria.coordinates.length}`
+}
 
 const modeText: Record<RoutableMode, string> = { carro: 'de carro', ape: 'a pé' }
 
@@ -213,9 +218,9 @@ function RouteDetails({
 
   if (!state || state.status === 'loading') {
     return (
-      <p role="status" className="mb-5.5 text-xs text-muted-foreground">
+      <output className="mb-5.5 block text-xs text-muted-foreground">
         Calculando a rota {modeText[mode]}…
-      </p>
+      </output>
     )
   }
   if (state.status === 'error') {
@@ -263,7 +268,7 @@ function RouteDetails({
           <div className="grid gap-2">
             {state.rotas.map((option, position) => (
               <label
-                key={position}
+                key={routeKey(option)}
                 className={cn(
                   'flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-2xs has-focus-visible:outline-3 has-focus-visible:outline-offset-3 has-focus-visible:outline-ring',
                   position === index
