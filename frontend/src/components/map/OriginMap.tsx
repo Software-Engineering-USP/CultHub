@@ -1,7 +1,7 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
-import { CENTRO_PADRAO, createMap, pin, toCoordinates, toLatLng } from '@/lib/leaflet'
+import { CENTRO_PADRAO, createMap, markerPin, pin, toCoordinates, toLatLng } from '@/lib/leaflet'
 import type { Coordinates } from '@/types'
 
 interface OriginMapProps {
@@ -60,7 +60,7 @@ export default function OriginMap({
     const instance = map.current
     if (!instance || destinationLat === undefined || destinationLng === undefined) return
     const marker = L.marker([destinationLat, destinationLng], {
-      icon: pin('bg-maroon', `Destino: ${destinationLabel}`),
+      icon: markerPin('text-maroon', `Destino: ${destinationLabel}`),
       title: `Destino: ${destinationLabel}`,
       keyboard: false,
     }).addTo(instance)

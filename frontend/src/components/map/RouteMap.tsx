@@ -1,7 +1,7 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
-import { createMap, OSM_ATTRIBUTION, pin } from '@/lib/leaflet'
+import { createMap, markerPin, OSM_ATTRIBUTION, pin } from '@/lib/leaflet'
 import type { RotaCalculada } from '@/services/rotas'
 import type { Coordinates } from '@/types'
 
@@ -28,7 +28,7 @@ export default function RouteMap({
 
   useEffect(() => {
     if (!container.current) return
-    const instance = createMap(container.current, ATTRIBUTION)
+    const instance = createMap(container.current, { attribution: ATTRIBUTION })
     map.current = instance
     return () => {
       instance.remove()
@@ -50,7 +50,7 @@ export default function RouteMap({
     if (destinationLat !== undefined && destinationLng !== undefined) {
       layers.push(
         L.marker([destinationLat, destinationLng], {
-          icon: pin('bg-maroon', `Destino: ${destinationLabel}`),
+          icon: markerPin('text-maroon', `Destino: ${destinationLabel}`),
           title: `Destino: ${destinationLabel}`,
           keyboard: false,
         }),
