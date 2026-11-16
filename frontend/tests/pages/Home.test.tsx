@@ -1,8 +1,8 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { categoryOrder } from '@/lib/categories'
-import * as demo from '@/lib/demo'
-import { paths } from '@/lib/paths'
+import { paths, routes } from '@/lib/paths'
 import Home from '@/pages/Home'
 import { catalogApi } from '@/services/catalog'
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
@@ -32,7 +32,9 @@ describe('Home', () => {
     renderWithRouter(<Home />)
 
     expect(screen.getByRole('heading', { level: 1, name: 'Mapa de Eventos' })).toBeInTheDocument()
-    expect(screen.getByRole('figure')).toHaveTextContent('OpenStreetMap contributors')
+    expect(await screen.findByRole('region', { name: 'Mapa dos eventos' })).toHaveTextContent(
+      'OpenStreetMap contributors',
+    )
     expect(
       within(screen.getByRole('list', { name: 'Legenda de categorias' })).getAllByRole('listitem'),
     ).toHaveLength(categoryOrder.length)
@@ -83,11 +85,69 @@ describe('Home', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Backend indisponível (503)')
   })
 
-  it('"Minha Localização" continua claramente demonstrativa', async () => {
+  it('mostra no mapa os pinos dos eventos com local e abre o evento ao clicar', async () => {
+    const local = { nome: 'Parque', endereco: '', cidade: 'São Paulo', estado: 'SP' }
+    vi.spyOn(catalogApi, 'events').mockResolvedValue(
+      apiPage([
+        apiEvent({
+          id: 'com-local',
+          titulo: 'Show no parque',
+          local: { ...local, latitude: -23.58, longitude: -46.65 },
+        }),
+        apiEvent({ id: 'sem-local', titulo: 'Show sem local', local }),
+      ]),
+    )
+    renderWithRouter(
+      <Routes>
+        <Route path={routes.home} element={<Home />} />
+        <Route path={routes.event} element={<p>Página do evento</p>} />
+      </Routes>,
+    )
+
+    const map = await screen.findByRole('region', { name: 'Mapa dos eventos' })
+    expect(await within(map).findByRole('img', { name: 'Show no parque' })).toBeInTheDocument()
+    expect(within(map).queryByRole('img', { name: 'Show sem local' })).not.toBeInTheDocument()
+    expect(screen.getByText('1 evento da lista abaixo está no mapa.')).toBeInTheDocument()
+
+    // No jsdom o Leaflet não calcula a posição de um clique; o Enter no pino (keypress) dispara o mesmo evento.
+    const pinIcon = within(map).getByRole('img', { name: 'Show no parque' }).closest('.leaflet-marker-icon')
+    fireEvent.keyPress(pinIcon!, { key: 'Enter', keyCode: 13, charCode: 13 })
+    expect(await screen.findByText('Página do evento')).toBeInTheDocument()
+  })
+
+  it('"Minha Localização" pede a posição e marca a pessoa no mapa', async () => {
     vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([]))
-    const log = vi.spyOn(demo, 'logDemoAction').mockImplementation(() => {})
+    const getCurrentPosition = vi.fn((success: PositionCallback) =>
+      success({ coords: { latitude: -23.6, longitude: -46.7 } } as GeolocationPosition),
+    )
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      permissions: { query: vi.fn().mockResolvedValue({ state: 'prompt' }) },
+      geolocation: { getCurrentPosition },
+    })
     const { user } = renderWithRouter(<Home />)
+
+    expect(screen.queryByRole('img', { name: 'Você está aqui' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Minha Localização/ }))
-    expect(log).toHaveBeenCalledWith('Pedir localização do usuário')
+    expect(await screen.findByRole('img', { name: 'Você está aqui' })).toBeInTheDocument()
+    expect(getCurrentPosition).toHaveBeenCalledOnce()
+    vi.unstubAllGlobals()
+  })
+
+  it('avisa quando a pessoa não permite a localização', async () => {
+    vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([]))
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      permissions: { query: vi.fn().mockResolvedValue({ state: 'prompt' }) },
+      geolocation: {
+        getCurrentPosition: (_: PositionCallback, failure: PositionErrorCallback) =>
+          failure({ code: 1 } as GeolocationPositionError),
+      },
+    })
+    const { user } = renderWithRouter(<Home />)
+
+    await user.click(screen.getByRole('button', { name: /Minha Localização/ }))
+    expect(await screen.findByText(/Você não permitiu o uso da localização/)).toBeInTheDocument()
+    vi.unstubAllGlobals()
   })
 })

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import RoutePreview from '@/components/events/RoutePreview'
 import { originSearch } from '@/lib/origin'
@@ -71,11 +71,13 @@ describe('RoutePreview', () => {
     renderWithRouter(<RoutePreview event={emSaoPaulo} />)
 
     expect(await screen.findByText('Da sua localização')).toBeInTheDocument()
-    expect(spy).toHaveBeenLastCalledWith(
-      emSaoPaulo.id,
-      { latitude: -23.6, longitude: -46.7 },
-      expect.any(String),
-      expect.any(AbortSignal),
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        emSaoPaulo.id,
+        { latitude: -23.6, longitude: -46.7 },
+        expect.any(String),
+        expect.any(AbortSignal),
+      ),
     )
   })
 
@@ -85,7 +87,8 @@ describe('RoutePreview', () => {
     renderWithRouter(<RoutePreview event={emSaoPaulo} />)
 
     await screen.findByText('Da sua localização')
-    expect(spy.mock.calls.map(([, partida]) => partida.latitude)).toEqual([-23.6, -23.6])
+    // As chamadas saem num efeito logo depois do render; esperar evita falha intermitente.
+    await waitFor(() => expect(spy.mock.calls.map(([, partida]) => partida.latitude)).toEqual([-23.6, -23.6]))
   })
 
   it('para eventos longe de SP, só oferece definir a partida', async () => {
