@@ -31,6 +31,32 @@ jobs:
           path: backend/coverage.xml
           if-no-files-found: error
 
+  # A produção roda em Postgres; o SQLite aceita coisas que ele recusa.
+  backend-postgres:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+      - run: "pip install --only-binary :all: --require-hashes -r requirements.lock"
+      - run: python manage.py test
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -59,6 +85,9 @@ jobs:
       - run: docker run --rm culthub-backend python manage.py check
       - run: docker build -t culthub-frontend frontend
       - run: docker run --rm culthub-frontend npx vite build --outDir /tmp/dist
+      # Imagem de produção (API + front na mesma origem).
+      - run: docker build -t culthub-producao .
+      - run: docker run --rm -e DJANGO_SECRET_KEY=ci culthub-producao python manage.py check --deploy
 
   sonarqube:
     needs: [backend, frontend]
