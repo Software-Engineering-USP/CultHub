@@ -87,9 +87,24 @@ jobs:
       - run: docker run --rm culthub-frontend npx vite build --outDir /tmp/dist
       # Imagem de produção (API + front na mesma origem).
       - run: docker build -t culthub-producao .
-      # Sem DATABASE_URL o banco é um SQLite, e o usuário da imagem só
-      # consegue criá-lo em /tmp.
-      - run: docker run --rm -e DJANGO_SECRET_KEY=ci -e DJANGO_DB_PATH=/tmp/db.sqlite3 culthub-producao python manage.py check --deploy
+      # Sobe o container como em produção (migrações + gunicorn) e confere
+      # a API e o front. Sem DATABASE_URL o banco é um SQLite, e o usuário
+      # da imagem só consegue criá-lo em /tmp.
+      - name: Sobe a imagem de produção e testa
+        run: |
+          docker run -d --name producao -p 10000:10000 \
+            -e DJANGO_SECRET_KEY=ci -e DJANGO_DB_PATH=/tmp/db.sqlite3 \
+            culthub-producao
+          for tentativa in $(seq 1 30); do
+            curl -fsS http://localhost:10000/api/categorias/ && break
+            sleep 2
+          done
+          curl -fsS http://localhost:10000/api/categorias/ > /dev/null
+          curl -fsS http://localhost:10000/ | grep -q '<div id="root">'
+          curl -fsS http://localhost:10000/eventos > /dev/null
+          curl -fsS -o /dev/null http://localhost:10000/static/admin/css/base.css
+      - if: always()
+        run: docker logs producao
 
   sonarqube:
     needs: [backend, frontend]

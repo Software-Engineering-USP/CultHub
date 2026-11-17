@@ -36,6 +36,10 @@ urlpatterns = [
         name="docs",
     ),
     # Qualquer outro caminho é uma rota do React (quando o front buildado
-    # está na mesma imagem; ver FRONTEND_DIST).
-    re_path(r"^(?!api/|admin/|static/).*$", pagina_do_front),
+    # está na mesma imagem; ver FRONTEND_DIST). Arquivo de `assets/` que
+    # não existe responde 404, e não a página.
+    re_path(
+        r"^(?!(?:api|admin|static|assets)(?:/|$)).*$",
+        pagina_do_front,
+    ),
 ]

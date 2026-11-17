@@ -22,10 +22,19 @@ class PaginaDoFrontTest(SimpleTestCase):
                     self.assertEqual(resposta["Cache-Control"], "no-cache")
                     self.assertIn(b"id='root'", resposta.getvalue())
 
-    def test_caminho_da_api_inexistente_continua_404(self):
+    def test_api_e_arquivo_inexistentes_continuam_404(self):
         with override_settings(FRONTEND_DIST=self.dist):
-            resposta = self.client.get("/api/nao-existe/")
-        self.assertEqual(resposta.status_code, 404)
+            for caminho in ("/api/nao-existe/", "/assets/antigo-abc123.js"):
+                with self.subTest(caminho=caminho):
+                    resposta = self.client.get(caminho)
+                    self.assertEqual(resposta.status_code, 404)
+
+    def test_admin_sem_barra_redireciona_para_o_admin(self):
+        with override_settings(FRONTEND_DIST=self.dist):
+            resposta = self.client.get("/admin")
+        self.assertRedirects(
+            resposta, "/admin/", status_code=301, target_status_code=302
+        )
 
     def test_sem_front_buildado_responde_404(self):
         with override_settings(FRONTEND_DIST=None):

@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,6 +31,10 @@ SECRET_KEY = os.environ.get(
 )
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+
+# A chave padrão está no repositório: fora do debug ela não pode valer.
+if not DEBUG and "DJANGO_SECRET_KEY" not in os.environ:
+    raise ImproperlyConfigured("Defina DJANGO_SECRET_KEY em produção.")
 
 
 def _lista(variavel, padrao=""):
@@ -108,7 +113,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    # Estáticos e front buildado; no debug o runserver cuida dos estáticos.
+    *([] if DEBUG else ["whitenoise.middleware.WhiteNoiseMiddleware"]),
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -246,6 +252,37 @@ STORAGES = {
 _FRONTEND_DIST = os.environ.get("DJANGO_FRONTEND_DIST")
 FRONTEND_DIST = Path(_FRONTEND_DIST) if _FRONTEND_DIST else None
 WHITENOISE_ROOT = FRONTEND_DIST
+
+
+# Log
+# https://docs.djangoproject.com/en/6.1/topics/logging/
+
+# O padrão do Django só escreve no console com o debug ligado; em produção
+# os erros (500, host recusado etc.) iriam apenas para um e-mail de admins
+# que não existe. Aqui eles vão para a saída do container.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "com_debug": {"()": "django.utils.log.RequireDebugTrue"},
+        "sem_debug": {"()": "django.utils.log.RequireDebugFalse"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "filters": ["com_debug"],
+        },
+        "producao": {
+            "class": "logging.StreamHandler",
+            "level": "WARNING",
+            "filters": ["sem_debug"],
+        },
+    },
+    "loggers": {
+        "django": {"handlers": ["console", "producao"], "level": "INFO"},
+    },
+}
 
 
 # Email
