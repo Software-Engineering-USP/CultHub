@@ -89,6 +89,9 @@ SECURE_PROXY_SSL_HEADER = (
 )
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+# O redirecionamento de HTTP para HTTPS é feito pelo proxy; aqui o navegador
+# é avisado para só voltar por HTTPS nos próximos 30 dias.
+SECURE_HSTS_SECONDS = 0 if DEBUG else 30 * 24 * 60 * 60
 
 
 # Application definition
@@ -299,8 +302,14 @@ LOGGING = {
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# Sem EMAIL_BACKEND no ambiente: no desenvolvimento a mensagem é impressa
+# no console; em produção é descartada, para o link de redefinição de
+# senha não ficar nos logs da hospedagem.
 EMAIL_BACKEND = os.environ.get(
-    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.dummy.EmailBackend",
 )
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "25"))

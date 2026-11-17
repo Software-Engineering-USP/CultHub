@@ -67,9 +67,9 @@ Ao iniciar, o container aplica as migrações e sobe o gunicorn na porta de `POR
 | `DJANGO_NUM_PROXIES` | quantos proxies a hospedagem põe na frente (para o limite de pedidos por IP); o log de acesso mostra o `X-Forwarded-For` de cada pedido |
 | `FRONTEND_URL` | origem pública; é a base do link do e-mail de recuperação de senha |
 | `TICKETMASTER_API_KEY` | chave da Ticketmaster |
-| `EMAIL_BACKEND`, `BREVO_API_KEY`, `DEFAULT_FROM_EMAIL` | envio de e-mail por API HTTP (opcional; sem isso o e-mail só aparece no log) |
+| `EMAIL_BACKEND`, `BREVO_API_KEY`, `DEFAULT_FROM_EMAIL` | envio de e-mail por API HTTP (`anymail.backends.brevo.EmailBackend`); sem isso, em produção o e-mail de recuperação de senha não é enviado nem registrado |
 
-A imagem já define `DJANGO_DEBUG=0`. O plano gratuito do Render não tem disco persistente, tarefa agendada nem SMTP: por isso o banco é externo, a importação da Ticketmaster roda pelo workflow `Importar eventos` (segredos `DATABASE_URL` e `TICKETMASTER_API_KEY` no repositório) e o e-mail sai por API.
+A imagem já define `DJANGO_DEBUG=0`. O plano gratuito do Render não tem disco persistente, tarefa agendada nem SMTP: por isso o banco é externo, a importação da Ticketmaster roda pelo workflow `Importar eventos` (segredos `DATABASE_URL` e `TICKETMASTER_API_KEY` no environment `producao` do repositório, restrito à `main`) e o e-mail sai por API.
 
 Para testar a imagem localmente:
 
