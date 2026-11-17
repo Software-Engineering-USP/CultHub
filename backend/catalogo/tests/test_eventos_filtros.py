@@ -27,6 +27,12 @@ class FiltrosBuscaTest(APITestCase):
         criar_evento(titulo="Outro")
         self.assertEqual(self.titulos(q="jazz"), ["Noite de JAZZ"])
 
+    def test_q_com_byte_nul_ignora_o_byte(self):
+        # O Postgres recusa NUL em texto; sem tratar, a busca responde 500.
+        criar_evento(titulo="Noite de JAZZ")
+        criar_evento(titulo="Outro")
+        self.assertEqual(self.titulos(q="\x00jazz"), ["Noite de JAZZ"])
+
     def test_q_na_descricao(self):
         criar_evento(titulo="A", descricao="Show de Samba")
         criar_evento(titulo="B")

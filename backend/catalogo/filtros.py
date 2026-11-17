@@ -56,14 +56,18 @@ def normalizar_texto(texto):
 
 
 class Normalizar(Func):
-    """Chama a função SQL `normalizar` (registrada em `apps.py`)."""
+    """Chama a função SQL `normalizar`.
+
+    No SQLite, `apps.py` a registra; no Postgres, a migração 0004 a cria.
+    """
 
     function = "normalizar"
     output_field = CharField()
 
 
 def _busca(queryset, texto):
-    texto = normalizar_texto(texto.strip())
+    # O Postgres recusa o byte NUL em qualquer texto.
+    texto = normalizar_texto(texto.replace("\x00", "").strip())
     if not texto:
         return queryset
     return queryset.alias(

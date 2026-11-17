@@ -5,7 +5,7 @@ from datetime import date, time
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import DataError, IntegrityError, transaction
 from django.utils import timezone
 
 from .mapeamento import categorias_do_evento, genero_do_evento
@@ -29,6 +29,8 @@ ERROS_DE_DADO = (
     AttributeError,
     ArithmeticError,
     IntegrityError,
+    # Postgres recusa texto acima do tamanho do campo e byte NUL.
+    DataError,
     ValidationError,
 )
 

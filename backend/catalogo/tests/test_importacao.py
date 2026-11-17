@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.db import OperationalError
+from django.db import DataError, OperationalError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -220,6 +220,24 @@ class ImportarTest(TestCase):
         self.assertFalse(
             Evento.objects.filter(titulo="BTS WORLD TOUR ARIRANG").exists()
         )
+
+    def test_dado_que_o_postgres_recusa_ignora_so_aquele_evento(self):
+        # O SQLite aceita texto acima do tamanho do campo; o Postgres
+        # responde DataError, que não pode derrubar a importação inteira.
+        eventos = copy.deepcopy(eventos_da_fixture())
+        ruim = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        salvar = importacao._salvar_evento
+
+        def salvar_ou_recusar(dados, agora):
+            if dados is ruim:
+                raise DataError("value too long for type character varying")
+            return salvar(dados, agora)
+
+        with patch.object(importacao, "_salvar_evento", salvar_ou_recusar):
+            resumo = importar(eventos, AGORA)
+        self.assertEqual(resumo.criados, 10)
+        self.assertEqual(resumo.ignorados, 1)
+        self.assertIn(ruim["id"], resumo.com_erro[0])
 
     def test_evento_com_erro_que_existia_fica_com_os_dados_antigos(self):
         importar(eventos_da_fixture(), AGORA)
