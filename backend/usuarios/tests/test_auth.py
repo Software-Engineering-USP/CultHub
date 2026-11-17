@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.core import mail
 from django.test import override_settings
 from django.utils.encoding import force_bytes
@@ -151,6 +153,15 @@ class RecuperacaoSenhaTest(APITestCase):
         return self.client.post(
             self.recuperar_url, {"email": email}, format="json"
         )
+
+    def test_falha_no_envio_vai_para_o_log_e_a_resposta_nao_muda(self):
+        with (
+            patch("usuarios.views.send_mail", side_effect=OSError("fora")),
+            self.assertLogs("usuarios.views", level="ERROR") as log,
+        ):
+            resposta = self.solicitar()
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("recuperação", log.output[0])
 
     def test_envia_link_e_token_permite_trocar_a_senha_uma_vez(self):
         resposta = self.solicitar()

@@ -16,8 +16,10 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+from CultHubBackend.views import pagina_do_front
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -33,4 +35,7 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="docs",
     ),
+    # Qualquer outro caminho é uma rota do React (quando o front buildado
+    # está na mesma imagem; ver FRONTEND_DIST).
+    re_path(r"^(?!api/|admin/|static/).*$", pagina_do_front),
 ]

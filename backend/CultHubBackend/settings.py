@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -28,6 +30,13 @@ SECRET_KEY = os.environ.get(
 )
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+
+
+def _lista(variavel, padrao=""):
+    """Lê do ambiente uma lista separada por vírgulas."""
+    valores = os.environ.get(variavel, padrao).split(",")
+    return [valor.strip() for valor in valores if valor.strip()]
+
 
 # Importação de eventos da Ticketmaster: a chave vem do ambiente (ver
 # backend/.env.example) e nunca deve ir para o git.
@@ -63,7 +72,18 @@ CACHES = {
     },
 }
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
+# Em produção, DJANGO_ALLOWED_HOSTS traz o domínio público e
+# DJANGO_CSRF_TRUSTED_ORIGINS a origem com esquema (https://dominio).
+ALLOWED_HOSTS = _lista("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,backend")
+CSRF_TRUSTED_ORIGINS = _lista("DJANGO_CSRF_TRUSTED_ORIGINS")
+
+# Em produção o HTTPS termina no proxy da hospedagem, que avisa pelo
+# cabeçalho; os cookies só trafegam por HTTPS.
+SECURE_PROXY_SSL_HEADER = (
+    None if DEBUG else ("HTTP_X_FORWARDED_PROTO", "https")
+)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 
 # Application definition
@@ -77,6 +97,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
+    "anymail",
     "catalogo",
     "usuarios",
     "agenda",
@@ -87,6 +108,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -118,11 +140,22 @@ WSGI_APPLICATION = "CultHubBackend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+# Com DATABASE_URL (produção: Postgres), usa esse banco; sem ela, o SQLite
+# local. Os cursores do servidor ficam desligados porque a conexão de
+# produção passa por um pool em modo transação.
+_BANCO_LOCAL = {
+    "ENGINE": "django.db.backends.sqlite3",
+    "NAME": os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3"),
+}
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3"),
-    }
+    "default": dj_database_url.parse(
+        os.environ["DATABASE_URL"],
+        conn_max_age=600,
+        conn_health_checks=True,
+        disable_server_side_cursors=True,
+    )
+    if os.environ.get("DATABASE_URL")
+    else _BANCO_LOCAL
 }
 
 
@@ -160,8 +193,8 @@ REST_FRAMEWORK = {
     },
     # IP do throttle = o da conexão, nunca o X-Forwarded-For (o cliente
     # poderia inventar um a cada pedido). Atrás de proxy reverso, usar o
-    # número de proxies na frente do Django.
-    "NUM_PROXIES": 0,
+    # número de proxies na frente do Django (DJANGO_NUM_PROXIES).
+    "NUM_PROXIES": int(os.environ.get("DJANGO_NUM_PROXIES", "0")),
 }
 
 # Níveis de resposta nos comentários: 1 = só respostas diretas (como no
@@ -191,6 +224,28 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Em produção o WhiteNoise serve os estáticos já comprimidos.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedStaticFilesStorage"
+        ),
+    },
+}
+
+# Front buildado (pasta `dist` do Vite) servido pelo próprio Django, na
+# mesma origem da API. Só a imagem de produção define; no desenvolvimento
+# o front roda no servidor do Vite.
+_FRONTEND_DIST = os.environ.get("DJANGO_FRONTEND_DIST")
+FRONTEND_DIST = Path(_FRONTEND_DIST) if _FRONTEND_DIST else None
+WHITENOISE_ROOT = FRONTEND_DIST
 
 
 # Email
@@ -209,3 +264,7 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     "DEFAULT_FROM_EMAIL", "CultHub <noreply@culthub.local>"
 )
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+# Envio por API HTTP (django-anymail), para hospedagens que bloqueiam SMTP:
+# EMAIL_BACKEND=anymail.backends.brevo.EmailBackend e a chave abaixo.
+ANYMAIL = {"BREVO_API_KEY": os.environ.get("BREVO_API_KEY", "")}

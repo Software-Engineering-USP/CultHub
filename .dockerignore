@@ -1,0 +1,15 @@
+# Contexto da imagem de produção (Dockerfile da raiz): só o código.
+*
+!backend
+!frontend
+backend/.env
+backend/.venv
+backend/db.sqlite3*
+backend/staticfiles
+backend/.coverage
+backend/coverage.xml
+frontend/node_modules
+frontend/dist
+frontend/coverage
+**/__pycache__
+**/*.pyc

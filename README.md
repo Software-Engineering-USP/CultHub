@@ -51,3 +51,31 @@ docker run --rm -p 127.0.0.1:8000:8000 culthub-backend sh -c "python manage.py m
 docker build -t culthub-frontend frontend
 docker run --rm -p 127.0.0.1:5173:5173 -e API_PROXY_TARGET=<url-do-backend> culthub-frontend
 ```
+
+## Deploy
+
+A produção roda em um serviço só: a imagem do `Dockerfile` da raiz builda o frontend e o Django serve a API e o front na mesma origem, com gunicorn e WhiteNoise. O banco é um Postgres externo. Hoje o serviço fica no Render (plano gratuito) e o banco no Neon; qualquer hospedagem que rode Docker serve.
+
+Ao iniciar, o container aplica as migrações e sobe o gunicorn na porta de `PORT` (padrão 10000).
+
+| Variável | Valor |
+|---|---|
+| `DATABASE_URL` | URL do Postgres |
+| `DJANGO_SECRET_KEY` | chave aleatória longa |
+| `DJANGO_ALLOWED_HOSTS` | domínio público, sem esquema |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | origem pública, com `https://` |
+| `DJANGO_NUM_PROXIES` | quantos proxies a hospedagem põe na frente (para o limite de pedidos por IP) |
+| `FRONTEND_URL` | origem pública; é a base do link do e-mail de recuperação de senha |
+| `TICKETMASTER_API_KEY` | chave da Ticketmaster |
+| `EMAIL_BACKEND`, `BREVO_API_KEY`, `DEFAULT_FROM_EMAIL` | envio de e-mail por API HTTP (opcional; sem isso o e-mail só aparece no log) |
+
+A imagem já define `DJANGO_DEBUG=0`. O plano gratuito do Render não tem disco persistente, tarefa agendada nem SMTP: por isso o banco é externo, a importação da Ticketmaster roda pelo workflow `Importar eventos` (segredos `DATABASE_URL` e `TICKETMASTER_API_KEY` no repositório) e o e-mail sai por API.
+
+Para testar a imagem localmente:
+
+```bash
+docker build -t culthub-producao .
+docker run --rm -p 127.0.0.1:10000:10000 -e DATABASE_URL=<url-do-postgres> -e DJANGO_SECRET_KEY=<chave> -e DJANGO_ALLOWED_HOSTS=localhost culthub-producao
+```
+
+Os cookies de sessão exigem HTTPS em produção; em `http://localhost` dá para navegar, mas não para fazer login.
