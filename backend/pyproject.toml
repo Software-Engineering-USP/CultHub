@@ -18,7 +18,7 @@ extend-select = ["E501"]
 
 [tool.coverage.run]
 source = ["."]
-omit = ["*/tests/*", "*/tests.py", "*/migrations/*", "manage.py", ".venv/*"]
+omit = ["*/tests/*", "*/tests.py", "*/migrations/*", "manage.py", ".venv/*", "gunicorn.conf.py"]
 
 [tool.coverage.report]
 fail_under = 80

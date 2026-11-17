@@ -254,18 +254,27 @@ FRONTEND_DIST = Path(_FRONTEND_DIST) if _FRONTEND_DIST else None
 WHITENOISE_ROOT = FRONTEND_DIST
 
 
+def arquivo_imutavel(caminho, url):
+    """Arquivos do Vite têm hash no nome: o navegador pode guardar."""
+    return url.startswith("/assets/")
+
+
+WHITENOISE_IMMUTABLE_FILE_TEST = arquivo_imutavel
+
+
 # Log
 # https://docs.djangoproject.com/en/6.1/topics/logging/
 
 # O padrão do Django só escreve no console com o debug ligado; em produção
 # os erros (500, host recusado etc.) iriam apenas para um e-mail de admins
-# que não existe. Aqui eles vão para a saída do container.
+# que não existe. Aqui eles vão para a saída do container. O handler é
+# escolhido pelo DEBUG do ambiente, e não em tempo de execução, porque os
+# testes rodam com o debug desligado e imprimiriam cada 4xx esperado.
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
         "com_debug": {"()": "django.utils.log.RequireDebugTrue"},
-        "sem_debug": {"()": "django.utils.log.RequireDebugFalse"},
     },
     "handlers": {
         "console": {
@@ -276,11 +285,13 @@ LOGGING = {
         "producao": {
             "class": "logging.StreamHandler",
             "level": "WARNING",
-            "filters": ["sem_debug"],
         },
     },
     "loggers": {
-        "django": {"handlers": ["console", "producao"], "level": "INFO"},
+        "django": {
+            "handlers": ["console" if DEBUG else "producao"],
+            "level": "INFO",
+        },
     },
 }
 

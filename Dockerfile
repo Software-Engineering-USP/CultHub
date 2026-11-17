@@ -32,7 +32,7 @@ WORKDIR /app
 COPY backend/requirements.lock ./
 RUN pip install --no-cache-dir --only-binary :all: --require-hashes -r requirements.lock
 
-COPY backend/manage.py ./
+COPY backend/manage.py backend/gunicorn.conf.py ./
 COPY backend/CultHubBackend ./CultHubBackend
 COPY backend/catalogo ./catalogo
 COPY backend/usuarios ./usuarios
@@ -49,6 +49,5 @@ RUN useradd --uid 1000 --create-home app
 USER app
 
 EXPOSE 10000
-# Um worker só: o cache e a trava de 1 pedido por segundo do OSRM são por
-# processo. A hospedagem informa a porta em PORT.
-CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn CultHubBackend.wsgi --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 4 --access-logfile -"]
+# Porta, workers e log de acesso ficam em gunicorn.conf.py.
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn CultHubBackend.wsgi"]
