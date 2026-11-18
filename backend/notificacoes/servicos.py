@@ -113,9 +113,16 @@ def notificar_eventos_novos(ids_eventos):
     if not categorias:
         return 0
     novas = _montar(eventos, _interessados_por_categoria(categorias))
-    eventos_novos = Notificacao.objects.filter(
-        tipo=TipoNotificacao.EVENTO_NOVO
+    # Repetir a chamada para os mesmos eventos não duplica nem conta de novo.
+    ja_avisados = set(
+        Notificacao.objects.filter(
+            tipo=TipoNotificacao.EVENTO_NOVO, evento__in=eventos
+        ).values_list("usuario_id", "evento_id")
     )
-    antes = eventos_novos.count()
-    Notificacao.objects.bulk_create(novas, ignore_conflicts=True)
-    return eventos_novos.count() - antes
+    novas = [
+        nova
+        for nova in novas
+        if (nova.usuario_id, nova.evento_id) not in ja_avisados
+    ]
+    Notificacao.objects.bulk_create(novas)
+    return len(novas)

@@ -116,8 +116,8 @@ def _notificacoes_ativas(usuario):
         "`lembrete` (evento salvo ou confirmado que começa nas próximas 24 "
         "horas; sem horário, hoje ou amanhã) ou `evento_novo` (evento que "
         "entrou no catálogo e combina com as preferências e a cidade do "
-        "perfil; fica na lista por 7 dias). Os lembretes são criados nesta "
-        "chamada."
+        f"perfil; fica na lista por {DIAS_DE_EVENTO_NOVO} dias). Os "
+        "lembretes são criados nesta chamada."
     ),
 )
 class NotificacoesView(ListAPIView):
