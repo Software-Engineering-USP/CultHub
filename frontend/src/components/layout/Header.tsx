@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import InitialsAvatar from '@/components/common/InitialsAvatar'
 import EventFilters from '@/components/events/EventFilters'
+import NotificationsMenu from '@/components/layout/NotificationsMenu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { onFormSubmit, text } from '@/lib/forms'
@@ -77,13 +78,16 @@ export default function Header() {
             Entrar
           </NavLink>
         ) : (
-          <NavLink
-            to={paths.account}
-            aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de ${user.name}`}
-            className="rounded-full"
-          >
-            <InitialsAvatar initials={user.initials} className="max-sm:size-9.5" />
-          </NavLink>
+          <>
+            <NotificationsMenu />
+            <NavLink
+              to={paths.account}
+              aria-label={`${onAccount ? 'Conta' : 'Ver conta'} de ${user.name}`}
+              className="rounded-full"
+            >
+              <InitialsAvatar initials={user.initials} className="max-sm:size-9.5" />
+            </NavLink>
+          </>
         )}
       </nav>
     </header>

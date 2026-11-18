@@ -1,10 +1,11 @@
-import { ArrowLeft, ArrowUpRight } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import AgendaSection from '@/components/account/AgendaSection'
 import AttendanceSection from '@/components/account/AttendanceSection'
 import EventGrid from '@/components/account/EventGrid'
-import DemoNote from '@/components/common/DemoNote'
+import ListStatus from '@/components/account/ListStatus'
+import MyCommentItem from '@/components/account/MyCommentItem'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
 import InitialsAvatar from '@/components/common/InitialsAvatar'
@@ -16,11 +17,9 @@ import { useActiveSection } from '@/hooks/useActiveSection'
 import { useAuth } from '@/hooks/useAuth'
 import { useUserComments } from '@/hooks/useComments'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useEventById } from '@/hooks/useEvents'
 import { useSavedEvents } from '@/hooks/useUserEvents'
 import { categories } from '@/lib/categories'
 import { peerFocusRing } from '@/lib/classes'
-import { logDemoAction } from '@/lib/demo'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
@@ -65,8 +64,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
   const [saving, setSaving] = useState(false)
   const [preferences, setPreferences] = useState<CategoryId[]>(user.preferences)
 
-  const [myComment] = useUserComments()
-  const commentEvent = useEventById(myComment?.eventId)
+  const myComments = useUserComments()
 
   const selectedLabels = preferences.map((id) => categories[id].label).join(' e ')
 
@@ -333,45 +331,22 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
               <h2 id="comentarios-titulo" className="text-[22px]">
                 Meus comentários
               </h2>
-              <Eyebrow className={panelEyebrow}>EXEMPLO</Eyebrow>
             </div>
 
-            {myComment && commentEvent && (
-              <article className="border-b border-line py-[22px]">
-                <Link
-                  to={paths.event(commentEvent.id)}
-                  className="mb-[10px] block text-[13px] font-bold text-maroon underline"
-                >
-                  {commentEvent.title} <ArrowUpRight className="inline size-4" />
-                </Link>
-                <p className="text-[13px] leading-[1.8] text-muted-foreground">
-                  {myComment.author} • Perfil fictício • comentário de exemplo
-                </p>
-                <p className="mt-[10px] text-[13px] leading-[1.8]">{myComment.text}</p>
-                <div className="mt-[10px] flex gap-[18px]">
-                  <Button
-                    variant="linkMuted"
-                    aria-describedby="editar-aviso"
-                    onClick={() => logDemoAction('Abrir edição do comentário', { commentId: myComment.id })}
-                    className="mt-2"
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    variant="linkMuted"
-                    aria-describedby="editar-aviso"
-                    onClick={() => void api.comments.remove(myComment.id)}
-                    className="mt-2"
-                  >
-                    Excluir
-                  </Button>
-                </div>
-              </article>
-            )}
-
-            <DemoNote id="editar-aviso" className="mt-[14px]">
-              Comentário demonstrativo. Editar e excluir só registram a ação no console.
-            </DemoNote>
+            <ListStatus
+              loading={myComments.loading}
+              error={myComments.error}
+              empty={!myComments.comments.length}
+              emptyMessage="Você ainda não comentou em nenhum evento. Na página de um evento, compartilhe o seu olhar."
+            />
+            {myComments.comments.map((comment) => (
+              <MyCommentItem
+                key={comment.id}
+                comment={comment}
+                onUpdate={myComments.update}
+                onRemove={myComments.remove}
+              />
+            ))}
           </Surface>
         </div>
       </div>

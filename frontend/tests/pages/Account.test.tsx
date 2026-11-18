@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as demo from '@/lib/demo'
 import Account from '@/pages/Account'
 import { api } from '@/services/api'
 import type { ProfileResponse } from '@/services/api'
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
+import { apiComment, apiMyComment, commentPage } from '@tests/fixtures/comments'
 import { renderWithRouter } from '@tests/render'
 
 const profile: ProfileResponse = {
@@ -21,24 +21,60 @@ describe('Account', () => {
   beforeEach(() => {
     vi.spyOn(api.agenda, 'attendances').mockResolvedValue(apiPage([]))
     vi.spyOn(api.agenda, 'calendar').mockResolvedValue(apiPage([]))
+    vi.spyOn(api.comments, 'mine').mockResolvedValue(commentPage([apiMyComment()]))
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('Excluir chama a API com o id do comentário', async () => {
-    const remove = vi.spyOn(api.comments, 'remove').mockResolvedValue()
-    const { user } = renderWithRouter(<Account />)
-    await user.click(screen.getByRole('button', { name: 'Excluir' }))
-    expect(remove).toHaveBeenCalledWith('c1')
+  it('lista os comentários do usuário com link para o evento', async () => {
+    renderWithRouter(<Account />)
+    const section = within(screen.getByRole('region', { name: 'Meus comentários' }))
+    expect(await section.findByText('Jazz ao vivo no Ibirapuera!')).toBeInTheDocument()
+    expect(section.getByRole('link', { name: /São Paulo Jazz & Blues Festival/ })).toHaveAttribute(
+      'href',
+      '/eventos/sp-jazz-blues-festival',
+    )
   })
 
-  it('Editar registra a ação com o id do comentário', async () => {
-    const log = vi.spyOn(demo, 'logDemoAction').mockImplementation(() => {})
+  it('mostra o aviso quando o usuário ainda não comentou', async () => {
+    vi.spyOn(api.comments, 'mine').mockResolvedValue(commentPage([]))
+    renderWithRouter(<Account />)
+    expect(await screen.findByText(/Você ainda não comentou em nenhum evento/)).toBeInTheDocument()
+  })
+
+  it('Excluir pede confirmação, chama a API e tira o comentário da lista', async () => {
+    const remove = vi.spyOn(api.comments, 'remove').mockResolvedValue()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
     const { user } = renderWithRouter(<Account />)
-    await user.click(screen.getByRole('button', { name: 'Editar' }))
-    expect(log).toHaveBeenCalledWith('Abrir edição do comentário', { commentId: 'c1' })
+    const excluir = await screen.findByRole('button', { name: 'Excluir' })
+
+    await user.click(excluir)
+    expect(remove).not.toHaveBeenCalled()
+
+    await user.click(excluir)
+    expect(confirm).toHaveBeenCalledTimes(2)
+    expect(remove).toHaveBeenCalledWith('m1')
+    await waitFor(() => expect(screen.queryByText('Jazz ao vivo no Ibirapuera!')).not.toBeInTheDocument())
+  })
+
+  it('Editar salva o novo texto', async () => {
+    const update = vi
+      .spyOn(api.comments, 'update')
+      .mockResolvedValue(
+        apiComment({ id: 'm1', texto: 'Mudei de ideia', editado_em: '2026-11-16T10:00:00Z' }),
+      )
+    const { user } = renderWithRouter(<Account />)
+
+    await user.click(await screen.findByRole('button', { name: 'Editar' }))
+    const campo = screen.getByLabelText('Editar seu comentário')
+    await user.clear(campo)
+    await user.type(campo, 'Mudei de ideia')
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(update).toHaveBeenCalledWith('m1', 'Mudei de ideia')
+    expect(await screen.findByText('Mudei de ideia')).toBeInTheDocument()
   })
 
   it('Salvar alterações envia nome, cidade e bairro (o e-mail não é editável)', async () => {
