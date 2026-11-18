@@ -23,8 +23,8 @@ function dateLabel(notification: ApiNotification): string {
   return notification.hora_inicio ? `${label} às ${notification.hora_inicio.slice(0, 5)}` : label
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : 'Não foi possível carregar as notificações.'
+function errorMessage(error: unknown, fallback = 'Não foi possível carregar as notificações.'): string {
+  return error instanceof ApiError ? error.message : fallback
 }
 
 export default function NotificationsMenu() {
@@ -32,6 +32,7 @@ export default function NotificationsMenu() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [actionError, setActionError] = useState('')
   const [open, setOpen] = useState(false)
 
   const load = useCallback(async (eventId?: string, showLoading = true) => {
@@ -43,10 +44,8 @@ export default function NotificationsMenu() {
       const response = await api.notifications.list()
       setNotifications(response.resultados)
       setUnreadCount(response.nao_lidas)
-      const eventNotificationExists = response.resultados.some(
-        (notification) => notification.evento_id === eventId,
-      )
-      if (eventId && eventNotificationExists) {
+      const eventNotification = response.resultados.find((notification) => notification.evento_id === eventId)
+      if (eventId && eventNotification && !eventNotification.lida_em) {
         setOpen(true)
       }
     } catch (cause) {
@@ -84,7 +83,7 @@ export default function NotificationsMenu() {
     }
   }, [load])
 
-  async function markRead(id: string) {
+  async function markRead(id: string): Promise<boolean> {
     try {
       await api.notifications.markRead(id)
       setNotifications((current) =>
@@ -93,8 +92,11 @@ export default function NotificationsMenu() {
         ),
       )
       setUnreadCount((current) => Math.max(0, current - 1))
+      setActionError('')
+      return true
     } catch (cause) {
-      setError(errorMessage(cause))
+      setActionError(errorMessage(cause, 'Não foi possível marcar esta notificação como lida.'))
+      return false
     }
   }
 
@@ -104,10 +106,13 @@ export default function NotificationsMenu() {
       const now = new Date().toISOString()
       setNotifications((current) => current.map((item) => ({ ...item, lida_em: item.lida_em ?? now })))
       setUnreadCount(0)
+      setActionError('')
     } catch (cause) {
-      setError(errorMessage(cause))
+      setActionError(errorMessage(cause, 'Não foi possível marcar todas as notificações como lidas.'))
     }
   }
+
+  const unreadLabel = unreadCount === 1 ? '1 não lida' : `${unreadCount} não lidas`
 
   return (
     <Popover
@@ -120,7 +125,7 @@ export default function NotificationsMenu() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={`Notificações, ${unreadCount} não lidas`}
+          aria-label={`Notificações, ${unreadLabel}`}
           className="relative grid size-11 place-items-center rounded-full text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <Bell aria-hidden="true" className="size-5" />
@@ -157,6 +162,11 @@ export default function NotificationsMenu() {
             {error}
           </output>
         )}
+        {actionError && (
+          <output className="block px-5 py-4 text-sm text-destructive" aria-live="polite">
+            {actionError}
+          </output>
+        )}
         {loading && !error && (
           <output className="block px-5 py-5 text-sm text-muted-foreground" aria-live="polite">
             Carregando notificações…
@@ -174,8 +184,13 @@ export default function NotificationsMenu() {
                 <Link
                   to={paths.event(notification.evento_id)}
                   onClick={() => {
-                    if (!notification.lida_em) void markRead(notification.id)
-                    setOpen(false)
+                    if (notification.lida_em) {
+                      setOpen(false)
+                      return
+                    }
+                    void markRead(notification.id).then((marcada) => {
+                      if (marcada) setOpen(false)
+                    })
                   }}
                   className="flex gap-3 px-5 py-4 text-inherit no-underline transition-colors hover:bg-accent"
                 >
@@ -186,10 +201,13 @@ export default function NotificationsMenu() {
                     <span className="flex items-start justify-between gap-3">
                       <strong className="text-sm leading-snug">{notification.titulo_evento}</strong>
                       {!notification.lida_em && (
-                        <span
-                          className="mt-1.5 size-2 shrink-0 rounded-full bg-maroon"
-                          aria-label="Não lida"
-                        />
+                        <>
+                          <span
+                            aria-hidden="true"
+                            className="mt-1.5 size-2 shrink-0 rounded-full bg-maroon"
+                          />
+                          <span className="sr-only">Não lida</span>
+                        </>
                       )}
                     </span>
                     <span className="mt-1 block text-xs text-muted-foreground">

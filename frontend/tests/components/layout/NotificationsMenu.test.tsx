@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import NotificationsMenu from '@/components/layout/NotificationsMenu'
 import { api, ApiError } from '@/services/api'
@@ -79,6 +79,7 @@ describe('NotificationsMenu', () => {
     expect(within(dialog).getByText('Hoje às 19:30 · Sala de shows')).toBeInTheDocument()
     expect(within(dialog).getByText('Amanhã às 19:30 · Teatro')).toBeInTheDocument()
     expect(within(dialog).getByText(`${futureLabel} · Auditório`)).toBeInTheDocument()
+    expect(within(dialog).getAllByText('Não lida')).toHaveLength(3)
   })
 
   it('mostra 9+ para mais de nove lembretes não lidos', async () => {
@@ -117,6 +118,20 @@ describe('NotificationsMenu', () => {
     expect(markRead).not.toHaveBeenCalled()
   })
 
+  it('não abre automaticamente o menu para um lembrete já lido', async () => {
+    const list = vi
+      .spyOn(api.notifications, 'list')
+      .mockResolvedValue(notificationsResponse([notification({ lida_em: new Date().toISOString() })]))
+    renderWithRouter(<NotificationsMenu />)
+
+    window.dispatchEvent(
+      new CustomEvent('culthub:notifications-updated', { detail: { eventId: 'evento-1' } }),
+    )
+
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2))
+    expect(screen.queryByRole('dialog', { name: 'Notificações' })).not.toBeInTheDocument()
+  })
+
   it('marca todas as notificações como lidas', async () => {
     const markAllRead = vi.spyOn(api.notifications, 'markAllRead').mockResolvedValue()
     vi.spyOn(api.notifications, 'list').mockResolvedValue(
@@ -140,7 +155,10 @@ describe('NotificationsMenu', () => {
 
     await user.click(within(dialog).getByRole('button', { name: 'Ler todas' }))
 
-    expect(await within(dialog).findByText('Não foi possível carregar as notificações.')).toBeInTheDocument()
+    expect(
+      await within(dialog).findByText('Não foi possível marcar todas as notificações como lidas.'),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: /Show de hoje/ })).toBeInTheDocument()
   })
 
   it('mantém o contador quando falha ao marcar uma notificação como lida', async () => {
@@ -152,7 +170,11 @@ describe('NotificationsMenu', () => {
     await user.click(within(dialog).getByRole('link', { name: /Show de hoje/ }))
 
     expect(markRead).toHaveBeenCalledWith('notificacao-1')
-    expect(await screen.findByRole('button', { name: 'Notificações, 1 não lidas' })).toBeInTheDocument()
+    expect(
+      await within(dialog).findByText('Não foi possível marcar esta notificação como lida.'),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: /Show de hoje/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Notificações, 1 não lida' })).toBeInTheDocument()
   })
 
   it('exibe o erro devolvido pela API ao carregar notificações', async () => {

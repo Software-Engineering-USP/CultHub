@@ -18,16 +18,22 @@ from notificacoes.serializers import NotificacaoSerializer
 
 
 def _criar_lembretes_proximos(usuario):
-    """Gera uma vez lembretes para eventos salvos ou confirmados em 24h."""
+    """Gera lembretes únicos para eventos salvos ou confirmados próximos."""
     agora = timezone.now()
     limite = agora + timedelta(hours=24)
+    hoje = timezone.localtime(agora).date()
+    amanha = hoje + timedelta(days=1)
+    inicio_proximo = Q(inicio__gt=agora, inicio__lte=limite) | Q(
+        inicio__isnull=True,
+        data_inicio__gte=hoje,
+        data_inicio__lte=amanha,
+    )
     eventos = (
         Evento.objects.filter(
             Q(interesses__usuario=usuario) | Q(presencas__usuario=usuario),
             removido_em__isnull=True,
-            inicio__gt=agora,
-            inicio__lte=limite,
         )
+        .filter(inicio_proximo)
         .only("id")
         .distinct()
     )
@@ -37,6 +43,31 @@ def _criar_lembretes_proximos(usuario):
             for evento in eventos
         ],
         ignore_conflicts=True,
+    )
+
+
+def _notificacoes_ativas(usuario):
+    """Filtra lembretes por marcação ativa e evento vigente."""
+    agora = timezone.now()
+    hoje = timezone.localtime(agora).date()
+    amanha = hoje + timedelta(days=1)
+    evento_futuro = Q(evento__inicio__gt=agora) | Q(
+        evento__inicio__isnull=True,
+        evento__data_inicio__gte=hoje,
+        evento__data_inicio__lte=amanha,
+    )
+    marcado = Q(evento__interesses__usuario=usuario) | Q(
+        evento__presencas__usuario=usuario
+    )
+    return (
+        Notificacao.objects.filter(
+            usuario=usuario,
+            evento__removido_em__isnull=True,
+        )
+        .filter(evento_futuro, marcado)
+        .select_related("evento", "evento__local")
+        .order_by("lida_em", "-criada_em")
+        .distinct()
     )
 
 
@@ -52,7 +83,9 @@ def _criar_lembretes_proximos(usuario):
     },
     description=(
         "Lista notificações do usuário e cria lembretes únicos para eventos "
-        "salvos ou confirmados que começam nas próximas 24 horas."
+        "salvos ou confirmados que começam nas próximas 24 horas. Eventos "
+        "sem horário são considerados próximos quando acontecem hoje ou "
+        "amanhã."
     ),
 )
 class NotificacoesView(ListAPIView):
@@ -60,18 +93,14 @@ class NotificacoesView(ListAPIView):
 
     def get_queryset(self):
         _criar_lembretes_proximos(self.request.user)
-        return (
-            Notificacao.objects.filter(usuario=self.request.user)
-            .select_related("evento", "evento__local")
-            .order_by("lida_em", "-criada_em")
-        )
+        return _notificacoes_ativas(self.request.user)
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
         response.data = {
-            "nao_lidas": Notificacao.objects.filter(
-                usuario=request.user, lida_em__isnull=True
-            ).count(),
+            "nao_lidas": _notificacoes_ativas(request.user)
+            .filter(lida_em__isnull=True)
+            .count(),
             "resultados": response.data,
         }
         return response

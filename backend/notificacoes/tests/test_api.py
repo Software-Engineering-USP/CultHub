@@ -38,6 +38,10 @@ class NotificacoesApiTests(APITestCase):
         salvo_e_confirmado = self.criar_evento_em(
             4, "Evento salvo e confirmado"
         )
+        sem_horario = criar_evento(
+            titulo="Evento sem horário",
+            data_inicio=timezone.localtime(self.agora).date(),
+        )
         InteresseEmEvento.objects.create(usuario=self.usuario, evento=salvo)
         PresencaEmEvento.objects.create(
             usuario=self.usuario, evento=confirmado
@@ -48,19 +52,27 @@ class NotificacoesApiTests(APITestCase):
         PresencaEmEvento.objects.create(
             usuario=self.usuario, evento=salvo_e_confirmado
         )
+        InteresseEmEvento.objects.create(
+            usuario=self.usuario, evento=sem_horario
+        )
 
         resposta = self.client.get(self.url_lista)
 
         self.assertEqual(resposta.status_code, 200)
-        self.assertEqual(resposta.json()["nao_lidas"], 3)
+        self.assertEqual(resposta.json()["nao_lidas"], 4)
         self.assertEqual(
             {item["titulo_evento"] for item in resposta.json()["resultados"]},
-            {"Evento salvo", "Evento confirmado", "Evento salvo e confirmado"},
+            {
+                "Evento salvo",
+                "Evento confirmado",
+                "Evento salvo e confirmado",
+                "Evento sem horário",
+            },
         )
         notificacoes_criadas = Notificacao.objects.filter(
             usuario=self.usuario
         ).count()
-        self.assertEqual(notificacoes_criadas, 3)
+        self.assertEqual(notificacoes_criadas, 4)
 
     @patch("notificacoes.views.timezone.now")
     def test_lista_ignora_eventos_fora_da_janela_passados_ou_removidos(
@@ -103,6 +115,77 @@ class NotificacoesApiTests(APITestCase):
         self.assertEqual(len(segunda_resposta.json()["resultados"]), 1)
         lida_em = segunda_resposta.json()["resultados"][0]["lida_em"]
         self.assertIsNotNone(lida_em)
+
+    @patch("notificacoes.views.timezone.now")
+    def test_lista_oculta_lembretes_sem_marcacao_ou_evento_ativo(self, agora):
+        agora.return_value = self.agora
+        ativo = self.criar_evento_em(2, "Ativo")
+        sem_marcacao = self.criar_evento_em(3, "Sem marcação")
+        removido = self.criar_evento_em(4, "Removido")
+        passado = self.criar_evento_em(-1, "Passado")
+        InteresseEmEvento.objects.create(usuario=self.usuario, evento=ativo)
+        InteresseEmEvento.objects.create(
+            usuario=self.usuario, evento=sem_marcacao
+        )
+        InteresseEmEvento.objects.create(usuario=self.usuario, evento=removido)
+        PresencaEmEvento.objects.create(usuario=self.usuario, evento=passado)
+        InteresseEmEvento.objects.filter(evento=sem_marcacao).delete()
+        removido.removido_em = self.agora
+        removido.save(update_fields=["removido_em"])
+        for evento in (ativo, sem_marcacao, removido, passado):
+            Notificacao.objects.create(usuario=self.usuario, evento=evento)
+
+        resposta = self.client.get(self.url_lista)
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["nao_lidas"], 1)
+        self.assertEqual(
+            [item["titulo_evento"] for item in resposta.json()["resultados"]],
+            ["Ativo"],
+        )
+
+    def test_marcar_todas_como_lidas(self):
+        eventos = [
+            criar_evento(titulo=f"Evento {numero}") for numero in range(3)
+        ]
+        notificacoes = [
+            Notificacao.objects.create(
+                usuario=self.usuario, evento=eventos[0]
+            ),
+            Notificacao.objects.create(
+                usuario=self.usuario, evento=eventos[1]
+            ),
+        ]
+        Notificacao.objects.create(
+            usuario=self.usuario,
+            evento=eventos[2],
+            lida_em=timezone.now(),
+        )
+
+        resposta = self.client.post(reverse("eu-notificacoes-ler-todas"))
+
+        self.assertEqual(resposta.status_code, 204)
+        for notificacao in notificacoes:
+            notificacao.refresh_from_db()
+            self.assertIsNotNone(notificacao.lida_em)
+
+    def test_nao_pode_marcar_notificacao_de_outro_usuario(self):
+        outro_usuario = Usuario.objects.create_user(
+            "bia@exemplo.com", "senha-forte-123", nome="Bia"
+        )
+        evento = criar_evento()
+        notificacao = Notificacao.objects.create(
+            usuario=outro_usuario,
+            evento=evento,
+        )
+
+        resposta = self.client.patch(
+            reverse("notificacao-ler", args=[notificacao.pk])
+        )
+
+        self.assertEqual(resposta.status_code, 404)
+        notificacao.refresh_from_db()
+        self.assertIsNone(notificacao.lida_em)
 
     def test_usuario_sem_login_nao_consulta_notificacoes(self):
         self.client.logout()

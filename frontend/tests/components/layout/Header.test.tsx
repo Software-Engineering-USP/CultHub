@@ -17,11 +17,27 @@ describe('Header', () => {
     vi.restoreAllMocks()
   })
 
-  it('mostra o avatar do usuário com link para a conta', () => {
+  it('mostra o avatar do usuário com link para a conta', async () => {
+    vi.spyOn(api.notifications, 'list').mockResolvedValue({
+      nao_lidas: 1,
+      resultados: [
+        {
+          id: 'notificacao-1',
+          evento_id: 'evento-1',
+          titulo_evento: 'Show salvo',
+          data_inicio: '2026-11-18',
+          hora_inicio: '20:00:00',
+          local: 'Centro Cultural',
+          criada_em: '2026-11-17T12:00:00Z',
+          lida_em: null,
+        },
+      ],
+    })
     renderWithRouter(<Header />)
     const link = screen.getByRole('link', { name: `Ver conta de ${currentUser.name}` })
     expect(link).toHaveAttribute('href', paths.account)
     expect(within(link).getByText(currentUser.initials)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Notificações, 1 não lida' })).toBeInTheDocument()
   })
 
   it('carrega o contador de notificações sem precisar abrir o sino', async () => {
@@ -42,7 +58,7 @@ describe('Header', () => {
     })
     renderWithRouter(<Header />)
 
-    expect(await screen.findByRole('button', { name: 'Notificações, 1 não lidas' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Notificações, 1 não lida' })).toBeInTheDocument()
     expect(list).toHaveBeenCalledOnce()
     expect(screen.queryByRole('dialog', { name: 'Notificações' })).not.toBeInTheDocument()
   })
@@ -71,7 +87,7 @@ describe('Header', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Notificações' })
     expect(within(dialog).getByText('Show salvo')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Notificações, 1 não lidas' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Notificações, 1 não lida' })).toBeInTheDocument()
   })
 
   it('na tela de entrada mostra "Entrar" no lugar do avatar', () => {
