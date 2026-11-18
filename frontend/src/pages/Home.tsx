@@ -1,19 +1,36 @@
 import { LocateFixed } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { lazy, Suspense, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import CategoryList from '@/components/common/CategoryList'
-import DemoNote from '@/components/common/DemoNote'
 import SectionHeading from '@/components/common/SectionHeading'
 import EventCard from '@/components/events/EventCard'
 import FeaturedCarousel from '@/components/events/FeaturedCarousel'
 import { Button } from '@/components/ui/button'
 import { useCatalog } from '@/hooks/useCatalog'
+import { useDeviceLocation } from '@/hooks/useDeviceLocation'
+import type { LocationStatus } from '@/hooks/useDeviceLocation'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { categoryOrder } from '@/lib/categories'
-import { logDemoAction } from '@/lib/demo'
+import { paths } from '@/lib/paths'
+import { cn } from '@/lib/utils'
 import type { CatalogQuery } from '@/services/catalog'
 
+// O Leaflet (~150 kB) fica fora do arquivo principal: a Home aparece antes e o mapa chega logo depois.
+const EventsMap = lazy(() => import('@/components/map/EventsMap'))
+
+const mapBox = 'h-112.5 w-full rounded-3xl border border-border max-sm:h-85 max-sm:rounded-2xl'
+
+const locationMessages: Partial<Record<LocationStatus, string>> = {
+  locating: 'Obtendo sua localização…',
+  denied: 'Você não permitiu o uso da localização. O mapa continua no centro de São Paulo.',
+  unavailable: 'Não conseguimos obter sua localização agora.',
+}
+
 export default function Home() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const myLocation = useDeviceLocation()
+  const [recenter, setRecenter] = useState(0)
   const categoryValues = searchParams.get('categorias')?.split(',') ?? []
   const categories = categoryValues.filter((value): value is (typeof categoryOrder)[number] =>
     categoryOrder.includes(value as (typeof categoryOrder)[number]),
@@ -30,6 +47,13 @@ export default function Home() {
   const { events, count, loading, error, hasMore, loadMore } = useCatalog(query)
   useDocumentTitle('CultHub | Explore São Paulo')
   const featured = events.slice(0, 5)
+  const pinned = events.filter((event) => event.location).length
+
+  // Com a posição já conhecida, só centraliza de novo; sem ela, pede a permissão.
+  function locate() {
+    if (myLocation.position) setRecenter((value) => value + 1)
+    else myLocation.request()
+  }
 
   return (
     <div className="space-y-12 max-sm:space-y-8.5">
@@ -43,35 +67,39 @@ export default function Home() {
           <div className="max-w-61 text-right max-sm:max-w-none max-sm:text-left">
             <Button
               variant="outline"
-              aria-describedby="localizacao-aviso"
-              onClick={() => logDemoAction('Pedir localização do usuário')}
+              disabled={myLocation.status === 'locating'}
+              onClick={locate}
               className="max-sm:min-h-10 max-sm:px-3.5 max-sm:py-2"
             >
               <LocateFixed />
               Minha Localização
             </Button>
-            <DemoNote id="localizacao-aviso" className="mt-1">
-              Mapa ilustrativo. Nesta demonstração, o pedido de localização só aparece no console.
-            </DemoNote>
+            <p aria-live="polite" className="mt-1 text-2xs text-muted-foreground">
+              {locationMessages[myLocation.status]}
+            </p>
           </div>
         </SectionHeading>
 
         <figure>
-          <iframe
-            className="block h-112.5 w-full rounded-3xl border border-border max-sm:h-85 max-sm:rounded-2xl"
-            title="Mapa OpenStreetMap de São Paulo"
-            src="https://www.openstreetmap.org/export/embed.html?bbox=-46.75%2C-23.65%2C-46.55%2C-23.48&layer=mapnik"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
+          <Suspense fallback={<div aria-hidden="true" className={cn(mapBox, 'bg-muted')} />}>
+            <EventsMap
+              events={events}
+              userPosition={myLocation.position}
+              recenter={recenter}
+              onSelect={(id) => navigate(paths.event(id))}
+              className={mapBox}
+            />
+          </Suspense>
           <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 max-sm:gap-2.5">
             <CategoryList
               aria-label="Legenda de categorias"
               className="gap-5.5 text-xs font-semibold max-md:gap-4 max-sm:gap-x-3.5 max-sm:gap-y-2.5 max-sm:text-2xs"
             />
-            <DemoNote>
-              Mapa © OpenStreetMap contributors. Os pins dos eventos serão adicionados depois.
-            </DemoNote>
+            <p className="text-2xs text-muted-foreground">
+              {pinned === 1
+                ? '1 evento da lista abaixo está no mapa.'
+                : `${pinned} eventos da lista abaixo estão no mapa.`}
+            </p>
           </figcaption>
         </figure>
       </section>

@@ -7,14 +7,26 @@ export interface GrantedLocation {
   position: Coordinates | null
 }
 
-/** Posição do aparelho só se a pessoa já deu permissão antes; nunca abre o pedido de permissão. */
+/**
+ * Posição do aparelho só se a pessoa já deu permissão; nunca abre o pedido de permissão.
+ * Acompanha mudanças feitas nas configurações do navegador enquanto a página está aberta.
+ */
 export function useGrantedLocation(): GrantedLocation {
   const [state, setState] = useState<GrantedLocation>({ checking: true, position: null })
 
   useEffect(() => {
     let active = true
+    let permission: PermissionStatus | undefined
     const done = (position: Coordinates | null) => {
       if (active) setState({ checking: false, position })
+    }
+    const read = () => {
+      if (permission?.state !== 'granted') return done(null)
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => done({ latitude: coords.latitude, longitude: coords.longitude }),
+        () => done(null),
+        { maximumAge: 300_000, timeout: 10_000 },
+      )
     }
     if (!navigator.permissions || !('geolocation' in navigator)) {
       done(null)
@@ -23,16 +35,14 @@ export function useGrantedLocation(): GrantedLocation {
     navigator.permissions
       .query({ name: 'geolocation' })
       .then((status) => {
-        if (status.state !== 'granted') return done(null)
-        navigator.geolocation.getCurrentPosition(
-          ({ coords }) => done({ latitude: coords.latitude, longitude: coords.longitude }),
-          () => done(null),
-          { maximumAge: 300_000, timeout: 10_000 },
-        )
+        permission = status
+        status.addEventListener('change', read)
+        read()
       })
       .catch(() => done(null))
     return () => {
       active = false
+      permission?.removeEventListener('change', read)
     }
   }, [])
 

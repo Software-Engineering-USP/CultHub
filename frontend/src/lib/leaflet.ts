@@ -10,20 +10,87 @@ export const OSM_ATTRIBUTION =
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 
 /** Mapa com os tiles e a atribuição do OpenStreetMap (exigida pela licença ODbL). */
-export function createMap(container: HTMLElement, attribution = OSM_ATTRIBUTION): L.Map {
-  const map = L.map(container, { scrollWheelZoom: false })
+export function createMap(
+  container: HTMLElement,
+  {
+    attribution = OSM_ATTRIBUTION,
+    scrollWheelZoom = false,
+  }: { attribution?: string; scrollWheelZoom?: boolean } = {},
+): L.Map {
+  const map = L.map(container, { scrollWheelZoom })
   map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>')
   L.tileLayer(TILE_URL, { maxZoom: 19, attribution }).addTo(map)
   return map
 }
 
+// Montados pelo DOM (e não por string HTML): o label vem de APIs externas e não pode virar markup.
+function labelled(element: HTMLElement, label: string) {
+  element.setAttribute('role', 'img')
+  element.setAttribute('aria-label', label)
+  return element
+}
+
+/** Bolinha: a posição de quem usa (partida, "você está aqui"). */
 export function pin(className: string, label: string) {
-  // Montado pelo DOM (e não por string HTML): o label vem de APIs externas e não pode virar markup.
-  const span = document.createElement('span')
-  span.setAttribute('role', 'img')
-  span.setAttribute('aria-label', label)
+  const span = labelled(document.createElement('span'), label)
   span.className = `block size-5 rounded-full border-[3px] border-white shadow-md ${className}`
   return L.divIcon({ className: '', html: span, iconSize: [20, 20], iconAnchor: [10, 10] })
+}
+
+const SVG = 'http://www.w3.org/2000/svg'
+// Ícone `location_on` (preenchido) do Material Symbols, do Google, sob licença Apache 2.0:
+// github.com/google/material-design-icons, symbols/web/location_on/materialsymbolsoutlined
+const MATERIAL_PIN =
+  'M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 400Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Z'
+const SHADE_ID = 'culthub-pin-sombra'
+
+function svgElement(name: string, attributes: Record<string, string>) {
+  const element = document.createElementNS(SVG, name)
+  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value)
+  return element
+}
+
+/** Degradê da metade direita, definido uma vez só na página (todos os pinos usam o mesmo). */
+function ensureShade() {
+  if (document.getElementById(SHADE_ID)) return
+  const defs = svgElement('svg', { width: '0', height: '0', 'aria-hidden': 'true' })
+  const gradient = svgElement('linearGradient', { id: SHADE_ID })
+  gradient.append(
+    svgElement('stop', { offset: '0.5', 'stop-color': 'black', 'stop-opacity': '0' }),
+    svgElement('stop', { offset: '0.5', 'stop-color': 'black', 'stop-opacity': '0.15' }),
+  )
+  const wrapper = svgElement('defs', {})
+  wrapper.append(gradient)
+  defs.append(wrapper)
+  document.body.append(defs)
+}
+
+/** Gota com a ponta no lugar: eventos e destinos. A cor vem de uma classe `text-*`. */
+export function markerPin(colorClass: string, label: string) {
+  ensureShade()
+  const span = labelled(document.createElement('span'), label)
+  span.className = `block drop-shadow-md ${colorClass}`
+  const svg = svgElement('svg', {
+    viewBox: '0 -960 960 960',
+    width: '36',
+    height: '36',
+    'aria-hidden': 'true',
+  })
+  svg.append(
+    svgElement('path', { d: MATERIAL_PIN, fill: 'currentColor', stroke: 'white', 'stroke-width': '36' }),
+    // Metade direita mais escura, para dar volume.
+    svgElement('path', { d: MATERIAL_PIN, fill: `url(#${SHADE_ID})` }),
+    svgElement('circle', { cx: '480', cy: '-560', r: '80', fill: 'white' }),
+  )
+  span.append(svg)
+  return L.divIcon({
+    className: '',
+    html: span,
+    iconSize: [36, 36],
+    // A ponta do ícone fica em y = -80 de -960..0, ou seja, a 33 px do topo.
+    iconAnchor: [18, 33],
+    tooltipAnchor: [0, -28],
+  })
 }
 
 export function toLatLng({ latitude, longitude }: Coordinates): L.LatLngTuple {

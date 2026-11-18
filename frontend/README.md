@@ -58,8 +58,8 @@ Os componentes de `ui/` devem ser usados diretamente (`import { Button } from '@
 
 O catálogo consome o backend Django pelos endpoints `/api/eventos/`, `/api/eventos/{uuid}/` e `/api/categorias/`. Busca e filtros são mantidos na URL (`q`, `categorias` e `preco`) e a listagem respeita a paginação da API. O Vite encaminha `/api` para `localhost:8000`; no Docker, `API_PROXY_TARGET` aponta para o serviço `backend`.
 
-- **Ações ainda demonstrativas** (login, perfil, salvar evento, clima e geolocalização) usam dados locais ou registram ações no console. Elas ainda não fazem parte da integração do catálogo.
-- **Ações do próprio navegador** (pedir localização, compartilhar, abrir o app de mapas...) usam `logDemoAction`, de `src/lib/demo.ts`, e aparecem como `[CultHub demo] ...`.
+- **Ações ainda demonstrativas** (login, perfil, salvar evento e clima) usam dados locais ou registram ações no console. Elas ainda não fazem parte da integração do catálogo.
+- **Ações do próprio navegador** (como compartilhar o evento) usam `logDemoAction`, de `src/lib/demo.ts`, e aparecem como `[CultHub demo] ...`.
 
 Para desenvolver com os dois serviços, rode `docker compose up --build` na raiz do projeto. O frontend ficará em `http://localhost:5173` e o backend em `http://localhost:8000`.
 

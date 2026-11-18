@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import RoutePreview from '@/components/events/RoutePreview'
 import { originSearch } from '@/lib/origin'
@@ -7,6 +7,7 @@ import { toCultEvent } from '@/services/catalog'
 import { rotasApi } from '@/services/rotas'
 import type { RotaCalculada } from '@/services/rotas'
 import { apiEvent } from '@tests/fixtures/catalog'
+import { fakePermission } from '@tests/geolocation'
 import { renderWithRouter } from '@tests/render'
 
 const rota = (duracao: number, distancia: number): RotaCalculada => ({
@@ -21,7 +22,7 @@ const emSaoPaulo = toCultEvent(apiEvent({ local: { ...local, latitude: -23.5874,
 function stubPermission(state: PermissionState, position?: { latitude: number; longitude: number }) {
   vi.stubGlobal('navigator', {
     ...navigator,
-    permissions: { query: vi.fn().mockResolvedValue({ state }) },
+    permissions: { query: vi.fn().mockResolvedValue(fakePermission(state)) },
     geolocation: {
       getCurrentPosition: vi.fn(
         (success: PositionCallback) => position && success({ coords: position } as GeolocationPosition),
@@ -71,11 +72,13 @@ describe('RoutePreview', () => {
     renderWithRouter(<RoutePreview event={emSaoPaulo} />)
 
     expect(await screen.findByText('Da sua localização')).toBeInTheDocument()
-    expect(spy).toHaveBeenLastCalledWith(
-      emSaoPaulo.id,
-      { latitude: -23.6, longitude: -46.7 },
-      expect.any(String),
-      expect.any(AbortSignal),
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        emSaoPaulo.id,
+        { latitude: -23.6, longitude: -46.7 },
+        expect.any(String),
+        expect.any(AbortSignal),
+      ),
     )
   })
 
@@ -85,7 +88,8 @@ describe('RoutePreview', () => {
     renderWithRouter(<RoutePreview event={emSaoPaulo} />)
 
     await screen.findByText('Da sua localização')
-    expect(spy.mock.calls.map(([, partida]) => partida.latitude)).toEqual([-23.6, -23.6])
+    // As chamadas saem num efeito logo depois do render; esperar evita falha intermitente.
+    await waitFor(() => expect(spy.mock.calls.map(([, partida]) => partida.latitude)).toEqual([-23.6, -23.6]))
   })
 
   it('para eventos longe de SP, só oferece definir a partida', async () => {
