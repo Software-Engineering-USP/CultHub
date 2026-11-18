@@ -1,5 +1,6 @@
 """Criação das notificações de evento novo, depois da importação."""
 
+import re
 from collections import defaultdict
 
 from django.contrib.auth import get_user_model
@@ -14,13 +15,25 @@ from notificacoes.models import Notificacao, TipoNotificacao
 LIMITE_POR_USUARIO = 5
 
 
-def _cidade(texto):
-    """Só o nome da cidade, sem caixa nem acento ("São Paulo, SP")."""
-    return normalizar_texto(texto.split(",")[0].strip())
+def _cidade_e_uf(texto):
+    """("sao paulo", "sp") a partir de "São Paulo, SP"; a UF é opcional.
+
+    A cidade do perfil é texto livre: aceita "Cidade, UF", "Cidade - UF"
+    e "Cidade/UF", sem caixa nem acento.
+    """
+    partes = [
+        parte.strip()
+        for parte in re.split(r",|/| - ", normalizar_texto(texto))
+        if parte.strip()
+    ]
+    if not partes:
+        return "", ""
+    uf = partes[-1] if len(partes) > 1 and len(partes[-1]) == 2 else ""
+    return partes[0], uf
 
 
 def _interessados_por_categoria(categorias):
-    """Categoria -> [(usuário, cidade do perfil)] de quem a escolheu."""
+    """Categoria -> [(usuário, cidade, UF)] de quem a escolheu."""
     por_categoria = defaultdict(list)
     linhas = (
         get_user_model()
@@ -28,18 +41,33 @@ def _interessados_por_categoria(categorias):
         .values_list("pk", "cidade", "preferencias")
     )
     for usuario_id, cidade, categoria_id in linhas:
-        por_categoria[categoria_id].append((usuario_id, _cidade(cidade)))
+        por_categoria[categoria_id].append((usuario_id, *_cidade_e_uf(cidade)))
     return por_categoria
+
+
+def _mesma_regiao(cidade, uf, local):
+    """Se o evento é da região de quem informou a cidade no perfil.
+
+    O Ticketmaster quase nunca manda a cidade do local, só o estado. Sem
+    a cidade do evento, vale o estado; sem nenhum dos dois, não há como
+    excluir e o aviso é enviado.
+    """
+    if not cidade:
+        return True
+    cidade_evento = normalizar_texto(local.cidade.strip()) if local else ""
+    if cidade_evento:
+        return cidade == cidade_evento
+    uf_evento = local.estado.casefold() if local else ""
+    return not (uf and uf_evento) or uf == uf_evento
 
 
 def _destinatarios(evento, por_categoria):
     """Quem recebe o aviso deste evento (cada pessoa uma vez só)."""
-    cidade_evento = _cidade(evento.local.cidade) if evento.local else ""
     return {
         usuario_id
         for categoria in evento.categorias.all()
-        for usuario_id, cidade in por_categoria.get(categoria.pk, ())
-        if not cidade or cidade == cidade_evento
+        for usuario_id, cidade, uf in por_categoria.get(categoria.pk, ())
+        if _mesma_regiao(cidade, uf, evento.local)
     }
 
 
@@ -65,9 +93,9 @@ def _montar(eventos, por_categoria):
 def notificar_eventos_novos(ids_eventos):
     """Avisa quem tem a categoria do evento nas preferências.
 
-    Quem preencheu a cidade no perfil só recebe eventos dessa cidade; quem
-    não escolheu nenhuma preferência não recebe nada. Devolve quantas
-    notificações foram criadas.
+    Quem preencheu a cidade no perfil só recebe eventos de lá (ver
+    `_mesma_regiao`); quem não escolheu nenhuma preferência não recebe
+    nada. Devolve quantas notificações foram criadas.
     """
     if not ids_eventos:
         return 0

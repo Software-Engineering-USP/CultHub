@@ -70,16 +70,42 @@ class NotificarEventosNovosTest(TestCase):
 
         self.assertEqual(destinatarios(evento), {"Ana", "Caio"})
 
-    def test_evento_sem_cidade_so_vai_para_quem_nao_tem_cidade(self):
-        criar_usuario("Ana", ["music"], cidade="São Paulo")
+    def test_cidade_do_perfil_aceita_outros_separadores(self):
+        criar_usuario("Ana", ["music"], cidade="São Paulo - SP")
+        criar_usuario("Bia", ["music"], cidade="são paulo/sp")
+        criar_usuario("Caio", ["music"], cidade="Rio de Janeiro - RJ")
+        evento = criar_evento(
+            categorias=["music"], local=local_em("São Paulo")
+        )
+
+        notificar_eventos_novos([evento.pk])
+
+        self.assertEqual(destinatarios(evento), {"Ana", "Bia"})
+
+    def test_evento_sem_cidade_filtra_pelo_estado(self):
+        criar_usuario("Ana", ["music"], cidade="São Paulo, SP")
+        criar_usuario("Bia", ["music"], cidade="Rio de Janeiro, RJ")
+        criar_usuario("Caio", ["music"], cidade="São Paulo")
+        criar_usuario("Davi", ["music"])
+        evento = criar_evento(
+            categorias=["music"],
+            local=Local.objects.create(nome="MorumBis", estado="SP"),
+        )
+
+        notificar_eventos_novos([evento.pk])
+
+        self.assertEqual(destinatarios(evento), {"Ana", "Caio", "Davi"})
+
+    def test_evento_sem_cidade_nem_estado_vai_para_todos(self):
+        criar_usuario("Ana", ["music"], cidade="São Paulo, SP")
         criar_usuario("Caio", ["music"])
         sem_local = criar_evento(categorias=["music"], local=None)
-        sem_cidade = criar_evento(categorias=["music"], local=local_em(""))
+        sem_regiao = criar_evento(categorias=["music"], local=local_em(""))
 
-        notificar_eventos_novos([sem_local.pk, sem_cidade.pk])
+        notificar_eventos_novos([sem_local.pk, sem_regiao.pk])
 
-        self.assertEqual(destinatarios(sem_local), {"Caio"})
-        self.assertEqual(destinatarios(sem_cidade), {"Caio"})
+        self.assertEqual(destinatarios(sem_local), {"Ana", "Caio"})
+        self.assertEqual(destinatarios(sem_regiao), {"Ana", "Caio"})
 
     def test_ignora_conta_desativada(self):
         criar_usuario("Ana", ["music"], is_active=False)
