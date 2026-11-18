@@ -30,6 +30,32 @@ class PerfilSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "email")
 
 
+class PerfilPublicoSerializer(serializers.ModelSerializer):
+    """O que outra pessoa logada vê de um usuário.
+
+    Fica de fora o que identifica ou localiza demais: e-mail e bairro.
+    """
+
+    preferencias = serializers.SlugRelatedField(
+        many=True, slug_field="codigo", read_only=True
+    )
+    membro_desde = serializers.DateTimeField(
+        source="criado_em", read_only=True
+    )
+
+    class Meta:
+        model = Usuario
+        fields = (
+            "id",
+            "nome",
+            "iniciais",
+            "cidade",
+            "preferencias",
+            "membro_desde",
+        )
+        read_only_fields = fields
+
+
 class CadastroSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=150)
     email = serializers.EmailField()
