@@ -1,8 +1,6 @@
 import type { ApiEvent, Paginated } from '@/services/catalog'
 import type { CategoryId } from '@/types'
 
-// A conta usa as APIs reais; os demais fluxos ainda são simulados abaixo.
-
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
 export interface ProfileResponse {
@@ -13,6 +11,48 @@ export interface ProfileResponse {
   bairro: string
   preferencias: CategoryId[]
   iniciais: string
+}
+
+export interface ApiComment {
+  id: string
+  evento: string
+  resposta_a: string | null
+  nivel: number
+  /** null quando o comentário foi removido. */
+  autor: { id: string; nome: string; iniciais: string } | null
+  texto: string | null
+  criado_em: string
+  editado_em: string | null
+  removido: boolean
+  /** Escrito pelo usuário logado (e não removido). */
+  meu: boolean
+  respostas: ApiComment[]
+}
+
+export interface ApiMyComment {
+  id: string
+  evento: { id: string; titulo: string }
+  resposta_a: string | null
+  nivel: number
+  texto: string
+  criado_em: string
+  editado_em: string | null
+}
+
+export interface ApiNotification {
+  id: string
+  evento_id: string
+  titulo_evento: string
+  data_inicio: string
+  hora_inicio: string | null
+  local: string
+  criada_em: string
+  lida_em: string | null
+}
+
+export interface NotificationsResponse {
+  nao_lidas: number
+  resultados: ApiNotification[]
 }
 
 export class ApiError extends Error {
@@ -67,19 +107,21 @@ async function apiRequest<T>(path: string, method: Method = 'GET', body?: object
   return data as T
 }
 
+function notifyNotificationsChanged(eventId: string) {
+  if (typeof window !== 'undefined') {
+    const notificationEvent = new CustomEvent('culthub:notifications-updated', {
+      detail: { eventId },
+    })
+    window.dispatchEvent(notificationEvent)
+  }
+}
+
 export type AttendanceWhen = 'futuras' | 'passadas'
 
 function listPath(path: string, filters: Record<string, string>, page: number): string {
   const params = new URLSearchParams(filters)
   if (page > 1) params.set('page', String(page))
   return params.size ? `${path}?${params.toString()}` : path
-}
-
-// Mock: só registra a chamada. Devolve uma Promise para manter a mesma assinatura do fetch real.
-function request(method: Method, path: string, body?: Record<string, unknown>): Promise<void> {
-  const safeBody = body && 'senha' in body ? { ...body, senha: '***' } : body
-  console.info(`[CultHub API mock] ${method} /api${path}`, safeBody ?? '')
-  return Promise.resolve()
 }
 
 export const api = {
@@ -131,27 +173,44 @@ export const api = {
       apiRequest<Paginated<ApiEvent>>(listPath('/eu/agenda/', { de: from, ate: to }, page)),
   },
 
+  notifications: {
+    list: () => apiRequest<NotificationsResponse>('/eu/notificacoes/'),
+    markRead: (id: string) => apiRequest<void>(`/notificacoes/${encodeURIComponent(id)}/ler/`, 'PATCH'),
+    markAllRead: () => apiRequest<void>('/eu/notificacoes/ler-todas/', 'POST'),
+  },
+
   events: {
     save: async (eventId: string) => {
       await apiRequest<void>(`/eventos/${encodeURIComponent(eventId)}/salvar/`, 'POST')
+      notifyNotificationsChanged(eventId)
     },
     unsave: (eventId: string) =>
       apiRequest<void>(`/eventos/${encodeURIComponent(eventId)}/salvar/`, 'DELETE'),
     attend: async (eventId: string) => {
       await apiRequest<void>(`/eventos/${encodeURIComponent(eventId)}/presenca/`, 'POST')
+      notifyNotificationsChanged(eventId)
     },
     unattend: (eventId: string) =>
       apiRequest<void>(`/eventos/${encodeURIComponent(eventId)}/presenca/`, 'DELETE'),
   },
 
-  /** Provisório */
   comments: {
+    /** Comentários do evento, do mais recente, com as respostas aninhadas. */
+    list: (eventId: string, page = 1) =>
+      apiRequest<Paginated<ApiComment>>(
+        listPath(`/eventos/${encodeURIComponent(eventId)}/comentarios/`, {}, page),
+      ),
     create: (eventId: string, text: string) =>
-      request('POST', `/eventos/${encodeURIComponent(eventId)}/comentarios/`, { texto: text }),
+      apiRequest<ApiComment>(`/eventos/${encodeURIComponent(eventId)}/comentarios/`, 'POST', { texto: text }),
     reply: (commentId: string, text: string) =>
-      request('POST', `/comentarios/${encodeURIComponent(commentId)}/respostas/`, { texto: text }),
+      apiRequest<ApiComment>(`/comentarios/${encodeURIComponent(commentId)}/respostas/`, 'POST', {
+        texto: text,
+      }),
     update: (commentId: string, text: string) =>
-      request('PATCH', `/comentarios/${encodeURIComponent(commentId)}/`, { texto: text }),
-    remove: (commentId: string) => request('DELETE', `/comentarios/${encodeURIComponent(commentId)}/`),
+      apiRequest<ApiComment>(`/comentarios/${encodeURIComponent(commentId)}/`, 'PATCH', { texto: text }),
+    remove: (commentId: string) =>
+      apiRequest<void>(`/comentarios/${encodeURIComponent(commentId)}/`, 'DELETE'),
+    /** Comentários e respostas do usuário logado, do mais recente. */
+    mine: (page = 1) => apiRequest<Paginated<ApiMyComment>>(listPath('/eu/comentarios/', {}, page)),
   },
 }

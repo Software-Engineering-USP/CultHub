@@ -4,14 +4,90 @@ O CultHub é uma aplicação web que reúne e apresenta eventos culturais – co
 
 A aplicação permite que o usuário descubra eventos de acordo com critérios como localização, distância a partir de onde ele se encontra e período de interesse (um dia específico, a semana ou o mês). A partir dessas informações, a plataforma também poderá sugerir rotas até os eventos e apresentar a previsão do tempo para o dia escolhido, ajudando o usuário a planejar melhor seus momentos de lazer.
 
+## O que tem no repositório
 
-## Rodando com Docker
+| Pasta | O que é |
+|---|---|
+| `backend/` | API em Django + Django REST Framework. Um app por assunto: `catalogo` (eventos e importação da Ticketmaster), `usuarios`, `agenda` (salvos e presenças), `comentarios`, `notificacoes`, `clima` e `rotas`. |
+| `frontend/` | Interface em React + Vite. Detalhes de estrutura, componentes e rotas no [README do frontend](frontend/README.md). |
+| `.github/workflows/` | CI: lint, testes, build das imagens e análise do SonarCloud a cada pull request. |
+
+As versões de Python e Node ficam no `mise.toml`.
+
+## Primeiros passos
+
+1. Suba o projeto:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   O backend fica em http://localhost:8000 e o frontend em http://localhost:5173.
+
+2. Traga eventos para o banco. Um banco novo começa vazio, e os eventos vêm da Ticketmaster:
+
+   ```bash
+   cp backend/.env.example backend/.env
+   # preencha TICKETMASTER_API_KEY (chave gratuita em https://developer.ticketmaster.com/)
+   docker compose up -d   # recria o backend para ele ler o .env
+   docker compose exec backend python manage.py importar_ticketmaster
+   ```
+
+   O `backend/.env` fica fora do git. As outras variáveis do `.env.example` são opcionais e estão explicadas no próprio arquivo.
+
+3. Para entrar no admin (http://localhost:8000/admin/), crie um usuário:
+
+   ```bash
+   docker compose exec backend python manage.py createsuperuser
+   ```
+
+A documentação da API (Swagger) fica em http://localhost:8000/api/docs/.
+
+## Testes e lint
+
+O CI roda estes comandos a cada pull request; vale rodar antes de abrir o seu.
+
+Backend:
 
 ```bash
-docker compose up --build
+docker compose exec backend ruff check .
+docker compose exec backend ruff format --check .   # sem --check, formata
+docker compose exec backend python manage.py test
 ```
 
-O backend fica em http://localhost:8000 e o frontend em http://localhost:5173. As portas só aceitam conexões desta máquina, porque o backend roda com `DEBUG` ligado. Para abrir o app em outro dispositivo, remova o `127.0.0.1:` das portas no `docker-compose.yml`, de preferência só em uma rede confiável.
+Frontend:
+
+```bash
+docker compose exec frontend npm run lint
+docker compose exec frontend npm run format:check   # npm run format corrige
+docker compose exec frontend npm run build          # também confere os tipos
+docker compose exec frontend npm test
+```
+
+O CI exige pelo menos 80% de cobertura de linhas no `src/` do frontend.
+
+## Rodando sem Docker
+
+Com as versões do `mise.toml` instaladas, em dois terminais:
+
+```bash
+cd backend
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+O Vite encaminha `/api` para http://localhost:8000. Fora do Compose o backend não lê o `backend/.env` sozinho; para importar eventos, carregue-o antes: `set -a && . ./.env && set +a && python manage.py importar_ticketmaster`. O banco, nesse caso, é o `backend/db.sqlite3`.
+
+## Docker em detalhe
+
+As portas só aceitam conexões desta máquina, porque o backend roda com `DEBUG` ligado. Para abrir o app em outro dispositivo, remova o `127.0.0.1:` das portas no `docker-compose.yml`, de preferência só em uma rede confiável.
 
 ### Problemas comuns
 

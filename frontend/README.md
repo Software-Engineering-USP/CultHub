@@ -31,11 +31,11 @@ src/
 │   ├── events/      EventCard, FeaturedCarousel, EventFilters, CommentItem...
 │   └── weather/     WeatherCard, WeatherStrip, WeatherStats
 ├── pages/           uma página por rota
-├── data/            dados demonstrativos de perfil, comentários e clima
+├── data/            dados demonstrativos de perfil e clima
 ├── types/           tipos compartilhados (CultEvent, User, CategoryId...)
 ├── hooks/           leitura de dados (useEvents, useCurrentUser...), useActiveSection e useDocumentTitle
 ├── lib/             rotas (paths), filtros, cn() e outras funções auxiliares
-└── services/        catalog.ts: cliente e adaptadores da API de catálogo; api.ts: ações ainda demonstrativas
+└── services/        catalog.ts: cliente e adaptadores do catálogo; api.ts: conta, agenda e notificações
 
 tests/               testes, organizados nas mesmas pastas do src/ (além de setup.ts e do helper render.tsx)
 ```
@@ -58,7 +58,7 @@ Os componentes de `ui/` devem ser usados diretamente (`import { Button } from '@
 
 O catálogo consome o backend Django pelos endpoints `/api/eventos/`, `/api/eventos/{uuid}/` e `/api/categorias/`. Busca e filtros são mantidos na URL (`q`, `categorias` e `preco`) e a listagem respeita a paginação da API. O Vite encaminha `/api` para `localhost:8000`; no Docker, `API_PROXY_TARGET` aponta para o serviço `backend`.
 
-- **Ações ainda demonstrativas** (login, perfil, salvar evento, comentários e clima) usam dados locais ou registram ações no console. Elas ainda não fazem parte da integração do catálogo.
+- **Ações ainda demonstrativas** (login, perfil, salvar evento e clima) usam dados locais ou registram ações no console. Elas ainda não fazem parte da integração do catálogo.
 - **Ações do próprio navegador** (como compartilhar o evento) usam `logDemoAction`, de `src/lib/demo.ts`, e aparecem como `[CultHub demo] ...`.
 
 Para desenvolver com os dois serviços, rode `docker compose up --build` na raiz do projeto. O frontend ficará em `http://localhost:5173` e o backend em `http://localhost:8000`.
@@ -80,7 +80,19 @@ As URLs são definidas apenas em `src/lib/paths.ts`. Nos links, use `paths` em v
 <Link to={paths.event(event.id)}>...</Link>
 ```
 
-Eventos retornados pelo catálogo têm páginas de detalhes. Os dados de exemplo continuam sendo usados nas áreas ainda não conectadas, como perfil salvo, comentários e clima.
+Eventos retornados pelo catálogo têm páginas de detalhes. Os dados de exemplo continuam sendo usados nas áreas ainda não conectadas, como perfil salvo e clima.
+
+## Notificações
+
+O sino aparece para quem está logado e lista lembretes de eventos salvos ou com presença confirmada que começam nas próximas 24 horas. A primeira abertura consulta a API, que cria no banco um lembrete único por pessoa e evento. Os lembretes podem ser marcados como lidos individualmente ou todos de uma vez.
+
+```text
+GET   /api/eu/notificacoes/
+PATCH /api/notificacoes/{id}/ler/
+POST  /api/eu/notificacoes/ler-todas/
+```
+
+Os lembretes são gerados quando a lista é consultada; não há envio por e-mail ou execução agendada nesta versão.
 
 ## Rota até o evento
 

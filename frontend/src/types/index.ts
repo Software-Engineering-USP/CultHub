@@ -69,13 +69,40 @@ export interface User {
   savedEventIds: string[]
 }
 
+export interface CommentAuthor {
+  id: string
+  name: string
+  initials: string
+}
+
+/** Comentário de um evento, com as respostas aninhadas. */
 export interface EventComment {
   id: string
   eventId: string
-  authorId: string
-  author: string
-  initials: string
+  parentId: string | null
+  /** 0 para comentário, 1 para resposta... */
+  level: number
+  /** null quando removido. */
+  author: CommentAuthor | null
+  /** null quando removido. */
+  text: string | null
+  createdAt: string
+  editedAt: string | null
+  removed: boolean
+  /** Escrito pelo usuário logado. */
+  mine: boolean
+  replies: EventComment[]
+}
+
+/** Comentário (ou resposta) do usuário logado, com o evento de onde veio. */
+export interface MyComment {
+  id: string
+  event: { id: string; title: string }
+  parentId: string | null
+  level: number
   text: string
+  createdAt: string
+  editedAt: string | null
 }
 
 export type RouteMode = 'carro' | 'onibus' | 'ape'

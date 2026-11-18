@@ -57,10 +57,9 @@ describe('WeatherCard', () => {
 
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: heading })).toHaveAttribute('data-weather', weather.theme)
-    expect(screen.getByRole('img', { name: weather.condition })).toHaveAttribute(
-      'src',
-      `https://cdn.meteocons.com/3.0.0-next.10/svg/line/${weather.iconSlug}.svg`,
-    )
+    // O ícone é decorativo; a condição aparece em texto.
+    expect(screen.getByText(weather.condition, { exact: false })).toBeInTheDocument()
+    expect(document.querySelector(`[data-icon="${weather.iconSlug}"]`)).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText(weather.temperature)).toBeInTheDocument()
     expect(
       screen.getByText('Previsão fornecida pelo Open-Meteo; pode mudar conforme a data se aproxima.'),
@@ -93,10 +92,9 @@ describe('WeatherStrip', () => {
       weather.theme,
     )
     expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: weather.condition })).toHaveAttribute(
-      'src',
-      `https://cdn.meteocons.com/3.0.0-next.10/svg/line/${weather.iconSlug}.svg`,
-    )
+    // O ícone é decorativo; a condição aparece em texto.
+    expect(screen.getByText(weather.condition, { exact: false })).toBeInTheDocument()
+    expect(document.querySelector(`[data-icon="${weather.iconSlug}"]`)).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText(weather.temperature)).toBeInTheDocument()
   })
 

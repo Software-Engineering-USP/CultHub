@@ -4,10 +4,9 @@ import { Link } from 'react-router-dom'
 import BackLink from '@/components/common/BackLink'
 import DemoNote from '@/components/common/DemoNote'
 import IconTile from '@/components/common/IconTile'
-import InitialsAvatar from '@/components/common/InitialsAvatar'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
-import CommentItem from '@/components/events/CommentItem'
+import CommentsSection from '@/components/events/CommentsSection'
 import RoutePreview from '@/components/events/RoutePreview'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -19,16 +18,12 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import WeatherCard from '@/components/weather/WeatherCard'
-import { useComments } from '@/hooks/useComments'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { categories } from '@/lib/categories'
 import { logDemoAction } from '@/lib/demo'
 import { shortName } from '@/lib/events'
-import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { api, ApiError } from '@/services/api'
 import type { EventAvailability, EventWithDetails } from '@/types'
@@ -41,7 +36,6 @@ const availabilityMessages: Record<EventAvailability, string> = {
 
 export default function EventDetail({ event }: { event: EventWithDetails }) {
   const user = useCurrentUser()
-  const comments = useComments(event.id)
   const [saved, setSaved] = useState(event.saved ?? false)
   const [attending, setAttending] = useState(event.attending ?? false)
   const [attendanceCount, setAttendanceCount] = useState(event.attendanceCount ?? 0)
@@ -265,67 +259,7 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
           </div>
         </section>
 
-        <section aria-labelledby="comentarios-titulo">
-          <SectionHeading
-            id="comentarios-titulo"
-            title="Comentários"
-            description={`${comments.length} comentários de exemplo • Compartilhe o seu olhar sobre a experiência.`}
-          />
-
-          <Surface
-            as="form"
-            aria-label="Comentário demonstrativo"
-            aria-describedby="comentario-aviso"
-            onSubmit={onFormSubmit((data, form) => {
-              void api.comments.create(event.id, text(data, 'comentario'))
-              form.reset()
-            })}
-            className="mb-5.5"
-          >
-            <div className="mb-4.5 flex items-center gap-3 text-xs">
-              {user ? (
-                <>
-                  <InitialsAvatar initials={user.initials} size="sm" aria-hidden="true" />
-                  <p>
-                    Comentando como <strong>{user.name}</strong>
-                  </p>
-                </>
-              ) : (
-                <p>Entre na sua conta para comentar.</p>
-              )}
-            </div>
-
-            <Label className="sr-only" htmlFor="comentario">
-              Seu comentário sobre o evento
-            </Label>
-            <Textarea
-              id="comentario"
-              name="comentario"
-              required
-              placeholder="Escreva seu comentário sobre o evento..."
-            />
-
-            <div className="mt-3.5 flex items-center justify-between gap-4.5 max-sm:flex-col max-sm:items-start max-sm:gap-3">
-              <DemoNote id="comentario-aviso">
-                Compartilhe ideias com respeito.
-                <br />
-                Demonstração: o texto só aparece no console, não é publicado.
-              </DemoNote>
-              <Button type="submit" className="max-sm:w-full">
-                Publicar comentário
-              </Button>
-            </div>
-          </Surface>
-
-          <Surface>
-            {comments.map((comment) => (
-              <CommentItem key={comment.id} comment={comment} />
-            ))}
-            <DemoNote className="mt-5">
-              Comentários ilustrativos. Responder e publicar só registram a ação no console.
-            </DemoNote>
-          </Surface>
-        </section>
+        <CommentsSection eventId={event.id} />
       </div>
     </>
   )

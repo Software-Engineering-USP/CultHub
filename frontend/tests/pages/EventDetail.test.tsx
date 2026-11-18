@@ -10,6 +10,7 @@ import { catalogApi, ApiError as CatalogApiError, toCultEvent } from '@/services
 import type { ApiEvent } from '@/services/catalog'
 import { rotasApi } from '@/services/rotas'
 import { apiEvent } from '@tests/fixtures/catalog'
+import { apiComment, commentPage } from '@tests/fixtures/comments'
 import { renderWithRouter } from '@tests/render'
 
 function renderEvent(
@@ -18,6 +19,9 @@ function renderEvent(
   overrides: Partial<ApiEvent> = {},
 ) {
   vi.spyOn(rotasApi, 'rota').mockResolvedValue([])
+  if (!vi.isMockFunction(api.comments.list)) {
+    vi.spyOn(api.comments, 'list').mockResolvedValue(commentPage([apiComment()]))
+  }
   vi.spyOn(catalogApi, 'event').mockResolvedValue(
     apiEvent({
       id,
@@ -207,29 +211,135 @@ describe('EventDetail', () => {
     expect(log).toHaveBeenCalledWith('Compartilhar evento', { eventId: 'sp-jazz-blues-festival' })
   })
 
-  it('Responder um comentário registra a ação no console', async () => {
-    const log = vi.spyOn(demo, 'logDemoAction').mockImplementation(() => {})
-    const { user } = renderEvent()
-    await user.click(await screen.findByRole('button', { name: 'Responder a Rafael Martins' }))
-    expect(log).toHaveBeenCalledWith('Abrir resposta ao comentário', { commentId: 'c2' })
+  it('lista os comentários do evento com as respostas', async () => {
+    vi.spyOn(api.comments, 'list').mockResolvedValue(
+      commentPage([
+        apiComment({
+          respostas: [
+            apiComment({
+              id: 'r1',
+              nivel: 1,
+              resposta_a: 'c1',
+              autor: { id: 'ana', nome: 'Ana Souza', iniciais: 'AS' },
+              texto: 'Vamos juntos!',
+            }),
+          ],
+        }),
+      ]),
+    )
+    renderEvent()
+
+    const comment = await screen.findByRole('article', { name: 'Comentário de Rafael Martins' })
+    expect(within(comment).getByText('Gostei da proposta!')).toBeInTheDocument()
+    expect(within(comment).getByRole('article', { name: 'Comentário de Ana Souza' })).toHaveTextContent(
+      'Vamos juntos!',
+    )
+    expect(screen.getByText(/1 comentário •/)).toBeInTheDocument()
+    expect(api.comments.list).toHaveBeenCalledWith('sp-jazz-blues-festival', 1)
   })
 
-  it('Publicar comentário envia o texto e limpa o campo', async () => {
-    const create = vi.spyOn(api.comments, 'create').mockResolvedValue()
+  it('mostra o aviso quando não há comentários', async () => {
+    vi.spyOn(api.comments, 'list').mockResolvedValue(commentPage([]))
+    renderEvent()
+    expect(
+      await screen.findByText('Seja a primeira pessoa a comentar sobre este evento.'),
+    ).toBeInTheDocument()
+  })
+
+  it('Publicar comentário envia o texto, mostra o comentário e limpa o campo', async () => {
+    const create = vi
+      .spyOn(api.comments, 'create')
+      .mockResolvedValue(apiComment({ id: 'novo', texto: 'Que noite!', meu: true }))
+    const { user } = renderEvent()
+    const campo = await screen.findByLabelText('Seu comentário sobre o evento')
+
+    await user.type(campo, '  Que noite!  ')
+    await user.click(screen.getByRole('button', { name: 'Publicar comentário' }))
+
+    expect(create).toHaveBeenCalledWith('sp-jazz-blues-festival', 'Que noite!')
+    expect(await screen.findByText('Que noite!')).toBeInTheDocument()
+    expect(campo).toHaveValue('')
+  })
+
+  it('mostra o erro da API e mantém o texto ao falhar a publicação', async () => {
+    vi.spyOn(api.comments, 'create').mockRejectedValue(
+      new ActionApiError('Muitas requisições. Tente de novo em instantes.', 429),
+    )
     const { user } = renderEvent()
     const campo = await screen.findByLabelText('Seu comentário sobre o evento')
 
     await user.type(campo, 'Que noite!')
     await user.click(screen.getByRole('button', { name: 'Publicar comentário' }))
 
-    expect(create).toHaveBeenCalledWith('sp-jazz-blues-festival', 'Que noite!')
-    expect(campo).toHaveValue('')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Muitas requisições. Tente de novo em instantes.',
+    )
+    expect(campo).toHaveValue('Que noite!')
   })
 
   it('não publica comentário vazio', async () => {
-    const create = vi.spyOn(api.comments, 'create').mockResolvedValue()
+    const create = vi.spyOn(api.comments, 'create')
     const { user } = renderEvent()
     await user.click(await screen.findByRole('button', { name: 'Publicar comentário' }))
     expect(create).not.toHaveBeenCalled()
+  })
+
+  it('visitante vê os comentários, mas não pode comentar nem responder', async () => {
+    renderEvent(undefined, null)
+    await screen.findByRole('article', { name: 'Comentário de Rafael Martins' })
+    expect(screen.getByLabelText('Seu comentário sobre o evento')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Publicar comentário' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /Responder/ })).not.toBeInTheDocument()
+  })
+
+  it('Responder abre o campo e envia a resposta', async () => {
+    const reply = vi
+      .spyOn(api.comments, 'reply')
+      .mockResolvedValue(
+        apiComment({ id: 'r1', nivel: 1, resposta_a: 'c1', texto: 'Também quero ir!', meu: true }),
+      )
+    const { user } = renderEvent()
+
+    await user.click(await screen.findByRole('button', { name: 'Responder a Rafael Martins' }))
+    await user.type(screen.getByLabelText('Sua resposta a Rafael Martins'), 'Também quero ir!')
+    await user.click(screen.getByRole('button', { name: 'Responder' }))
+
+    expect(reply).toHaveBeenCalledWith('c1', 'Também quero ir!')
+    expect(await screen.findByText('Também quero ir!')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Sua resposta a Rafael Martins')).not.toBeInTheDocument()
+  })
+
+  it('o autor edita e exclui o próprio comentário', async () => {
+    vi.spyOn(api.comments, 'list').mockResolvedValue(commentPage([apiComment({ meu: true })]))
+    vi.spyOn(api.comments, 'update').mockResolvedValue(
+      apiComment({ meu: true, texto: 'Texto novo', editado_em: '2026-11-16T10:00:00Z' }),
+    )
+    const remove = vi.spyOn(api.comments, 'remove').mockResolvedValue()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { user } = renderEvent()
+
+    const comment = await screen.findByRole('article', { name: 'Comentário de Rafael Martins' })
+    await user.click(within(comment).getByRole('button', { name: 'Editar' }))
+    const campo = within(comment).getByLabelText('Editar seu comentário')
+    await user.clear(campo)
+    await user.type(campo, 'Texto novo')
+    await user.click(within(comment).getByRole('button', { name: 'Salvar' }))
+
+    expect(api.comments.update).toHaveBeenCalledWith('c1', 'Texto novo')
+    expect(await screen.findByText('Texto novo')).toBeInTheDocument()
+    expect(screen.getByText(/editado/)).toBeInTheDocument()
+
+    await user.click(within(comment).getByRole('button', { name: 'Excluir' }))
+    expect(remove).toHaveBeenCalledWith('c1')
+    expect(
+      await screen.findByText('Seja a primeira pessoa a comentar sobre este evento.'),
+    ).toBeInTheDocument()
+  })
+
+  it('não mostra editar e excluir em comentários de outras pessoas', async () => {
+    renderEvent()
+    await screen.findByRole('article', { name: 'Comentário de Rafael Martins' })
+    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument()
   })
 })

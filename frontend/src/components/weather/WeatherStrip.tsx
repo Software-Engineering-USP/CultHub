@@ -1,6 +1,7 @@
 import Surface from '@/components/common/Surface'
 import { useWeather } from '@/hooks/useWeather'
 import type { CultEvent } from '@/types'
+import WeatherIcon from './WeatherIcon'
 import WeatherStats from './WeatherStats'
 
 /** Faixa de clima no rodapé das páginas de origem e rota. */
@@ -16,14 +17,7 @@ export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) 
     >
       {result.status === 'ready' ? (
         <>
-          <img
-            src={`https://cdn.meteocons.com/3.0.0-next.10/svg/line/${result.weather.iconSlug}.svg`}
-            alt={result.weather.condition}
-            loading="lazy"
-            width="60"
-            height="60"
-            className="size-15 shrink-0 max-sm:size-12"
-          />
+          <WeatherIcon weather={result.weather} className="size-15 max-sm:size-12" />
           <div>
             <h2 className="text-base max-sm:text-sm">
               {result.weather.forecastType === 'hourly'

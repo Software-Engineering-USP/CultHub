@@ -2,6 +2,7 @@ import Eyebrow from '@/components/common/Eyebrow'
 import Surface from '@/components/common/Surface'
 import { useWeather } from '@/hooks/useWeather'
 import type { CultEvent } from '@/types'
+import WeatherIcon from './WeatherIcon'
 import WeatherStats from './WeatherStats'
 
 /** Clima do evento (página de detalhes). */
@@ -36,16 +37,10 @@ export default function WeatherCard({ event }: Readonly<{ event: CultEvent }>) {
       </div>
 
       <div className="mt-6 mb-4 flex items-center gap-4.5">
-        <img
-          src={`https://cdn.meteocons.com/3.0.0-next.10/svg/line/${weather.iconSlug}.svg`}
-          alt={weather.condition}
-          loading="lazy"
-          width="76"
-          height="76"
-          className="size-19 shrink-0"
-        />
+        <WeatherIcon weather={weather} className="size-19" />
         <div>
           <p className="text-4xl font-semibold tracking-tighter text-foreground">{weather.temperature}</p>
+          <p className="font-semibold text-foreground">{weather.condition}</p>
           <p className="text-xs text-muted-foreground">
             {event.schedule} • {event.venue}
           </p>

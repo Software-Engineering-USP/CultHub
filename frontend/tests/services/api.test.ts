@@ -77,6 +77,95 @@ describe('api', () => {
     ])
   })
 
+  it('atualiza as notificações após salvar ou confirmar presença', async () => {
+    const dispatchEvent = vi.spyOn(window, 'dispatchEvent')
+
+    await api.events.save('evento-salvo')
+    await api.events.attend('evento-confirmado')
+
+    const events = dispatchEvent.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.type === 'culthub:notifications-updated') as CustomEvent[]
+    expect(events).toHaveLength(2)
+    expect(events.map((event) => event.detail)).toEqual([
+      { eventId: 'evento-salvo' },
+      { eventId: 'evento-confirmado' },
+    ])
+  })
+
+  it('consulta notificações e marca uma ou todas como lidas', async () => {
+    await api.notifications.list()
+    await api.notifications.markRead('notificacao/42')
+    await api.notifications.markAllRead()
+
+    expect(fetchMock.mock.calls.map(([url, options]) => [url, (options as RequestInit).method])).toEqual([
+      ['/api/eu/notificacoes/', 'GET'],
+      ['/api/notificacoes/notificacao%2F42/ler/', 'PATCH'],
+      ['/api/eu/notificacoes/ler-todas/', 'POST'],
+    ])
+  })
+
+  it('não atualiza as notificações quando salvar o evento falha', async () => {
+    const dispatchEvent = vi.spyOn(window, 'dispatchEvent')
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: 'Falha.' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(api.events.save('evento')).rejects.toThrow('Falha.')
+
+    expect(dispatchEvent).not.toHaveBeenCalled()
+  })
+
+  it('usa as rotas de comentários, respostas e da lista do usuário', async () => {
+    await api.comments.list('evento/42')
+    await api.comments.list('evento/42', 2)
+    await api.comments.create('evento/42', 'Oi')
+    await api.comments.reply('c/1', 'Também')
+    await api.comments.update('c/1', 'Editado')
+    await api.comments.mine()
+    await api.comments.mine(3)
+
+    expect(fetchMock.mock.calls.map(([url, options]) => [url, (options as RequestInit).method])).toEqual([
+      ['/api/eventos/evento%2F42/comentarios/', 'GET'],
+      ['/api/eventos/evento%2F42/comentarios/?page=2', 'GET'],
+      ['/api/eventos/evento%2F42/comentarios/', 'POST'],
+      ['/api/comentarios/c%2F1/respostas/', 'POST'],
+      ['/api/comentarios/c%2F1/', 'PATCH'],
+      ['/api/eu/comentarios/', 'GET'],
+      ['/api/eu/comentarios/?page=3', 'GET'],
+    ])
+    expect(fetchMock.mock.calls.slice(2, 5).map(([, options]) => JSON.parse(options.body as string))).toEqual(
+      [{ texto: 'Oi' }, { texto: 'Também' }, { texto: 'Editado' }],
+    )
+  })
+
+  it('remover comentário aceita a resposta 204 sem corpo', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
+
+    await expect(api.comments.remove('c1')).resolves.toBeUndefined()
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/comentarios/c1/')
+    expect(options.method).toBe('DELETE')
+    expect(options.body).toBeUndefined()
+  })
+
+  it('mostra a mensagem "detail" do backend sem o nome do campo', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: 'Muitas requisições.' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(api.comments.create('evento', 'Oi')).rejects.toMatchObject({
+      message: 'Muitas requisições.',
+      status: 429,
+    })
+  })
+
   it('envia e-mail e senha ao backend sem registrá-los no console', async () => {
     await api.auth.signIn({ email: 'voce@exemplo.com', password: 'segredo123', remember: true })
     await api.auth.signUp({
