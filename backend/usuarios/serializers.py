@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -32,8 +33,8 @@ class PerfilSerializer(serializers.ModelSerializer):
 
 class CadastroSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=150)
-    email = serializers.EmailField()
-    senha = serializers.CharField(write_only=True)
+    email = serializers.EmailField(max_length=254)
+    senha = serializers.CharField(write_only=True, trim_whitespace=False)
     aceite_termos = serializers.BooleanField()
 
     def validate_email(self, email):
@@ -57,17 +58,23 @@ class CadastroSerializer(serializers.Serializer):
         return aceite
 
     def create(self, dados):
-        return Usuario.objects.create_user(
-            dados["email"],
-            dados["senha"],
-            nome=dados["nome"],
-            termos_aceitos_em=timezone.now(),
-        )
+        try:
+            with transaction.atomic():
+                return Usuario.objects.create_user(
+                    dados["email"],
+                    dados["senha"],
+                    nome=dados["nome"],
+                    termos_aceitos_em=timezone.now(),
+                )
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {"email": ["Já existe uma conta com este e-mail."]}
+            ) from None
 
 
 class EntrarSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    senha = serializers.CharField(write_only=True)
+    senha = serializers.CharField(write_only=True, trim_whitespace=False)
     lembrar = serializers.BooleanField(default=False)
 
     def validate(self, dados):
