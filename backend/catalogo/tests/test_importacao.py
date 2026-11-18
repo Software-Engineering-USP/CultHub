@@ -940,6 +940,7 @@ class ComandoTest(TestCase):
                 "atualizados: 1",
                 "removidos: 1",
                 "ignorados: 2",
+                "notificações de evento novo: 0",
                 "sem categoria: 1",
                 "  - Halloween 2026 | Soho House",
                 "com erro: 1",

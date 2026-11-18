@@ -1,5 +1,6 @@
 """Importação dos eventos do Ticketmaster para o catálogo."""
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import date, time
 from decimal import Decimal
@@ -45,6 +46,8 @@ class ResumoImportacao:
     ignorados: int = 0
     sem_categoria: list[str] = field(default_factory=list)
     com_erro: list[str] = field(default_factory=list)
+    # Ids dos eventos criados nesta execução (para avisar os interessados).
+    ids_criados: list[uuid.UUID] = field(default_factory=list)
     remocao_pulada: bool = False
 
 
@@ -169,6 +172,7 @@ def _descrever_erro(dados):
 def _contabilizar(resumo, evento, criado, tem_categoria):
     if criado:
         resumo.criados += 1
+        resumo.ids_criados.append(evento.pk)
     else:
         resumo.atualizados += 1
     if not tem_categoria:

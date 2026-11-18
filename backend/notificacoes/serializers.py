@@ -20,6 +20,7 @@ class NotificacaoSerializer(serializers.ModelSerializer):
         model = Notificacao
         fields = (
             "id",
+            "tipo",
             "evento_id",
             "titulo_evento",
             "data_inicio",
@@ -30,7 +31,7 @@ class NotificacaoSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
-    def get_local(self, obj):
+    def get_local(self, obj) -> str:
         if obj.evento.local_id:
             return obj.evento.local.nome
         return "Local a confirmar"

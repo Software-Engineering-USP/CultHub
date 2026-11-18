@@ -7,6 +7,7 @@ from django.utils import timezone
 from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, Provedor
 from catalogo.ticketmaster import ErroTicketmaster, buscar_todos
+from notificacoes.servicos import notificar_eventos_novos
 
 
 class Command(BaseCommand):
@@ -38,10 +39,12 @@ class Command(BaseCommand):
             resumo = importar(eventos, timezone.now())
         except ErroImportacao as erro:
             raise CommandError(str(erro)) from None
+        notificacoes = notificar_eventos_novos(resumo.ids_criados)
         self.stdout.write(f"criados: {resumo.criados}")
         self.stdout.write(f"atualizados: {resumo.atualizados}")
         self.stdout.write(f"removidos: {resumo.removidos}")
         self.stdout.write(f"ignorados: {resumo.ignorados}")
+        self.stdout.write(f"notificações de evento novo: {notificacoes}")
         self.stdout.write(f"sem categoria: {len(resumo.sem_categoria)}")
         for titulo in resumo.sem_categoria:
             self.stdout.write(f"  - {titulo}")
