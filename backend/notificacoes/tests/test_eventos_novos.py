@@ -3,13 +3,14 @@ from io import StringIO
 from unittest.mock import patch
 
 from django.core.management import call_command
+from django.db import OperationalError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from agenda.models import InteresseEmEvento
-from catalogo.models import CategoriaCultural, Local
+from catalogo.models import CategoriaCultural, Evento, Local
 from catalogo.tests.fabrica import criar_evento
 from catalogo.tests.test_importacao import eventos_da_fixture
 from notificacoes.models import Notificacao, TipoNotificacao
@@ -193,6 +194,23 @@ class ImportacaoNotificaTest(TestCase):
         self.assertFalse(
             ana.notificacoes.exclude(tipo=TipoNotificacao.EVENTO_NOVO).exists()
         )
+
+    @override_settings(TICKETMASTER_API_KEY="chave")
+    def test_falha_nos_avisos_desfaz_a_importacao(self):
+        comando = "catalogo.management.commands.importar_ticketmaster"
+        with (
+            patch(
+                f"{comando}.buscar_todos", return_value=eventos_da_fixture()
+            ),
+            patch(
+                f"{comando}.notificar_eventos_novos",
+                side_effect=OperationalError("banco fora"),
+            ),
+            self.assertRaises(OperationalError),
+        ):
+            call_command("importar_ticketmaster", stdout=StringIO())
+
+        self.assertFalse(Evento.objects.exists())
 
 
 class ListaComEventosNovosTest(APITestCase):

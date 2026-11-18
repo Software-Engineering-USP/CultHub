@@ -2,6 +2,7 @@ from datetime import datetime, time
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 from django.utils import timezone
 
 from catalogo.importacao import ErroImportacao, importar
@@ -35,11 +36,15 @@ class Command(BaseCommand):
                 "O Ticketmaster não retornou nenhum evento; nada foi "
                 "alterado para não remover o catálogo inteiro."
             )
+        # Mesma transação: se os avisos falharem, a importação é desfeita e
+        # a próxima execução cria os eventos (e os avisos) de novo. Só evento
+        # criado gera aviso, então importar sem avisar perderia os avisos.
         try:
-            resumo = importar(eventos, timezone.now())
+            with transaction.atomic():
+                resumo = importar(eventos, timezone.now())
+                notificacoes = notificar_eventos_novos(resumo.ids_criados)
         except ErroImportacao as erro:
             raise CommandError(str(erro)) from None
-        notificacoes = notificar_eventos_novos(resumo.ids_criados)
         self.stdout.write(f"criados: {resumo.criados}")
         self.stdout.write(f"atualizados: {resumo.atualizados}")
         self.stdout.write(f"removidos: {resumo.removidos}")
