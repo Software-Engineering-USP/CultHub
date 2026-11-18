@@ -32,6 +32,36 @@ def _interessados_por_categoria(categorias):
     return por_categoria
 
 
+def _destinatarios(evento, por_categoria):
+    """Quem recebe o aviso deste evento (cada pessoa uma vez só)."""
+    cidade_evento = _cidade(evento.local.cidade) if evento.local else ""
+    return {
+        usuario_id
+        for categoria in evento.categorias.all()
+        for usuario_id, cidade in por_categoria.get(categoria.pk, ())
+        if not cidade or cidade == cidade_evento
+    }
+
+
+def _montar(eventos, por_categoria):
+    """Notificações a criar, respeitando o limite por pessoa."""
+    recebidas = defaultdict(int)
+    novas = []
+    for evento in eventos:
+        for usuario_id in _destinatarios(evento, por_categoria):
+            if recebidas[usuario_id] >= LIMITE_POR_USUARIO:
+                continue
+            recebidas[usuario_id] += 1
+            novas.append(
+                Notificacao(
+                    usuario_id=usuario_id,
+                    evento=evento,
+                    tipo=TipoNotificacao.EVENTO_NOVO,
+                )
+            )
+    return novas
+
+
 def notificar_eventos_novos(ids_eventos):
     """Avisa quem tem a categoria do evento nas preferências.
 
@@ -54,33 +84,10 @@ def notificar_eventos_novos(ids_eventos):
     }
     if not categorias:
         return 0
-    por_categoria = _interessados_por_categoria(categorias)
-    recebidas = defaultdict(int)
-    novas = []
-    for evento in eventos:
-        cidade_evento = _cidade(evento.local.cidade) if evento.local else ""
-        destinatarios = set()
-        for categoria in evento.categorias.all():
-            for usuario_id, cidade in por_categoria.get(categoria.pk, ()):
-                if cidade and cidade != cidade_evento:
-                    continue
-                destinatarios.add(usuario_id)
-        for usuario_id in destinatarios:
-            if recebidas[usuario_id] >= LIMITE_POR_USUARIO:
-                continue
-            recebidas[usuario_id] += 1
-            novas.append(
-                Notificacao(
-                    usuario_id=usuario_id,
-                    evento=evento,
-                    tipo=TipoNotificacao.EVENTO_NOVO,
-                )
-            )
-    antes = Notificacao.objects.filter(
+    novas = _montar(eventos, _interessados_por_categoria(categorias))
+    eventos_novos = Notificacao.objects.filter(
         tipo=TipoNotificacao.EVENTO_NOVO
-    ).count()
-    Notificacao.objects.bulk_create(novas, ignore_conflicts=True)
-    return (
-        Notificacao.objects.filter(tipo=TipoNotificacao.EVENTO_NOVO).count()
-        - antes
     )
+    antes = eventos_novos.count()
+    Notificacao.objects.bulk_create(novas, ignore_conflicts=True)
+    return eventos_novos.count() - antes
