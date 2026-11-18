@@ -32,5 +32,8 @@ export function useDeviceLocation() {
     )
   }
 
-  return { position: requested ?? granted.position, status, request }
+  const position = requested ?? granted.position
+  // Se a permissão foi liberada depois (nas configurações), o aviso de negada deixa de valer.
+  const shown = position && status !== 'locating' ? 'idle' : status
+  return { position, status: shown, request }
 }

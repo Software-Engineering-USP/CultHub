@@ -6,10 +6,14 @@ import { paths, routes } from '@/lib/paths'
 import Home from '@/pages/Home'
 import { catalogApi } from '@/services/catalog'
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
+import { fakePermission, restoreGeolocation, stubGeolocation } from '@tests/geolocation'
 import { renderWithRouter } from '@tests/render'
 
 describe('Home', () => {
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    restoreGeolocation()
+    vi.restoreAllMocks()
+  })
 
   it('renderiza estados e lista o catálogo retornado pela API', async () => {
     vi.spyOn(catalogApi, 'events').mockResolvedValue(
@@ -120,34 +124,23 @@ describe('Home', () => {
     const getCurrentPosition = vi.fn((success: PositionCallback) =>
       success({ coords: { latitude: -23.6, longitude: -46.7 } } as GeolocationPosition),
     )
-    vi.stubGlobal('navigator', {
-      ...navigator,
-      permissions: { query: vi.fn().mockResolvedValue({ state: 'prompt' }) },
-      geolocation: { getCurrentPosition },
-    })
+    stubGeolocation(fakePermission('prompt'), getCurrentPosition)
     const { user } = renderWithRouter(<Home />)
 
     expect(screen.queryByRole('img', { name: 'Você está aqui' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Minha Localização/ }))
     expect(await screen.findByRole('img', { name: 'Você está aqui' })).toBeInTheDocument()
     expect(getCurrentPosition).toHaveBeenCalledOnce()
-    vi.unstubAllGlobals()
   })
 
   it('avisa quando a pessoa não permite a localização', async () => {
     vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([]))
-    vi.stubGlobal('navigator', {
-      ...navigator,
-      permissions: { query: vi.fn().mockResolvedValue({ state: 'prompt' }) },
-      geolocation: {
-        getCurrentPosition: (_: PositionCallback, failure: PositionErrorCallback) =>
-          failure({ code: 1 } as GeolocationPositionError),
-      },
-    })
+    stubGeolocation(fakePermission('prompt'), (_: PositionCallback, failure: PositionErrorCallback) =>
+      failure({ code: 1 } as GeolocationPositionError),
+    )
     const { user } = renderWithRouter(<Home />)
 
     await user.click(screen.getByRole('button', { name: /Minha Localização/ }))
     expect(await screen.findByText(/Você não permitiu o uso da localização/)).toBeInTheDocument()
-    vi.unstubAllGlobals()
   })
 })

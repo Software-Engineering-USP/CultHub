@@ -1,6 +1,7 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useGrantedLocation } from '@/hooks/useGrantedLocation'
+import { fakePermission } from '@tests/geolocation'
 
 function stub(state: PermissionState | 'erro', position?: { latitude: number; longitude: number }) {
   const getCurrentPosition = vi.fn((success: PositionCallback, failure: PositionErrorCallback) =>
@@ -10,7 +11,9 @@ function stub(state: PermissionState | 'erro', position?: { latitude: number; lo
     ...navigator,
     permissions: {
       query:
-        state === 'erro' ? vi.fn().mockRejectedValue(new Error('x')) : vi.fn().mockResolvedValue({ state }),
+        state === 'erro'
+          ? vi.fn().mockRejectedValue(new Error('x'))
+          : vi.fn().mockResolvedValue(fakePermission(state)),
     },
     geolocation: { getCurrentPosition },
   })
@@ -42,5 +45,29 @@ describe('useGrantedLocation', () => {
     stub('granted')
     const { result } = renderHook(() => useGrantedLocation())
     await waitFor(() => expect(result.current).toEqual({ checking: false, position: null }))
+  })
+
+  it('pega a posição quando a pessoa libera a permissão com a página aberta', async () => {
+    const permission = fakePermission('denied')
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      permissions: { query: vi.fn().mockResolvedValue(permission) },
+      geolocation: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({ coords: { latitude: -23.6, longitude: -46.7 } } as GeolocationPosition),
+      },
+    })
+    const { result, unmount } = renderHook(() => useGrantedLocation())
+    await waitFor(() => expect(result.current).toEqual({ checking: false, position: null }))
+
+    act(() => permission.change('granted'))
+    expect(result.current.position).toEqual({ latitude: -23.6, longitude: -46.7 })
+
+    act(() => permission.change('denied'))
+    expect(result.current.position).toBeNull()
+
+    // Ao desmontar, para de ouvir as mudanças.
+    unmount()
+    act(() => permission.change('granted'))
   })
 })
