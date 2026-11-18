@@ -40,6 +40,7 @@ COPY backend/agenda ./agenda
 COPY backend/clima ./clima
 COPY backend/rotas ./rotas
 COPY backend/comentarios ./comentarios
+COPY backend/notificacoes ./notificacoes
 COPY --from=frontend /app/dist ./frontend_dist
 
 # A chave só existe neste comando; a de verdade vem do ambiente ao rodar.
