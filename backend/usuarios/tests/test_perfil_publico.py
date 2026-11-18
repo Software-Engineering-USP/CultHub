@@ -1,5 +1,6 @@
 import uuid
 
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from catalogo.models import CategoriaCultural
@@ -42,7 +43,10 @@ class PerfilPublicoTest(APITestCase):
         self.assertEqual(dados["nome"], "Caio Prado")
         self.assertEqual(dados["iniciais"], "CP")
         self.assertEqual(dados["cidade"], "São Paulo, SP")
-        self.assertIsNotNone(dados["membro_desde"])
+        self.assertEqual(
+            dados["membro_desde"],
+            timezone.localdate(self.outra.criado_em).isoformat(),
+        )
 
     def test_nao_vaza_email_nem_bairro(self):
         corpo = self.client.get(self.url(self.outra.pk)).content.decode()
