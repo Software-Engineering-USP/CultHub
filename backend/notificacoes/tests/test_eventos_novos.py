@@ -255,17 +255,27 @@ class ListaComEventosNovosTest(APITestCase):
 
         self.assertEqual([item["tipo"] for item in resultados], ["lembrete"])
 
-    def test_mesmo_evento_pode_ter_os_dois_tipos(self):
+    def test_lembrete_substitui_o_aviso_de_evento_novo(self):
         evento = criar_evento(data_inicio=self.hoje)
-        InteresseEmEvento.objects.create(usuario=self.usuario, evento=evento)
+        marcacao = InteresseEmEvento.objects.create(
+            usuario=self.usuario, evento=evento
+        )
         self.avisar(evento)
 
         resposta = self.client.get(self.url).json()
 
-        self.assertEqual(resposta["nao_lidas"], 2)
+        self.assertEqual(resposta["nao_lidas"], 1)
         self.assertEqual(
-            {item["tipo"] for item in resposta["resultados"]},
-            {"lembrete", "evento_novo"},
+            [item["tipo"] for item in resposta["resultados"]], ["lembrete"]
+        )
+
+        marcacao.delete()
+        resposta = self.client.get(self.url).json()
+
+        self.assertEqual(resposta["nao_lidas"], 1)
+        self.assertEqual(
+            [item["tipo"] for item in resposta["resultados"]],
+            ["evento_novo"],
         )
 
     def test_evento_novo_some_depois_de_sete_dias(self):
