@@ -7,7 +7,7 @@ type WeatherState =
   | { key: string; status: 'ready'; weather: Weather }
   | { key: string; status: 'unavailable'; message: string }
 
-type WeatherResult =
+export type WeatherResult =
   { status: 'loading' } | { status: 'ready'; weather: Weather } | { status: 'unavailable'; message: string }
 
 /** Consulta a previsão do evento pela localização e data recebidas do catálogo. */

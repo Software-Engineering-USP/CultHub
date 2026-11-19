@@ -69,7 +69,7 @@ describe('WeatherCard', () => {
   it('mostra carregamento', () => {
     useWeatherMock.mockReturnValue({ status: 'loading' })
     render(<WeatherCard event={event} />)
-    expect(screen.getByText('Consultando a previsão para o local do evento…')).toBeInTheDocument()
+    expect(screen.getByText('Consultando a previsão do tempo para o evento…')).toBeInTheDocument()
   })
 
   it('mostra quando a previsão não está disponível', () => {
@@ -101,7 +101,7 @@ describe('WeatherStrip', () => {
   it('mostra carregamento e erros de previsão', () => {
     useWeatherMock.mockReturnValue({ status: 'loading' })
     const { rerender } = render(<WeatherStrip event={event} />)
-    expect(screen.getByText('Consultando a previsão do evento…')).toBeInTheDocument()
+    expect(screen.getByText('Consultando a previsão do tempo para o evento…')).toBeInTheDocument()
 
     useWeatherMock.mockReturnValue({ status: 'unavailable', message: 'Previsão indisponível.' })
     rerender(<WeatherStrip event={event} />)

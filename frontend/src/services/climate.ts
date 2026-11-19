@@ -1,4 +1,5 @@
 import type { Weather } from '@/types'
+import { apiGet } from './catalog'
 
 interface Locality {
   latitude: number
@@ -30,21 +31,28 @@ interface LocalitiesResponse {
   resultados: Locality[]
 }
 
-async function get<T>(path: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(`/api${path}`, { credentials: 'same-origin', signal })
-  if (!response.ok) {
-    let message = 'Não foi possível consultar a previsão do tempo.'
-    try {
-      const body: unknown = await response.json()
-      if (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string') {
-        message = body.detail
-      }
-    } catch {
-      // Mantém a mensagem padrão quando a resposta não contém JSON.
-    }
-    throw new Error(message)
-  }
-  return response.json() as Promise<T>
+function get<T>(path: string, signal: AbortSignal): Promise<T> {
+  return apiGet<T>(path, {
+    signal,
+    describe: (_status, detail) => detail ?? 'Não foi possível consultar a previsão do tempo.',
+  })
+}
+
+function diasAteEvento(date: string): number {
+  const [year, month, day] = date.split('-').map(Number)
+  const agora = new Date()
+  const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate())
+  const diaDoEvento = Date.UTC(year, month - 1, day)
+  return Math.round((diaDoEvento - hoje) / 86_400_000)
+}
+
+function eventoJaPassou(date: string, time?: string | null): boolean {
+  const dias = diasAteEvento(date)
+  if (dias < 0) return true
+  if (dias > 0 || !time) return false
+  const [hour, minute] = time.slice(0, 5).split(':').map(Number)
+  const agora = new Date()
+  return hour * 60 + minute < agora.getHours() * 60 + agora.getMinutes()
 }
 
 async function eventCoordinates(
@@ -154,16 +162,21 @@ export async function getEventWeather(
   signal: AbortSignal,
 ): Promise<Weather> {
   if (!date) throw new Error('A data deste evento não está disponível para consultar a previsão.')
+  if (eventoJaPassou(date, time)) {
+    throw new Error('Este evento já aconteceu; a previsão do tempo não está mais disponível.')
+  }
+  const diasRestantes = diasAteEvento(date)
+  if (diasRestantes > 15) {
+    throw new Error('A previsão estará disponível a partir de 16 dias antes do evento.')
+  }
   const { latitude, longitude } = await eventCoordinates(location, signal)
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
-    dias: '16',
+    dias: String(diasRestantes + 1),
   })
   const forecast = await get<ForecastResponse>(`/clima/previsao/?${params}`, signal)
   const weather = (time && hourlyWeather(forecast, date, time)) || dailyWeather(forecast, date)
   if (weather) return weather
-  throw new Error(
-    'A previsão para esse evento ainda não está disponível. Ela fica disponível até 16 dias antes.',
-  )
+  throw new Error('A previsão para esse dia ainda não está disponível.')
 }

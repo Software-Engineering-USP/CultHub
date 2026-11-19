@@ -2,6 +2,7 @@ import Surface from '@/components/common/Surface'
 import { useWeather } from '@/hooks/useWeather'
 import type { CultEvent } from '@/types'
 import WeatherIcon from './WeatherIcon'
+import { WeatherMessage, WeatherTitle } from './WeatherMessage'
 import WeatherStats from './WeatherStats'
 
 /** Faixa de clima no rodapé das páginas de origem e rota. */
@@ -19,11 +20,7 @@ export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) 
         <>
           <WeatherIcon weather={result.weather} className="size-15 max-sm:size-12" />
           <div>
-            <h2 className="text-base max-sm:text-sm">
-              {result.weather.forecastType === 'hourly'
-                ? 'Clima no horário do evento'
-                : 'Previsão para o dia do evento'}
-            </h2>
+            <WeatherTitle eventTime={event.eventTime} forecastType={result.weather.forecastType} level="h2" />
             <p className="mt-1 text-2xs text-muted-foreground">
               {event.schedule} • {result.weather.condition}
             </p>
@@ -37,14 +34,7 @@ export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) 
           </p>
         </>
       ) : (
-        <div>
-          <h2 className="text-base max-sm:text-sm">
-            {event.eventTime ? 'Clima no horário do evento' : 'Previsão para o dia do evento'}
-          </h2>
-          <p aria-live="polite" aria-atomic="true" className="mt-1 text-sm text-muted-foreground">
-            {result.status === 'loading' ? 'Consultando a previsão do evento…' : result.message}
-          </p>
-        </div>
+        <WeatherMessage event={event} result={result} level="h2" />
       )}
     </Surface>
   )

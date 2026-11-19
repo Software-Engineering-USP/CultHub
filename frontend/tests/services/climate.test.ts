@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getEventWeather } from '@/services/climate'
 
 const date = '2040-03-10'
@@ -40,7 +40,15 @@ function mockFetch(...responses: Response[]) {
   return fetchMock
 }
 
-afterEach(() => vi.unstubAllGlobals())
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2040-03-07T12:00:00'))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 describe('getEventWeather', () => {
   it.each([
@@ -104,8 +112,16 @@ describe('getEventWeather', () => {
       '/api/clima/localidades/?nome=S%C3%A3o+Paulo&pais=BR',
     )
     expect(String(fetchMock.mock.calls[1][0])).toContain(
-      '/api/clima/previsao/?latitude=-23.55&longitude=-46.63&dias=16',
+      '/api/clima/previsao/?latitude=-23.55&longitude=-46.63&dias=4',
     )
+  })
+
+  it('solicita somente os dias necessários até o evento', async () => {
+    const fetchMock = mockFetch(jsonResponse(forecast(0)))
+
+    await getEventWeather(location, date, '20:00', new AbortController().signal)
+
+    expect(String(fetchMock.mock.calls[0][0])).toContain('&dias=4')
   })
 
   it('usa o primeiro resultado se a busca não devolver código de país', async () => {
@@ -145,13 +161,25 @@ describe('getEventWeather', () => {
     ).rejects.toThrow('Não encontramos a cidade')
   })
 
-  it('informa quando falta a data ou ela não está na janela da previsão', async () => {
+  it('informa quando falta a data ou o evento ainda está fora da janela', async () => {
     const signal = new AbortController().signal
     await expect(getEventWeather(location, undefined, '20:00', signal)).rejects.toThrow('data deste evento')
-    mockFetch(jsonResponse(forecast(0)))
-    await expect(getEventWeather(location, '2040-03-11', '20:00', signal)).rejects.toThrow(
-      'até 16 dias antes',
+    await expect(getEventWeather(location, '2040-03-30', '20:00', signal)).rejects.toThrow(
+      'a partir de 16 dias antes',
     )
+  })
+
+  it('não consulta o serviço para eventos que já passaram', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      getEventWeather(location, '2040-03-06', '20:00', new AbortController().signal),
+    ).rejects.toThrow('Este evento já aconteceu')
+    await expect(
+      getEventWeather(location, '2040-03-07', '10:00', new AbortController().signal),
+    ).rejects.toThrow('Este evento já aconteceu')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('usa o resumo diário se o horário não aparecer nos dados horários', async () => {

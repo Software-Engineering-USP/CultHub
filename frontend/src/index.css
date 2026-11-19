@@ -52,6 +52,23 @@
   --color-success-border: #dce5d5;
   --color-success-foreground: #365b3f;
 
+  /* Fundos dos cards de previsão do tempo */
+  --color-weather-clear-start: #e0f2fe;
+  --color-weather-clear-end: #fff8dc;
+  --color-weather-partly-start: #dbeafe;
+  --color-weather-partly-end: #f8fafc;
+  --color-weather-cloudy-start: #cbd5e1;
+  --color-weather-cloudy-end: #f1f5f9;
+  --color-weather-fog-start: #e2e8f0;
+  --color-weather-fog-end: #f8fafc;
+  --color-weather-rain-start: #bfdbfe;
+  --color-weather-rain-end: #eff6ff;
+  --color-weather-storm-start: #cbd5e1;
+  --color-weather-storm-end: #dbeafe;
+  --color-weather-snow-start: #cffafe;
+  --color-weather-snow-end: #f8fafc;
+  --color-weather-muted: #334155;
+
   /* Fundo dos cards de evento, por categoria */
   --color-cat-music: #ffedce;
   --color-cat-theater: #d8eee3;
@@ -175,31 +192,47 @@
 }
 
 .weather-surface[data-weather='clear'] {
-  background: linear-gradient(135deg, #e0f2fe 0%, #fff8dc 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-weather-clear-start) 0%,
+    var(--color-weather-clear-end) 100%
+  );
 }
 
 .weather-surface[data-weather='partly-cloudy'] {
-  background: linear-gradient(135deg, #dbeafe 0%, #f8fafc 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-weather-partly-start) 0%,
+    var(--color-weather-partly-end) 100%
+  );
 }
 
 .weather-surface[data-weather='cloudy'] {
-  background: linear-gradient(135deg, #cbd5e1 0%, #f1f5f9 100%);
-  --color-slate: #334155;
+  background: linear-gradient(
+    135deg,
+    var(--color-weather-cloudy-start) 0%,
+    var(--color-weather-cloudy-end) 100%
+  );
+  --color-slate: var(--color-weather-muted);
 }
 
 .weather-surface[data-weather='fog'] {
-  background: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, var(--color-weather-fog-start) 0%, var(--color-weather-fog-end) 100%);
 }
 
 .weather-surface[data-weather='rain'] {
-  background: linear-gradient(135deg, #bfdbfe 0%, #eff6ff 100%);
-  --color-slate: #334155;
+  background: linear-gradient(135deg, var(--color-weather-rain-start) 0%, var(--color-weather-rain-end) 100%);
+  --color-slate: var(--color-weather-muted);
 }
 
 .weather-surface[data-weather='storm'] {
-  background: linear-gradient(135deg, #cbd5e1 0%, #dbeafe 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-weather-storm-start) 0%,
+    var(--color-weather-storm-end) 100%
+  );
 }
 
 .weather-surface[data-weather='snow'] {
-  background: linear-gradient(135deg, #cffafe 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, var(--color-weather-snow-start) 0%, var(--color-weather-snow-end) 100%);
 }
