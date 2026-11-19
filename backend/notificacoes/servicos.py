@@ -127,5 +127,7 @@ def notificar_eventos_novos(ids_eventos):
     novas = _montar(
         eventos, _interessados_por_categoria(categorias), ja_avisados
     )
-    Notificacao.objects.bulk_create(novas)
+    # `ignore_conflicts`: uma importação sobreposta não pode levantar
+    # IntegrityError, que desfaria a importação inteira junto.
+    Notificacao.objects.bulk_create(novas, ignore_conflicts=True)
     return len(novas)

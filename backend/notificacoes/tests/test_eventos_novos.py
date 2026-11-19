@@ -172,6 +172,21 @@ class NotificarEventosNovosTest(TestCase):
         self.assertEqual(criadas, 3)
         self.assertEqual(ana.notificacoes.count(), LIMITE_POR_USUARIO + 3)
 
+    def test_conflito_com_aviso_concorrente_nao_levanta_erro(self):
+        ana = criar_usuario("Ana", ["music"])
+        evento = criar_evento(categorias=["music"])
+        Notificacao.objects.create(
+            usuario=ana, evento=evento, tipo=TipoNotificacao.EVENTO_NOVO
+        )
+
+        with patch(
+            "notificacoes.servicos.Notificacao.objects.filter"
+        ) as filtro:
+            filtro.return_value.values_list.return_value = []
+            notificar_eventos_novos([evento.pk])
+
+        self.assertEqual(ana.notificacoes.count(), 1)
+
     def test_repetir_nao_duplica(self):
         criar_usuario("Ana", ["music"])
         evento = criar_evento(categorias=["music"])
