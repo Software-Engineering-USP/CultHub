@@ -42,6 +42,8 @@ function eventMapCategory(event: CultEvent) {
 function uniqueOccurrences(events: CultEvent[]) {
   const unique = new Map<string, CultEvent>()
   for (const event of events) {
+    // A mesma ocorrência pode vir de provedores diferentes com IDs distintos.
+    // Agrupar por título, data e hora evita duplicá-la no seletor do pin.
     const key = [
       event.title.trim().toLocaleLowerCase('pt-BR'),
       event.eventDate ?? '',

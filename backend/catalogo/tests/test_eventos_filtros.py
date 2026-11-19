@@ -32,6 +32,16 @@ class FiltrosBuscaTest(APITestCase):
         criar_evento(titulo="B")
         self.assertEqual(self.titulos(q="samba"), ["A"])
 
+    def test_q_no_genero(self):
+        criar_evento(titulo="A", genero="Música Popular Brasileira")
+        criar_evento(titulo="B", genero="Teatro")
+        self.assertEqual(self.titulos(q="popular brasileira"), ["A"])
+
+    def test_q_no_nome_da_categoria(self):
+        criar_evento(titulo="A", categorias=["music"])
+        criar_evento(titulo="B", categorias=["theater"])
+        self.assertEqual(self.titulos(q="musica"), ["A"])
+
     def test_q_no_nome_do_local(self):
         local = Local.objects.create(
             nome="Teatro Municipal", cidade="São Paulo", estado="SP"
@@ -362,6 +372,16 @@ class FiltroDistanciaTest(APITestCase):
         ibira = next(e for e in resultados if e["titulo"] == "Ibirapuera")
         self.assertAlmostEqual(ibira["distancia_km"], 2.5, delta=0.5)
 
+    def test_ordenacao_por_proximidade(self):
+        self.evento_em("Z mais perto", "-23.561414", "-46.655881")
+        self.evento_em("A mais longe", "-23.55", "-46.60")
+        resposta = self.buscar(raio="50", **self.PAULISTA)
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(
+            [evento["titulo"] for evento in resposta.json()["results"]],
+            ["Z mais perto", "A mais longe"],
+        )
+
     def test_ponto_coincidente(self):
         self.evento_em("Paulista", "-23.561414", "-46.655881")
         resultados = self.buscar(raio="1", **self.PAULISTA).json()["results"]
@@ -405,6 +425,12 @@ class FiltroDistanciaTest(APITestCase):
         resposta = self.buscar(lat="", lng="", raio="")
         self.assertEqual(resposta.status_code, 200)
         self.assertEqual(len(resposta.json()["results"]), 4)
+
+    def test_trio_com_apenas_espacos_sem_filtro(self):
+        self.evento_em("Sem filtro", None, None)
+        resposta = self.buscar(lat=" ", lng=" ", raio=" ")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["count"], 1)
 
     def test_parcialmente_vazio_400(self):
         resposta = self.buscar(lat="-23.5", lng="", raio="")

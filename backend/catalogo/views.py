@@ -110,10 +110,7 @@ class EventoListView(ListAPIView):
         )
         eventos = visiveis(eventos, timezone.now())
         eventos = aplicar_filtros(eventos, self.request.query_params)
-        if all(
-            self.request.query_params.get(parametro)
-            for parametro in ("lat", "lng", "raio")
-        ):
+        if "distancia_km" in eventos.query.annotations:
             return eventos.order_by(
                 "distancia_km",
                 "data_inicio",
