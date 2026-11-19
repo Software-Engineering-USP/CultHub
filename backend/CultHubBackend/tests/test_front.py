@@ -66,3 +66,14 @@ class ArquivoImutavelTest(SimpleTestCase):
         self.assertTrue(imutavel("x", "/assets/index-abc123.js"))
         self.assertFalse(imutavel("x", "/favicon.svg"))
         self.assertFalse(imutavel("x", "/index.html"))
+
+    def test_index_servido_pelo_whitenoise_fica_sem_cache(self):
+        cabecalhos = {"Cache-Control": "max-age=60, public"}
+        settings.WHITENOISE_ADD_HEADERS_FUNCTION(
+            cabecalhos, "x", "/index.html"
+        )
+        self.assertEqual(cabecalhos["Cache-Control"], "no-cache")
+
+        outros = {"Cache-Control": "max-age=60, public"}
+        settings.WHITENOISE_ADD_HEADERS_FUNCTION(outros, "x", "/favicon.svg")
+        self.assertEqual(outros["Cache-Control"], "max-age=60, public")

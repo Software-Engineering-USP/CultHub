@@ -266,6 +266,19 @@ def arquivo_imutavel(caminho, url):
 WHITENOISE_IMMUTABLE_FILE_TEST = arquivo_imutavel
 
 
+def sem_cache_no_index(headers, caminho, url):
+    """`/index.html` direto pelo WhiteNoise: mesmo `no-cache` da SPA.
+
+    Com o cache padrão, logo depois de um deploy o navegador usaria o
+    shell antigo, que aponta para assets que já não existem.
+    """
+    if url == "/index.html":
+        headers["Cache-Control"] = "no-cache"
+
+
+WHITENOISE_ADD_HEADERS_FUNCTION = sem_cache_no_index
+
+
 # Log
 # https://docs.djangoproject.com/en/6.1/topics/logging/
 
