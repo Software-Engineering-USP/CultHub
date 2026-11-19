@@ -35,6 +35,7 @@ export default function Home() {
   const categories = categoryValues.filter((value): value is (typeof categoryOrder)[number] =>
     categoryOrder.includes(value as (typeof categoryOrder)[number]),
   )
+  const allCategoriesSelected = categoryOrder.every((category) => categories.includes(category))
   const latitude = Number(searchParams.get('lat'))
   const longitude = Number(searchParams.get('lng'))
   const radius = Number(searchParams.get('raio'))
@@ -50,12 +51,13 @@ export default function Home() {
     radius > 0
   const query: CatalogQuery = {
     q: searchParams.get('q') || undefined,
-    categorias: categories.length ? categories : undefined,
+    categorias: categories.length && !allCategoriesSelected ? categories : undefined,
     preco: (['gratuito', 'pago', 'desconhecido'] as const).find(
       (value) => value === searchParams.get('preco'),
     ),
     de: searchParams.get('de') ?? undefined,
     ate: searchParams.get('ate') ?? undefined,
+    tamanho: 200,
     ...(hasNearbyFilter ? { lat: latitude, lng: longitude, raio: radius } : {}),
   }
   const { events, count, loading, error, hasMore, loadMore } = useCatalog(query)

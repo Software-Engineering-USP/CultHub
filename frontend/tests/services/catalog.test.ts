@@ -34,10 +34,14 @@ describe('catalogApi', () => {
       preco: 'gratuito',
       de: '2026-12-01',
       ate: '2026-12-31',
+      lat: -23.55,
+      lng: -46.63,
+      raio: 5,
+      tamanho: 200,
       page: 2,
     })
     expect(fetch).toHaveBeenCalledWith(
-      '/api/eventos/?q=jazz+%26+blues&categorias=music%2Cart&preco=gratuito&de=2026-12-01&ate=2026-12-31&page=2',
+      '/api/eventos/?q=jazz+%26+blues&categorias=music%2Cart&preco=gratuito&de=2026-12-01&ate=2026-12-31&lat=-23.55&lng=-46.63&raio=5&tamanho=200&page=2',
       { credentials: 'include', signal: undefined },
     )
   })
@@ -111,6 +115,14 @@ describe('toCultEvent', () => {
     })
     expect(event.price.replaceAll('\u00a0', ' ')).toBe('A partir de R$ 80,00')
     expect(event.schedule).toContain('10 de março')
+  })
+
+  it('prioriza a categoria ativa quando o evento pertence a mais de uma', () => {
+    const event = apiEvent({ categorias: ['theater', 'music'] })
+
+    expect(toCultEvent(event, 'music').category).toBe('music')
+    expect(toCultEvent(event, 'theater').category).toBe('theater')
+    expect(toCultEvent(event, 'art').category).toBe('theater')
   })
 
   it('não inventa coordenadas quando o local não as tem', () => {

@@ -25,9 +25,10 @@ export function useCatalog(query: CatalogQuery) {
       lat: query.lat,
       lng: query.lng,
       raio: query.raio,
+      tamanho: query.tamanho,
       categorias: categoryKey ? (categoryKey.split(',') as CatalogQuery['categorias']) : undefined,
     }),
-    [categoryKey, query.preco, query.q, query.de, query.ate, query.lat, query.lng, query.raio],
+    [categoryKey, query.preco, query.q, query.de, query.ate, query.lat, query.lng, query.raio, query.tamanho],
   )
   const [state, setState] = useState<CatalogState>({
     events: [],
@@ -44,10 +45,15 @@ export function useCatalog(query: CatalogQuery) {
       try {
         const result = await catalogApi.events({ ...stableQuery, page }, controller.signal)
         if (controller.signal.aborted || version !== queryVersion.current) return
+        const mapEvent = (event: (typeof result.results)[number]) =>
+          toCultEvent(
+            event,
+            stableQuery.categorias?.find((category) => event.categorias.includes(category)),
+          )
         setState((current) => ({
           events: append
-            ? [...current.events, ...result.results.map(toCultEvent)]
-            : result.results.map(toCultEvent),
+            ? [...current.events, ...result.results.map(mapEvent)]
+            : result.results.map(mapEvent),
           count: result.count,
           loading: false,
           error: null,

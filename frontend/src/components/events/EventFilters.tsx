@@ -81,7 +81,8 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
 
   function apply() {
     const params = new URLSearchParams(searchParams)
-    if (selected.length === categoryOrder.length) params.delete('categorias')
+    const allCategoriesSelected = categoryOrder.every((category) => selected.includes(category))
+    if (allCategoriesSelected) params.delete('categorias')
     else params.set('categorias', selected.join(','))
     if (price === 'all') params.delete('preco')
     else params.set('preco', price === 'free' ? 'gratuito' : 'pago')

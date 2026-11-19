@@ -60,11 +60,11 @@
   --color-cat-festival: #f7e7cc;
 
   /* Bolinha de cada categoria (legenda e filtros) */
-  --color-dot-music: #a85316;
-  --color-dot-festival: #be7628;
-  --color-dot-theater: #438268;
-  --color-dot-sport: #9e4e57;
-  --color-dot-art: #587ba4;
+  --color-dot-music: #d65a00;
+  --color-dot-festival: #b89a00;
+  --color-dot-theater: #26885e;
+  --color-dot-sport: #d62839;
+  --color-dot-art: #4678b8;
 
   /* Texto do selo da categoria nos cards (mais escuro que a bolinha, para ler bem em letra pequena) */
   --color-label-music: #a85316;

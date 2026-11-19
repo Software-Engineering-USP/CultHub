@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import EventsMap from '@/components/map/EventsMap'
 import { findEvent } from '@/data/events'
@@ -26,6 +26,58 @@ describe('EventsMap', () => {
     )
     expect(screen.getByRole('img', { name: titulo })).toBeInTheDocument()
     expect(container.querySelector('img[src="x"]')).toBeNull()
+  })
+
+  it('agrupa eventos no mesmo local, destaca categorias diferentes e deixa escolher o evento', async () => {
+    const onSelect = vi.fn()
+    const show = {
+      ...evento,
+      id: 'show-music',
+      title: 'Show',
+      category: 'music' as const,
+      eventDate: '2040-03-10',
+      eventTime: '20:00:00',
+    }
+    const play = {
+      ...evento,
+      id: 'play-theater',
+      title: 'Peça',
+      category: 'theater' as const,
+      eventDate: '2040-03-11',
+      eventTime: '19:30:00',
+      location: show.location,
+    }
+    render(<EventsMap events={[show, play]} userPosition={null} recenter={0} onSelect={onSelect} />)
+
+    const map = screen.getByRole('region', { name: 'Mapa dos eventos' })
+    const pin = within(map).getByRole('img', { name: /2 eventos neste local/ })
+    expect(pin.querySelectorAll('svg')).toHaveLength(2)
+
+    fireEvent.click(pin.closest('.leaflet-marker-icon')!)
+    const showChoice = await screen.findByRole('button', { name: 'Show — 10/03/2040 às 20:00' })
+    const playChoice = screen.getByRole('button', { name: 'Peça — 11/03/2040 às 19:30' })
+    expect(showChoice).toHaveClass('bg-cat-music')
+    expect(playChoice).toHaveClass('bg-cat-theater')
+
+    fireEvent.click(playChoice)
+    expect(onSelect).toHaveBeenCalledWith('play-theater')
+  })
+
+  it('remove registros duplicados com o mesmo título e horário do pin agrupado', () => {
+    const repeated = {
+      ...evento,
+      id: 'festival-2',
+      eventDate: '2040-03-10',
+      eventTime: '20:00:00',
+    }
+    const original = { ...evento, id: 'festival-1', eventDate: '2040-03-10', eventTime: '20:00:00' }
+    const { container } = render(
+      <EventsMap events={[original, repeated]} userPosition={null} recenter={0} onSelect={vi.fn()} />,
+    )
+    const marker = container.querySelector('.leaflet-marker-icon [role="img"]')
+
+    expect(marker).toHaveAttribute('aria-label', original.title)
+    expect(marker?.querySelectorAll('svg')).toHaveLength(1)
   })
 
   it('marca a posição da pessoa e troca o pino quando ela muda', () => {

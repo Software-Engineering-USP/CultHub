@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import EventFilters from '@/components/events/EventFilters'
+import { fakePermission, restoreGeolocation, stubGeolocation } from '@tests/geolocation'
 
 function LocationSearch() {
   const location = useLocation()
@@ -30,6 +31,7 @@ describe('EventFilters', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    restoreGeolocation()
   })
 
   it('inicia com todas as categorias e qualquer preço selecionados', () => {
@@ -59,6 +61,41 @@ describe('EventFilters', () => {
     expect(params.get('categorias')).toBe('music,festival,theater,art')
     expect(params.get('preco')).toBe('gratuito')
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('remove a categoria da URL quando todas estão selecionadas', async () => {
+    const { user } = renderFilters('/?categorias=music,festival,theater,sport,art')
+    await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
+
+    const params = new URLSearchParams(screen.getByLabelText('Busca na URL').textContent ?? '')
+    expect(params.has('categorias')).toBe(false)
+  })
+
+  it('pede localização e aplica raio de 1 km na URL', async () => {
+    stubGeolocation(fakePermission('prompt'), (success) =>
+      success({ coords: { latitude: -23.55, longitude: -46.63 } } as GeolocationPosition),
+    )
+    const { user } = renderFilters()
+
+    await user.click(screen.getByRole('button', { name: 'Usar minha localização' }))
+    expect(await screen.findByRole('button', { name: 'Perto de mim: ativo' })).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Raio da busca'), '1')
+    await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
+
+    const params = new URLSearchParams(screen.getByLabelText('Busca na URL').textContent ?? '')
+    expect(params.get('lat')).toBe('-23.55')
+    expect(params.get('lng')).toBe('-46.63')
+    expect(params.get('raio')).toBe('1')
+  })
+
+  it('informa quando a permissão de localização é negada', async () => {
+    stubGeolocation(fakePermission('prompt'), (_success, failure) =>
+      failure?.({ code: 1 } as GeolocationPositionError),
+    )
+    const { user } = renderFilters()
+
+    await user.click(screen.getByRole('button', { name: 'Usar minha localização' }))
+    expect(await screen.findByText(/A localização foi bloqueada/)).toBeInTheDocument()
   })
 
   it('não permite desmarcar a última categoria e deixar uma consulta ambígua', async () => {
