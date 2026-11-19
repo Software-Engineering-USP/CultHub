@@ -83,6 +83,49 @@ class NotificarEventosNovosTest(TestCase):
 
         self.assertEqual(destinatarios(evento), {"Ana", "Bia"})
 
+    def test_cidade_do_perfil_aceita_hifen_e_travessao_colados(self):
+        criar_usuario("Ana", ["music"], cidade="São Paulo-SP")
+        criar_usuario("Bia", ["music"], cidade="São Paulo – SP")
+        criar_usuario("Caio", ["music"], cidade="Embu-Guaçu")
+        evento = criar_evento(
+            categorias=["music"], local=local_em("São Paulo")
+        )
+        embu = criar_evento(categorias=["music"], local=local_em("Embu-Guaçu"))
+
+        notificar_eventos_novos([evento.pk, embu.pk])
+
+        self.assertEqual(destinatarios(evento), {"Ana", "Bia"})
+        self.assertEqual(destinatarios(embu), {"Caio"})
+
+    def test_perfil_so_com_a_uf_filtra_pelo_estado(self):
+        criar_usuario("Ana", ["music"], cidade="SP")
+        criar_usuario("Bia", ["music"], cidade="rj")
+        evento = criar_evento(
+            categorias=["music"],
+            local=Local.objects.create(
+                nome="Casa", cidade="Santos", estado="SP"
+            ),
+        )
+
+        notificar_eventos_novos([evento.pk])
+
+        self.assertEqual(destinatarios(evento), {"Ana"})
+
+    def test_uf_diferente_exclui_cidade_de_mesmo_nome(self):
+        criar_usuario("Ana", ["music"], cidade="Bom Jesus, PI")
+        criar_usuario("Bia", ["music"], cidade="Bom Jesus, RS")
+        criar_usuario("Caio", ["music"], cidade="Bom Jesus")
+        evento = criar_evento(
+            categorias=["music"],
+            local=Local.objects.create(
+                nome="Casa", cidade="Bom Jesus", estado="RS"
+            ),
+        )
+
+        notificar_eventos_novos([evento.pk])
+
+        self.assertEqual(destinatarios(evento), {"Bia", "Caio"})
+
     def test_evento_sem_cidade_filtra_pelo_estado(self):
         criar_usuario("Ana", ["music"], cidade="São Paulo, SP")
         criar_usuario("Bia", ["music"], cidade="Rio de Janeiro, RJ")

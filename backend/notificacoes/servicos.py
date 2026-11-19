@@ -19,16 +19,24 @@ LIMITE_POR_USUARIO = 5
 def _cidade_e_uf(texto):
     """("sao paulo", "sp") a partir de "São Paulo, SP"; a UF é opcional.
 
-    A cidade do perfil é texto livre: aceita "Cidade, UF", "Cidade - UF"
-    e "Cidade/UF", sem caixa nem acento.
+    A cidade do perfil é texto livre: aceita "Cidade, UF", "Cidade - UF",
+    "Cidade-UF", "Cidade – UF" e "Cidade/UF", sem caixa nem acento. Um
+    valor isolado de duas letras ("SP") é só a UF.
     """
     partes = [
         parte.strip()
-        for parte in re.split(r",|/| - ", normalizar_texto(texto))
+        for parte in re.split(r",|/", normalizar_texto(texto))
         if parte.strip()
     ]
     if not partes:
         return "", ""
+    # Hífen ou travessão só separa a UF no fim, para não quebrar cidades
+    # como "Embu-Guaçu".
+    final = re.fullmatch(r"(.*?)\s*[-–—]\s*([a-z]{2})", partes[-1])
+    if final and final.group(1):
+        partes[-1:] = [final.group(1), final.group(2)]
+    if len(partes) == 1 and re.fullmatch(r"[a-z]{2}", partes[0]):
+        return "", partes[0]
     uf = partes[-1] if len(partes) > 1 and len(partes[-1]) == 2 else ""
     return partes[0], uf
 
@@ -49,17 +57,18 @@ def _interessados_por_categoria(categorias):
 def _mesma_regiao(cidade, uf, local):
     """Se o evento é da região de quem informou a cidade no perfil.
 
-    O Ticketmaster quase nunca manda a cidade do local, só o estado. Sem
-    a cidade do evento, vale o estado; sem nenhum dos dois, não há como
-    excluir e o aviso é enviado.
+    Quando os dois lados têm UF, ela precisa bater ("Bom Jesus, PI" não
+    recebe evento de Bom Jesus/RS). O Ticketmaster quase nunca manda a
+    cidade do local, só o estado; sem a cidade de um dos lados, vale só a
+    UF, e sem nenhuma das duas não há como excluir e o aviso é enviado.
     """
-    if not cidade:
-        return True
     cidade_evento = normalizar_texto(local.cidade.strip()) if local else ""
-    if cidade_evento:
+    uf_evento = local.estado.strip().casefold() if local else ""
+    if uf and uf_evento and uf != uf_evento:
+        return False
+    if cidade and cidade_evento:
         return cidade == cidade_evento
-    uf_evento = local.estado.casefold() if local else ""
-    return not (uf and uf_evento) or uf == uf_evento
+    return True
 
 
 def _destinatarios(evento, por_categoria):
