@@ -27,6 +27,12 @@ class FiltrosBuscaTest(APITestCase):
         criar_evento(titulo="Outro")
         self.assertEqual(self.titulos(q="jazz"), ["Noite de JAZZ"])
 
+    def test_q_com_byte_nul_ignora_o_byte(self):
+        # O Postgres recusa NUL em texto; sem tratar, a busca responde 500.
+        criar_evento(titulo="Noite de JAZZ")
+        criar_evento(titulo="Outro")
+        self.assertEqual(self.titulos(q="\x00jazz"), ["Noite de JAZZ"])
+
     def test_q_na_descricao(self):
         criar_evento(titulo="A", descricao="Show de Samba")
         criar_evento(titulo="B")
@@ -104,6 +110,15 @@ class FiltrosBuscaTest(APITestCase):
 
     def test_categoria_inexistente_400(self):
         resposta = self.buscar(categorias="music,xyz")
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("categorias", resposta.json())
+
+    def test_byte_nul_sai_de_todos_os_parametros(self):
+        # O Postgres recusa NUL em texto; sem tratar, a consulta dá 500.
+        criar_evento(titulo="Musica", categorias=["music"])
+        criar_evento(titulo="Arte", categorias=["art"])
+        self.assertEqual(self.titulos(categorias="\x00music"), ["Musica"])
+        resposta = self.buscar(categorias="\x00x")
         self.assertEqual(resposta.status_code, 400)
         self.assertIn("categorias", resposta.json())
 

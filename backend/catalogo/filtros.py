@@ -56,7 +56,10 @@ def normalizar_texto(texto):
 
 
 class Normalizar(Func):
-    """Chama a função SQL `normalizar` (registrada em `apps.py`)."""
+    """Chama a função SQL `normalizar`.
+
+    No SQLite, `apps.py` a registra; no Postgres, a migração 0004 a cria.
+    """
 
     function = "normalizar"
     output_field = CharField()
@@ -202,8 +205,11 @@ def _distancia(queryset, params):
 def aplicar_filtros(queryset, params):
     """Aplica os filtros da querystring (combinados com E).
 
-    Parâmetro vazio (ou só espaços) equivale a ausente.
+    Parâmetro vazio (ou só espaços) equivale a ausente. O byte NUL sai de
+    todos os valores: o Postgres o recusa em qualquer texto e a consulta
+    daria 500.
     """
+    params = {k: v.replace("\x00", "") for k, v in params.items()}
     params = {k: v for k, v in params.items() if v.strip()}
     if "q" in params:
         queryset = _busca(queryset, params["q"])

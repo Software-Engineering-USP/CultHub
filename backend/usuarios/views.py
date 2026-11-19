@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.tokens import default_token_generator
@@ -22,6 +24,8 @@ from usuarios.serializers import (
     RecuperarSenhaSerializer,
     RedefinirSenhaSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -98,15 +102,27 @@ class RecuperarSenhaView(APIView):
                 f"{settings.FRONTEND_URL.rstrip('/')}/redefinir-senha/"
                 f"{uid}/{token}"
             )
-            send_mail(
-                "Redefinição de senha | CultHub",
+            mensagem = (
                 f"Olá, {usuario.nome}.\n\nUse este link para criar uma nova "
                 f"senha:\n{url}\n\n"
-                "Se você não pediu a redefinição, ignore este e-mail.",
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.email],
-                fail_silently=True,
+                "Se você não pediu a redefinição, ignore este e-mail."
             )
+            if settings.EMAIL_BACKEND.endswith(".dummy.EmailBackend"):
+                logger.warning(
+                    "EMAIL_BACKEND não configurado: o e-mail de "
+                    "recuperação de senha foi descartado"
+                )
+            try:
+                send_mail(
+                    "Redefinição de senha | CultHub",
+                    mensagem,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [usuario.email],
+                )
+            except Exception:
+                # A resposta é a mesma com ou sem envio (não revela se o
+                # e-mail existe); a falha fica só no log.
+                logger.exception("Falha ao enviar o e-mail de recuperação")
         return Response(
             {
                 "detail": (

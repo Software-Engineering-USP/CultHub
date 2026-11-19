@@ -1,0 +1,38 @@
+from django.db import migrations
+
+# Mesma regra de `catalogo.filtros.normalizar_texto`: minúsculas e sem
+# acentos. No SQLite a função é registrada em `catalogo/apps.py`. Não é
+# idêntica à do Python fora do português: `lower` não desdobra o `ß` em
+# `ss` como o `casefold`, e só saem os acentos da faixa U+0300 a U+036F.
+# O acento sai antes do `lower`: com collation `C` (comum em Postgres
+# gerenciado) o `lower` só converte ASCII, e "É" ficaria maiúsculo.
+CRIAR = r"""
+DROP FUNCTION IF EXISTS normalizar(text);
+CREATE FUNCTION normalizar(texto text) RETURNS text
+LANGUAGE sql IMMUTABLE STRICT AS $$
+  SELECT lower(
+    regexp_replace(normalize(texto, NFKD), '[\u0300-\u036F]', '', 'g')
+  )
+$$;
+"""
+REMOVER = "DROP FUNCTION IF EXISTS normalizar(text);"
+
+
+def criar(apps, schema_editor):
+    if schema_editor.connection.vendor == "postgresql":
+        schema_editor.execute(CRIAR)
+
+
+def remover(apps, schema_editor):
+    if schema_editor.connection.vendor == "postgresql":
+        schema_editor.execute(REMOVER)
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("catalogo", "0003_modelos_evento"),
+    ]
+
+    operations = [
+        migrations.RunPython(criar, remover),
+    ]

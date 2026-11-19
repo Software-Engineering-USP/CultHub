@@ -14,11 +14,11 @@ extend-select = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 # Nome do pacote do projeto Django, criado pelo startproject
-"CultHubBackend/__init__.py" = ["N999"]
+"CultHubBackend/**/__init__.py" = ["N999"]
 
 [tool.coverage.run]
 source = ["."]
-omit = ["*/tests/*", "*/tests.py", "*/migrations/*", "manage.py", ".venv/*"]
+omit = ["*/tests/*", "*/tests.py", "*/migrations/*", "manage.py", ".venv/*", "gunicorn.conf.py"]
 
 [tool.coverage.report]
 fail_under = 80

@@ -1,0 +1,38 @@
+name: Importar eventos
+
+# A hospedagem gratuita não tem tarefa agendada: a importação da
+# Ticketmaster roda aqui, direto no banco de produção.
+#
+# Os segredos ficam no environment `producao`, que só a `main` pode usar:
+# um workflow de outra branch não consegue ler a URL do banco.
+#
+# O GitHub desativa workflows agendados após 60 dias sem atividade no
+# repositório; se isso acontecer, basta reativar na aba Actions.
+on:
+  schedule:
+    - cron: "0 8 * * *" # 5h em São Paulo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: importar-eventos
+  cancel-in-progress: false
+
+jobs:
+  importar:
+    if: github.repository == 'Software-Engineering-USP/CultHub'
+    runs-on: ubuntu-latest
+    environment: producao
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+      - run: "pip install --only-binary :all: --require-hashes -r requirements.lock"
+      - run: python manage.py importar_ticketmaster
