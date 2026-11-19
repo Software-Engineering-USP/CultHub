@@ -53,6 +53,9 @@ export interface CatalogQuery {
   /** Período (AAAA-MM-DD); entram os eventos que acontecem em algum dia dele */
   de?: string
   ate?: string
+  lat?: number
+  lng?: number
+  raio?: number
   page?: number
 }
 
@@ -108,6 +111,11 @@ export const catalogApi = {
     if (query.preco) params.set('preco', query.preco)
     if (query.de) params.set('de', query.de)
     if (query.ate) params.set('ate', query.ate)
+    if (query.lat !== undefined && query.lng !== undefined && query.raio !== undefined) {
+      params.set('lat', String(query.lat))
+      params.set('lng', String(query.lng))
+      params.set('raio', String(query.raio))
+    }
     if (query.page && query.page > 1) params.set('page', String(query.page))
     const suffix = params.size ? `?${params.toString()}` : ''
     return get<Paginated<ApiEvent>>(`/eventos/${suffix}`, signal)
