@@ -60,7 +60,7 @@ def _notificacoes_ativas(usuario):
 
     Lembrete vale enquanto o evento continua marcado e não começou. Aviso
     de evento novo vale por `DIAS_DE_EVENTO_NOVO` dias, e só até o evento
-    começar ou ganhar um lembrete.
+    começar ou ganhar um lembrete (que o substitui de vez).
     """
     agora = timezone.now()
     hoje = timezone.localtime(agora).date()
@@ -80,12 +80,11 @@ def _notificacoes_ativas(usuario):
             | Q(evento__presencas__usuario=usuario)
         )
     )
-    # Evento que já tem lembrete valendo não aparece duas vezes: o
-    # lembrete substitui o aviso de evento novo.
+    # Evento que já teve lembrete não aparece duas vezes: o lembrete
+    # substitui de vez o aviso de evento novo, mesmo depois de o usuário
+    # desmarcar o evento.
     tem_lembrete = Exists(
         Notificacao.objects.filter(
-            Q(evento__interesses__usuario=usuario)
-            | Q(evento__presencas__usuario=usuario),
             usuario=usuario,
             evento=OuterRef("evento"),
             tipo=TipoNotificacao.LEMBRETE,

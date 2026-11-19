@@ -373,11 +373,8 @@ class ListaComEventosNovosTest(APITestCase):
         marcacao.delete()
         resposta = self.client.get(self.url).json()
 
-        self.assertEqual(resposta["nao_lidas"], 1)
-        self.assertEqual(
-            [item["tipo"] for item in resposta["resultados"]],
-            ["evento_novo"],
-        )
+        self.assertEqual(resposta["nao_lidas"], 0)
+        self.assertEqual(resposta["resultados"], [])
 
     def test_evento_novo_some_depois_de_sete_dias(self):
         futuro = self.hoje + timedelta(days=30)
