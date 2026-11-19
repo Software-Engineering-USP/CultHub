@@ -1,6 +1,12 @@
 from datetime import timedelta
 
-from django.db.models import Q
+from django.db.models import (
+    BooleanField,
+    Exists,
+    ExpressionWrapper,
+    OuterRef,
+    Q,
+)
 from django.utils import timezone
 from drf_spectacular.utils import (
     OpenApiResponse,
@@ -13,8 +19,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalogo.models import Evento
-from notificacoes.models import Notificacao
+from notificacoes.models import Notificacao, TipoNotificacao
 from notificacoes.serializers import NotificacaoSerializer
+from notificacoes.servicos import ainda_nao_comecou
+
+# Por quanto tempo um aviso de evento novo continua na lista.
+DIAS_DE_EVENTO_NOVO = 7
 
 
 def _criar_lembretes_proximos(usuario):
@@ -47,26 +57,61 @@ def _criar_lembretes_proximos(usuario):
 
 
 def _notificacoes_ativas(usuario):
-    """Filtra lembretes por marcação ativa e evento vigente."""
+    """Notificações que ainda fazem sentido mostrar, não lidas primeiro.
+
+    Lembrete vale enquanto o evento continua marcado e não começou. Aviso
+    de evento novo vale por `DIAS_DE_EVENTO_NOVO` dias, e só até o evento
+    começar ou ganhar um lembrete (que o substitui de vez).
+    """
     agora = timezone.now()
     hoje = timezone.localtime(agora).date()
     amanha = hoje + timedelta(days=1)
-    evento_futuro = Q(evento__inicio__gt=agora) | Q(
-        evento__inicio__isnull=True,
-        evento__data_inicio__gte=hoje,
-        evento__data_inicio__lte=amanha,
+    lembrete_vigente = (
+        Q(tipo=TipoNotificacao.LEMBRETE)
+        & (
+            Q(evento__inicio__gt=agora)
+            | Q(
+                evento__inicio__isnull=True,
+                evento__data_inicio__gte=hoje,
+                evento__data_inicio__lte=amanha,
+            )
+        )
+        & (
+            Q(evento__interesses__usuario=usuario)
+            | Q(evento__presencas__usuario=usuario)
+        )
     )
-    marcado = Q(evento__interesses__usuario=usuario) | Q(
-        evento__presencas__usuario=usuario
+    # Evento que já teve lembrete não aparece duas vezes: o lembrete
+    # substitui de vez o aviso de evento novo, mesmo depois de o usuário
+    # desmarcar o evento.
+    tem_lembrete = Exists(
+        Notificacao.objects.filter(
+            usuario=usuario,
+            evento=OuterRef("evento"),
+            tipo=TipoNotificacao.LEMBRETE,
+        )
+    )
+    evento_novo_vigente = (
+        Q(tipo=TipoNotificacao.EVENTO_NOVO)
+        & ~tem_lembrete
+        & Q(criada_em__gte=agora - timedelta(days=DIAS_DE_EVENTO_NOVO))
+        & ainda_nao_comecou(agora, "evento__")
     )
     return (
         Notificacao.objects.filter(
             usuario=usuario,
             evento__removido_em__isnull=True,
         )
-        .filter(evento_futuro, marcado)
+        .filter(lembrete_vigente | evento_novo_vigente)
         .select_related("evento", "evento__local")
-        .order_by("lida_em", "-criada_em")
+        # Booleano em vez de ordenar por `lida_em`: o lugar do nulo muda
+        # entre SQLite e Postgres.
+        .annotate(
+            lida=ExpressionWrapper(
+                Q(lida_em__isnull=False), output_field=BooleanField()
+            )
+        )
+        .order_by("lida", "-criada_em", "id")
         .distinct()
     )
 
@@ -82,10 +127,12 @@ def _notificacoes_ativas(usuario):
         ),
     },
     description=(
-        "Lista notificações do usuário e cria lembretes únicos para eventos "
-        "salvos ou confirmados que começam nas próximas 24 horas. Eventos "
-        "sem horário são considerados próximos quando acontecem hoje ou "
-        "amanhã."
+        "Lista notificações do usuário, não lidas primeiro. `tipo` é "
+        "`lembrete` (evento salvo ou confirmado que começa nas próximas 24 "
+        "horas; sem horário, hoje ou amanhã) ou `evento_novo` (evento que "
+        "entrou no catálogo e combina com as preferências e a cidade do "
+        f"perfil; fica na lista por {DIAS_DE_EVENTO_NOVO} dias). Os "
+        "lembretes são criados nesta chamada."
     ),
 )
 class NotificacoesView(ListAPIView):
