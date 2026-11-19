@@ -34,7 +34,11 @@ export function WeatherMessage({
   return (
     <div>
       <WeatherTitle eventTime={event.eventTime} level={level} />
-      <p aria-live="polite" aria-atomic="true" className="mt-3 text-sm text-muted-foreground">
+      <p
+        aria-live="polite"
+        aria-atomic="true"
+        className={`${level === 'h2' ? 'mt-1' : 'mt-3'} text-sm text-muted-foreground`}
+      >
         {result.status === 'loading' ? 'Consultando a previsão do tempo para o evento…' : result.message}
       </p>
     </div>

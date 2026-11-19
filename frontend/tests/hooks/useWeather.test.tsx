@@ -20,6 +20,11 @@ const event: CultEvent = {
   weatherLocation: { latitude: -23.55, longitude: -46.63, city: 'São Paulo' },
   eventDate: '2040-03-10',
   eventTime: '20:00:00',
+  eventStartsAt: '2040-03-10T20:00:00-03:00',
+  eventEndDate: '2040-03-11',
+  eventEndTime: '01:00:00',
+  eventEndsAt: '2040-03-11T01:00:00-03:00',
+  eventTimezone: 'America/Sao_Paulo',
 }
 
 const weather: Weather = {
@@ -49,6 +54,13 @@ describe('useWeather', () => {
       event.eventDate,
       event.eventTime,
       expect.any(AbortSignal),
+      {
+        startsAt: event.eventStartsAt,
+        endDate: event.eventEndDate,
+        endTime: event.eventEndTime,
+        endsAt: event.eventEndsAt,
+        timeZone: event.eventTimezone,
+      },
     )
   })
 

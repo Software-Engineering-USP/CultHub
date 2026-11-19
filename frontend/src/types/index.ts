@@ -51,6 +51,11 @@ export interface CultEvent {
   }
   eventDate?: string
   eventTime?: string | null
+  eventStartsAt?: string | null
+  eventEndDate?: string | null
+  eventEndTime?: string | null
+  eventEndsAt?: string | null
+  eventTimezone?: string
   /** Só eventos com detalhes têm página própria */
   details?: EventDetails
 }

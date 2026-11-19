@@ -16,7 +16,19 @@ export function useWeather(event: CultEvent): WeatherResult {
   const longitude = event.weatherLocation?.longitude ?? null
   const city = event.weatherLocation?.city ?? ''
   const hasLocation = event.weatherLocation !== undefined
-  const key = [event.id, latitude, longitude, city, event.eventDate, event.eventTime].join(':')
+  const key = [
+    event.id,
+    latitude,
+    longitude,
+    city,
+    event.eventDate,
+    event.eventTime,
+    event.eventStartsAt,
+    event.eventEndDate,
+    event.eventEndTime,
+    event.eventEndsAt,
+    event.eventTimezone,
+  ].join(':')
   const [state, setState] = useState<WeatherState>({ key, status: 'loading' })
 
   useEffect(() => {
@@ -26,6 +38,13 @@ export function useWeather(event: CultEvent): WeatherResult {
       event.eventDate,
       event.eventTime,
       controller.signal,
+      {
+        startsAt: event.eventStartsAt,
+        endDate: event.eventEndDate,
+        endTime: event.eventEndTime,
+        endsAt: event.eventEndsAt,
+        timeZone: event.eventTimezone,
+      },
     )
       .then((weather) => {
         if (!controller.signal.aborted) setState({ key, status: 'ready', weather })
@@ -40,7 +59,20 @@ export function useWeather(event: CultEvent): WeatherResult {
         }
       })
     return () => controller.abort()
-  }, [city, event.eventDate, event.eventTime, event.id, hasLocation, key, latitude, longitude])
+  }, [
+    city,
+    event.eventDate,
+    event.eventEndDate,
+    event.eventEndTime,
+    event.eventEndsAt,
+    event.eventStartsAt,
+    event.eventTime,
+    event.eventTimezone,
+    hasLocation,
+    key,
+    latitude,
+    longitude,
+  ])
 
   const loadingState: WeatherState = { key, status: 'loading' }
   const currentState = state.key === key ? state : loadingState
