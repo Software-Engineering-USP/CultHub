@@ -4,6 +4,7 @@ import re
 from collections import defaultdict
 
 from django.contrib.auth import get_user_model
+from django.db.models import F
 from django.utils import timezone
 
 from catalogo.filtros import normalizar_texto, visiveis
@@ -109,7 +110,12 @@ def notificar_eventos_novos(ids_eventos):
         visiveis(Evento.objects.filter(pk__in=ids_eventos), timezone.now())
         .select_related("local")
         .prefetch_related("categorias")
-        .order_by("data_inicio", "hora_inicio", "titulo", "pk")
+        .order_by(
+            "data_inicio",
+            F("hora_inicio").asc(nulls_last=True),
+            "titulo",
+            "pk",
+        )
     )
     categorias = {
         categoria.pk

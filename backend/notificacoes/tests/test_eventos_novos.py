@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import time, timedelta
 from io import StringIO
 from unittest.mock import patch
 
@@ -171,6 +171,31 @@ class NotificarEventosNovosTest(TestCase):
 
         self.assertEqual(criadas, 3)
         self.assertEqual(ana.notificacoes.count(), LIMITE_POR_USUARIO + 3)
+
+    def test_limite_poe_eventos_sem_horario_por_ultimo_no_dia(self):
+        ana = criar_usuario("Ana", ["music"])
+        hoje = timezone.localdate()
+        sem_horario = criar_evento(
+            titulo="Sem horário",
+            categorias=["music"],
+            data_inicio=hoje + timedelta(days=1),
+            hora_inicio=None,
+        )
+        com_horario = [
+            criar_evento(
+                titulo=f"Show {hora}h",
+                categorias=["music"],
+                data_inicio=hoje + timedelta(days=1),
+                hora_inicio=time(hora),
+            )
+            for hora in range(10, 10 + LIMITE_POR_USUARIO)
+        ]
+
+        notificar_eventos_novos(
+            [sem_horario.pk, *(evento.pk for evento in com_horario)]
+        )
+
+        self.assertFalse(ana.notificacoes.filter(evento=sem_horario).exists())
 
     def test_conflito_com_aviso_concorrente_nao_levanta_erro(self):
         ana = criar_usuario("Ana", ["music"])
