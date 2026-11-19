@@ -20,7 +20,7 @@ import type { PublicProfile } from '@/types'
 export default function UserProfile() {
   const { id } = useParams()
   const { user, loading: authLoading, clearSession } = useAuth()
-  const { profile, loading, error } = usePublicProfile(id, Boolean(user))
+  const { profile, loading, error, retry } = usePublicProfile(id, Boolean(user))
   const sessionExpired = error instanceof ApiError && (error.status === 401 || error.status === 403)
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function UserProfile() {
   if (!user) return <SignInRequired />
   if (!profile) {
     if (error instanceof ApiError && error.status === 404) return <ProfileNotFound />
-    return <ProfileError message={error?.message} />
+    return <ProfileError message={error?.message} onRetry={retry} />
   }
   return <ProfileContent profile={profile} isMe={profile.id === user.id} />
 }
@@ -133,7 +133,7 @@ function ProfileLoading() {
 
 function SignInRequired() {
   useDocumentTitle('Perfil | CultHub')
-  const { pathname } = useLocation()
+  const { pathname, search, hash } = useLocation()
   return (
     <Surface as="section" aria-labelledby="perfil-entrar" className="mx-auto max-w-xl text-center">
       <h1 id="perfil-entrar" className="text-3xl">
@@ -143,7 +143,8 @@ function SignInRequired() {
         Os perfis de outras pessoas só aparecem para quem tem conta.
       </p>
       <Button asChild className="mt-6">
-        <Link to={paths.signIn} state={{ from: pathname }}>
+        {/* `replace`: depois do login, o histórico fica [evento, perfil] e o Voltar leva ao evento. */}
+        <Link to={paths.signIn} state={{ from: pathname + search + hash }} replace>
           Entrar ou criar conta
         </Link>
       </Button>
@@ -156,7 +157,7 @@ function ProfileNotFound() {
   return <NotFound message="Este perfil não existe ou a conta foi desativada." />
 }
 
-function ProfileError({ message }: Readonly<{ message?: string }>) {
+function ProfileError({ message, onRetry }: Readonly<{ message?: string; onRetry: () => void }>) {
   useDocumentTitle('Perfil | CultHub')
   return (
     <section
@@ -165,9 +166,12 @@ function ProfileError({ message }: Readonly<{ message?: string }>) {
     >
       <h1 className="text-2xl">Não foi possível carregar o perfil</h1>
       <p className="mt-3 text-muted-foreground">{message}</p>
-      <Button asChild className="mt-5">
-        <Link to={paths.home}>Voltar para explorar</Link>
-      </Button>
+      <div className="mt-5 flex flex-wrap justify-center gap-3">
+        <Button onClick={onRetry}>Tentar novamente</Button>
+        <Button asChild variant="outline">
+          <Link to={paths.home}>Voltar para explorar</Link>
+        </Button>
+      </div>
     </section>
   )
 }

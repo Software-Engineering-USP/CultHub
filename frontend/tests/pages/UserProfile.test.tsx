@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MockInstance } from 'vitest'
 import { currentUser } from '@/data/user'
@@ -15,6 +15,11 @@ import { renderWithRouter } from '@tests/render'
 function FromState() {
   const state = useLocation().state as { from?: string } | null
   return <p data-testid="from">{state?.from}</p>
+}
+
+function GoBack() {
+  const navigate = useNavigate()
+  return <button onClick={() => void navigate(-1)}>voltar</button>
 }
 
 function publicProfile(overrides: Partial<ApiPublicProfile> = {}): ApiPublicProfile {
@@ -106,6 +111,15 @@ describe('UserProfile', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Servidor indisponível.')
   })
 
+  it('depois de uma falha, Tentar novamente busca o perfil de novo', async () => {
+    profile.mockRejectedValueOnce(new ApiError('Servidor indisponível.', 500))
+    const { user } = renderProfile()
+
+    await user.click(await screen.findByRole('button', { name: 'Tentar novamente' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Caio Prado' })).toBeInTheDocument()
+    expect(profile).toHaveBeenCalledTimes(2)
+  })
+
   it('sem login, pede para entrar e não chama a API', async () => {
     const { user } = renderProfile('caio-prado', null)
 
@@ -118,7 +132,7 @@ describe('UserProfile', () => {
   it('o link de entrar guarda o perfil para voltar depois do login', () => {
     render(
       <AuthTestProvider initialUser={null}>
-        <MemoryRouter initialEntries={[paths.user('caio-prado')]}>
+        <MemoryRouter initialEntries={[`${paths.user('caio-prado')}?aba=x#topo`]}>
           <Routes>
             <Route path={routes.user} element={<UserProfile />} />
             <Route path={routes.signIn} element={<FromState />} />
@@ -127,7 +141,25 @@ describe('UserProfile', () => {
       </AuthTestProvider>,
     )
     fireEvent.click(screen.getByRole('link', { name: 'Entrar ou criar conta' }))
-    expect(screen.getByTestId('from')).toHaveTextContent(paths.user('caio-prado'))
+    expect(screen.getByTestId('from')).toHaveTextContent(`${paths.user('caio-prado')}?aba=x#topo`)
+  })
+
+  it('o link de entrar substitui o perfil no histórico, para o Voltar não repetir o perfil', async () => {
+    const user = userEvent.setup()
+    render(
+      <AuthTestProvider initialUser={null}>
+        <MemoryRouter initialEntries={[paths.event('jazz'), paths.user('caio-prado')]} initialIndex={1}>
+          <Routes>
+            <Route path={routes.user} element={<UserProfile />} />
+            <Route path={routes.signIn} element={<GoBack />} />
+            <Route path={routes.event} element={<h1>Página do evento</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthTestProvider>,
+    )
+    await user.click(screen.getByRole('link', { name: 'Entrar ou criar conta' }))
+    await user.click(screen.getByRole('button', { name: 'voltar' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Página do evento' })).toBeInTheDocument()
   })
 
   it('sessão expirada (403) pede para entrar de novo em vez de mostrar erro', async () => {
