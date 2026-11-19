@@ -92,6 +92,10 @@ CSRF_COOKIE_SECURE = not DEBUG
 # O redirecionamento de HTTP para HTTPS é feito pelo proxy; aqui o navegador
 # é avisado para só voltar por HTTPS nos próximos 30 dias.
 SECURE_HSTS_SECONDS = 0 if DEBUG else 30 * 24 * 60 * 60
+# Os tiles do OpenStreetMap exigem Referer. Este valor (o padrão dos
+# navegadores) manda só a origem, sem caminho, para outros sites; o padrão
+# do Django (same-origin) não manda nada e o OSM bloqueia os tiles.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 
 # Application definition
