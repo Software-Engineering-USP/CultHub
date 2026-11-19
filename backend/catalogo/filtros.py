@@ -66,14 +66,20 @@ def _busca(queryset, texto):
     texto = normalizar_texto(texto.strip())
     if not texto:
         return queryset
+    categorias = CategoriaCultural.objects.filter(eventos=OuterRef("pk")).alias(
+        nome_norm=Normalizar(F("nome"))
+    ).filter(nome_norm__contains=texto)
     return queryset.alias(
         titulo_norm=Normalizar(F("titulo")),
         descricao_norm=Normalizar(F("descricao")),
         local_nome_norm=Normalizar(F("local__nome")),
+        genero_norm=Normalizar(F("genero")),
     ).filter(
         Q(titulo_norm__contains=texto)
         | Q(descricao_norm__contains=texto)
         | Q(local_nome_norm__contains=texto)
+        | Q(genero_norm__contains=texto)
+        | Q(Exists(categorias))
     )
 
 
