@@ -1,5 +1,5 @@
 import { LocateFixed, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -47,13 +47,6 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
     const value = Number(searchParams.get('raio'))
     return radiusOptions.includes(value) ? value : 10
   })
-  const [waitingForLocation, setWaitingForLocation] = useState(false)
-  useEffect(() => {
-    if (waitingForLocation && myLocation.position) {
-      setNearby({ lat: myLocation.position.latitude, lng: myLocation.position.longitude })
-      setWaitingForLocation(false)
-    }
-  }, [myLocation.position, waitingForLocation])
   const fromUrl = searchParams.get('categorias')?.split(',')
   const [selected, setSelected] = useState<CategoryId[]>(() =>
     fromUrl?.length ? categoryOrder.filter((category) => fromUrl.includes(category)) : [...categoryOrder],
@@ -151,12 +144,12 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
           onClick={() => {
             if (nearby) {
               setNearby(null)
-              setWaitingForLocation(false)
             } else if (myLocation.position) {
               setNearby({ lat: myLocation.position.latitude, lng: myLocation.position.longitude })
             } else {
-              setWaitingForLocation(true)
-              myLocation.request()
+              myLocation.request((position) =>
+                setNearby({ lat: position.latitude, lng: position.longitude }),
+              )
             }
           }}
           aria-pressed={nearby !== null}
@@ -265,7 +258,6 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
             setTo('')
             setNearby(null)
             setRadius(10)
-            setWaitingForLocation(false)
           }}
           className="border-maroon/30 text-maroon"
         >

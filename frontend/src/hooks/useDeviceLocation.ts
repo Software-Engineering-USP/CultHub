@@ -16,7 +16,7 @@ export function useDeviceLocation() {
   const [requested, setRequested] = useState<Coordinates | null>(null)
   const [status, setStatus] = useState<LocationStatus>('idle')
 
-  function request() {
+  function request(onSuccess?: (position: Coordinates) => void) {
     if (!('geolocation' in navigator)) {
       setStatus('unavailable')
       return
@@ -24,8 +24,10 @@ export function useDeviceLocation() {
     setStatus('locating')
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        setRequested({ latitude: coords.latitude, longitude: coords.longitude })
+        const position = { latitude: coords.latitude, longitude: coords.longitude }
+        setRequested(position)
         setStatus('idle')
+        onSuccess?.(position)
       },
       (error) => setStatus(error.code === PERMISSION_DENIED ? 'denied' : 'unavailable'),
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },

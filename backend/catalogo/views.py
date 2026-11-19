@@ -52,7 +52,10 @@ ERRO_DE_FILTRO = {
         OpenApiParameter(
             "q",
             str,
-            description="Busca no título, descrição, local, gênero ou nome da categoria.",
+            description=(
+                "Busca no título, descrição, local, gênero ou "
+                "nome da categoria."
+            ),
         ),
         OpenApiParameter(
             "categorias",
