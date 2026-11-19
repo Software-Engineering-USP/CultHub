@@ -66,14 +66,11 @@ function ensureShade() {
 }
 
 /** Gota com a ponta no lugar: eventos e destinos. A cor vem de uma classe `text-*`. */
-export function markerPin(colorClass: string, label: string) {
-  ensureShade()
-  const span = labelled(document.createElement('span'), label)
-  span.className = `block drop-shadow-md ${colorClass}`
+function pinSvg(size = 36) {
   const svg = svgElement('svg', {
     viewBox: '0 -960 960 960',
-    width: '36',
-    height: '36',
+    width: String(size),
+    height: String(size),
     'aria-hidden': 'true',
   })
   svg.append(
@@ -82,14 +79,61 @@ export function markerPin(colorClass: string, label: string) {
     svgElement('path', { d: MATERIAL_PIN, fill: `url(#${SHADE_ID})` }),
     svgElement('circle', { cx: '480', cy: '-560', r: '80', fill: 'white' }),
   )
-  span.append(svg)
+  return svg
+}
+
+/** Gota com a ponta no lugar; em locais agrupados, sobrepõe uma gota por categoria distinta. */
+export function markerPin(
+  colorClass: string,
+  label: string,
+  count = 1,
+  stackColors: string[] = [colorClass],
+) {
+  ensureShade()
+  const span = labelled(document.createElement('span'), label)
+  const colors = [...new Set(stackColors)]
+  const stacked = colors.length > 1
+  span.className = stacked ? 'relative block' : `relative block drop-shadow-md ${colorClass}`
+  let badgeAnchor = span
+
+  if (stacked) {
+    colors.slice(0, -1).forEach((color, index) => {
+      const layer = document.createElement('span')
+      const offset = (index + 1) * 5
+      layer.className = `absolute drop-shadow-md ${color}`
+      layer.style.left = `${offset}px`
+      layer.style.top = `${10 - offset}px`
+      layer.style.zIndex = String(index + 1)
+      layer.append(pinSvg(42))
+      span.append(layer)
+    })
+    const front = document.createElement('span')
+    front.className = `absolute drop-shadow-md ${colors.at(-1)}`
+    front.style.left = '0'
+    front.style.top = '10px'
+    front.style.zIndex = String(colors.length)
+    front.append(pinSvg())
+    span.append(front)
+    badgeAnchor = front
+  } else {
+    span.append(pinSvg())
+  }
+
+  if (count > 1) {
+    const badge = document.createElement('span')
+    badge.className =
+      'absolute -top-1 -left-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-maroon px-1 text-[10px] leading-none font-bold text-white shadow-md'
+    badge.textContent = String(count)
+    badge.setAttribute('aria-hidden', 'true')
+    badgeAnchor.append(badge)
+  }
   return L.divIcon({
     className: '',
     html: span,
-    iconSize: [36, 36],
-    // A ponta do ícone fica em y = -80 de -960..0, ou seja, a 33 px do topo.
-    iconAnchor: [18, 33],
-    tooltipAnchor: [0, -28],
+    iconSize: stacked ? [64, 48] : [36, 36],
+    // A ponta da gota frontal permanece exatamente na coordenada do local.
+    iconAnchor: stacked ? [18, 43] : [18, 33],
+    tooltipAnchor: [0, stacked ? -38 : -28],
   })
 }
 

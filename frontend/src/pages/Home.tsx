@@ -35,14 +35,30 @@ export default function Home() {
   const categories = categoryValues.filter((value): value is (typeof categoryOrder)[number] =>
     categoryOrder.includes(value as (typeof categoryOrder)[number]),
   )
+  const allCategoriesSelected = categoryOrder.every((category) => categories.includes(category))
+  const latitude = Number(searchParams.get('lat'))
+  const longitude = Number(searchParams.get('lng'))
+  const radius = Number(searchParams.get('raio'))
+  const hasNearbyFilter =
+    searchParams.has('lat') &&
+    searchParams.has('lng') &&
+    searchParams.has('raio') &&
+    Number.isFinite(latitude) &&
+    Math.abs(latitude) <= 90 &&
+    Number.isFinite(longitude) &&
+    Math.abs(longitude) <= 180 &&
+    Number.isFinite(radius) &&
+    radius > 0
   const query: CatalogQuery = {
     q: searchParams.get('q') || undefined,
-    categorias: categories.length ? categories : undefined,
+    categorias: categories.length && !allCategoriesSelected ? categories : undefined,
     preco: (['gratuito', 'pago', 'desconhecido'] as const).find(
       (value) => value === searchParams.get('preco'),
     ),
     de: searchParams.get('de') ?? undefined,
     ate: searchParams.get('ate') ?? undefined,
+    tamanho: 200,
+    ...(hasNearbyFilter ? { lat: latitude, lng: longitude, raio: radius } : {}),
   }
   const { events, count, loading, error, hasMore, loadMore } = useCatalog(query)
   useDocumentTitle('CultHub | Explore São Paulo')
@@ -120,7 +136,9 @@ export default function Home() {
               : `Exibindo ${events.length} de ${count} evento(s)`
           }
         >
-          <span className="text-xs text-muted-foreground">Ordenados por data</span>
+          <span className="text-xs text-muted-foreground">
+            {hasNearbyFilter ? 'Mais próximos primeiro' : 'Ordenados por data'}
+          </span>
         </SectionHeading>
 
         {error && (

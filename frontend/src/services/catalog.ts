@@ -53,6 +53,10 @@ export interface CatalogQuery {
   /** Período (AAAA-MM-DD); entram os eventos que acontecem em algum dia dele */
   de?: string
   ate?: string
+  lat?: number
+  lng?: number
+  raio?: number
+  tamanho?: number
   page?: number
 }
 
@@ -108,6 +112,12 @@ export const catalogApi = {
     if (query.preco) params.set('preco', query.preco)
     if (query.de) params.set('de', query.de)
     if (query.ate) params.set('ate', query.ate)
+    if (query.lat !== undefined && query.lng !== undefined && query.raio !== undefined) {
+      params.set('lat', String(query.lat))
+      params.set('lng', String(query.lng))
+      params.set('raio', String(query.raio))
+    }
+    if (query.tamanho !== undefined) params.set('tamanho', String(query.tamanho))
     if (query.page && query.page > 1) params.set('page', String(query.page))
     const suffix = params.size ? `?${params.toString()}` : ''
     return get<Paginated<ApiEvent>>(`/eventos/${suffix}`, signal)
@@ -181,8 +191,11 @@ function availability(event: ApiEvent): EventAvailability | undefined {
   return undefined
 }
 
-export function toCultEvent(event: ApiEvent): EventWithDetails {
-  const category = event.categorias.find((value) => knownCategories.has(value)) ?? 'art'
+export function toCultEvent(event: ApiEvent, preferredCategory?: CategoryId): EventWithDetails {
+  const category =
+    (preferredCategory && event.categorias.includes(preferredCategory) ? preferredCategory : undefined) ??
+    event.categorias.find((value) => knownCategories.has(value)) ??
+    'art'
   const image = event.imagens[0]
   const venue = event.local?.nome || 'Local a confirmar'
   const latitude = event.local?.latitude

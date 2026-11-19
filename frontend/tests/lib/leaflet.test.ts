@@ -20,6 +20,21 @@ describe('lib/leaflet', () => {
     expect(document.querySelectorAll('#culthub-pin-sombra')).toHaveLength(1)
   })
 
+  it('empilha apenas cores distintas e mantém a contagem no pin agrupado', () => {
+    const stacked = markerPin('text-dot-music', '2 eventos', 2, ['text-dot-theater', 'text-dot-music'])
+    const html = stacked.options.html as HTMLElement
+
+    expect(stacked.options.iconSize).toEqual([64, 48])
+    expect(stacked.options.iconAnchor).toEqual([18, 43])
+    expect(html.querySelectorAll('svg')).toHaveLength(2)
+    expect(html.querySelector('.text-dot-theater')).not.toBeNull()
+    expect(html.querySelector('.text-dot-music')).not.toBeNull()
+    expect(html.textContent).toContain('2')
+
+    const sameColor = markerPin('text-dot-music', '2 eventos', 2, ['text-dot-music', 'text-dot-music'])
+    expect((sameColor.options.html as HTMLElement).querySelectorAll('svg')).toHaveLength(1)
+  })
+
   it('não interpreta o nome como HTML', () => {
     const nome = '<img src=x onerror="alert(1)">'
     const html = markerPin('text-maroon', nome).options.html as HTMLElement

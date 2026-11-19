@@ -52,7 +52,10 @@ ERRO_DE_FILTRO = {
         OpenApiParameter(
             "q",
             str,
-            description="Busca no título, descrição ou nome do local.",
+            description=(
+                "Busca no título, descrição, local, gênero ou "
+                "nome da categoria."
+            ),
         ),
         OpenApiParameter(
             "categorias",
@@ -107,6 +110,14 @@ class EventoListView(ListAPIView):
         )
         eventos = visiveis(eventos, timezone.now())
         eventos = aplicar_filtros(eventos, self.request.query_params)
+        if "distancia_km" in eventos.query.annotations:
+            return eventos.order_by(
+                "distancia_km",
+                "data_inicio",
+                F("hora_inicio").asc(nulls_last=True),
+                "titulo",
+                "id",
+            )
         return eventos.order_by(
             "data_inicio",
             F("hora_inicio").asc(nulls_last=True),

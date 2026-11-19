@@ -9,7 +9,17 @@ describe('useCatalog', () => {
 
   it('carrega os resultados e os metadados de paginação', async () => {
     vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([apiEvent()], '/api/eventos/?page=2'))
-    const { result } = renderHook(() => useCatalog({ q: 'jazz', categorias: ['music'], preco: 'pago' }))
+    const { result } = renderHook(() =>
+      useCatalog({
+        q: 'jazz',
+        categorias: ['music'],
+        preco: 'pago',
+        lat: -23.55,
+        lng: -46.63,
+        raio: 5,
+        tamanho: 200,
+      }),
+    )
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.events[0].title).toBe('Jazz no Parque')
@@ -17,7 +27,16 @@ describe('useCatalog', () => {
     expect(result.current.hasMore).toBe(true)
     expect(result.current.error).toBeNull()
     expect(catalogApi.events).toHaveBeenCalledWith(
-      { q: 'jazz', categorias: ['music'], preco: 'pago', page: 1 },
+      {
+        q: 'jazz',
+        categorias: ['music'],
+        preco: 'pago',
+        lat: -23.55,
+        lng: -46.63,
+        raio: 5,
+        tamanho: 200,
+        page: 1,
+      },
       expect.any(AbortSignal),
     )
   })
