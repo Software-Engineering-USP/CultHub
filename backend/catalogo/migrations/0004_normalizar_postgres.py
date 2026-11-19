@@ -4,12 +4,14 @@ from django.db import migrations
 # acentos. No SQLite a função é registrada em `catalogo/apps.py`. Não é
 # idêntica à do Python fora do português: `lower` não desdobra o `ß` em
 # `ss` como o `casefold`, e só saem os acentos da faixa U+0300 a U+036F.
+# O acento sai antes do `lower`: com collation `C` (comum em Postgres
+# gerenciado) o `lower` só converte ASCII, e "É" ficaria maiúsculo.
 CRIAR = r"""
 DROP FUNCTION IF EXISTS normalizar(text);
 CREATE FUNCTION normalizar(texto text) RETURNS text
 LANGUAGE sql IMMUTABLE STRICT AS $$
-  SELECT regexp_replace(
-    normalize(lower(texto), NFKD), '[\u0300-\u036F]', '', 'g'
+  SELECT lower(
+    regexp_replace(normalize(texto, NFKD), '[\u0300-\u036F]', '', 'g')
   )
 $$;
 """
