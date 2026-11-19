@@ -1,7 +1,7 @@
 import type { Weather } from '@/types'
 import { apiGet, dateTimeInTimeZone } from './catalog'
 
-interface EventTiming {
+export interface EventTiming {
   startsAt?: string | null
   endDate?: string | null
   endTime?: string | null
@@ -65,11 +65,11 @@ function dataHoraAtingida(
   return time.slice(0, 5) <= now.time
 }
 
-function previsaoDoEventoEmAndamento(
+export function getEventWeatherContext(
   date: string,
   time: string | null | undefined,
-  now: Date,
-  timing: EventTiming,
+  timing: EventTiming = {},
+  now = new Date(),
 ): { date: string; time: string | null | undefined; inProgress: boolean; ended: boolean } {
   const timeZone = timing.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
   const nowLocal = dateTimeInTimeZone(now, timeZone)
@@ -81,7 +81,7 @@ function previsaoDoEventoEmAndamento(
 
   return {
     date: inProgress ? nowLocal.date : date,
-    time: inProgress ? null : time,
+    time: inProgress ? (time ? nowLocal.time : null) : time,
     inProgress,
     ended,
   }
@@ -197,7 +197,7 @@ export async function getEventWeather(
   if (!date) throw new Error('A data deste evento não está disponível para consultar a previsão.')
 
   const now = new Date()
-  const eventForecast = previsaoDoEventoEmAndamento(date, time, now, timing)
+  const eventForecast = getEventWeatherContext(date, time, timing, now)
   if (eventForecast.ended) {
     throw new Error('Este evento já aconteceu; a previsão do tempo não está mais disponível.')
   }
@@ -211,7 +211,7 @@ export async function getEventWeather(
   const weather =
     (eventForecast.time && hourlyWeather(forecast, eventForecast.date, eventForecast.time)) ||
     dailyWeather(forecast, eventForecast.date)
-  if (weather) return weather
+  if (weather) return { ...weather, eventInProgress: eventForecast.inProgress }
   throw new Error(
     'A previsão para esse dia ainda não está disponível. O serviço oferece previsão para até 16 dias a partir de hoje.',
   )

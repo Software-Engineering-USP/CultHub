@@ -4,7 +4,10 @@ import { useWeather } from '@/hooks/useWeather'
 import { getEventWeather } from '@/services/climate'
 import type { CultEvent, Weather } from '@/types'
 
-vi.mock('@/services/climate', () => ({ getEventWeather: vi.fn() }))
+vi.mock('@/services/climate', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/services/climate')>()
+  return { ...original, getEventWeather: vi.fn() }
+})
 
 const event: CultEvent = {
   id: 'evento-1',
@@ -40,7 +43,10 @@ const getEventWeatherMock = vi.mocked(getEventWeather)
 beforeEach(() => {
   getEventWeatherMock.mockReset()
 })
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 describe('useWeather', () => {
   it('carrega a previsão usando localização, data e horário do evento', async () => {
@@ -69,7 +75,7 @@ describe('useWeather', () => {
     const { result } = renderHook(() => useWeather(event))
 
     await waitFor(() =>
-      expect(result.current).toEqual({ status: 'unavailable', message: 'Serviço indisponível.' }),
+      expect(result.current).toMatchObject({ status: 'unavailable', message: 'Serviço indisponível.' }),
     )
   })
 
@@ -87,5 +93,34 @@ describe('useWeather', () => {
     await waitFor(() => expect(result.current).toMatchObject({ status: 'ready', weather }))
     await act(async () => completeRequest?.(weather))
     await waitFor(() => expect(result.current).toMatchObject({ status: 'ready', weather }))
+  })
+
+  it('atualiza a notificação visual quando o evento termina com a página aberta', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2040-03-10T20:00:00Z'))
+    const eventoQueTermina = {
+      ...event,
+      eventDate: '2040-03-10',
+      eventTime: '19:00:00',
+      eventStartsAt: '2040-03-10T19:00:00Z',
+      eventEndDate: '2040-03-10',
+      eventEndTime: '20:01:00',
+      eventEndsAt: '2040-03-10T20:01:00Z',
+      eventTimezone: 'UTC',
+    }
+    getEventWeatherMock.mockResolvedValue(weather)
+    const { result } = renderHook(() => useWeather(eventoQueTermina))
+
+    await act(async () => {})
+    expect(result.current.status).toBe('ready')
+
+    await act(async () => {
+      vi.advanceTimersByTime(60_000)
+    })
+
+    expect(result.current).toMatchObject({
+      status: 'unavailable',
+      message: 'Este evento já aconteceu; a previsão do tempo não está mais disponível.',
+    })
   })
 })

@@ -2,6 +2,7 @@ import Surface from '@/components/common/Surface'
 import { useWeather } from '@/hooks/useWeather'
 import type { CultEvent } from '@/types'
 import WeatherIcon from './WeatherIcon'
+import { weatherMomentLabel } from './weatherLabels'
 import { WeatherMessage, WeatherTitle } from './WeatherMessage'
 import WeatherStats from './WeatherStats'
 
@@ -20,9 +21,14 @@ export default function WeatherStrip({ event }: Readonly<{ event: CultEvent }>) 
         <>
           <WeatherIcon weather={result.weather} className="size-15 max-sm:size-12" />
           <div>
-            <WeatherTitle eventTime={event.eventTime} forecastType={result.weather.forecastType} level="h2" />
+            <WeatherTitle
+              eventTime={event.eventTime}
+              eventInProgress={result.weather.eventInProgress}
+              forecastType={result.weather.forecastType}
+              level="h2"
+            />
             <p className="mt-1 text-2xs text-muted-foreground">
-              {event.schedule} • {result.weather.condition}
+              {weatherMomentLabel(event, result.weather)} • {result.weather.condition}
             </p>
           </div>
           <span className="mx-auto text-3xl font-semibold tracking-tighter text-foreground max-md:mr-0 max-md:ml-auto">

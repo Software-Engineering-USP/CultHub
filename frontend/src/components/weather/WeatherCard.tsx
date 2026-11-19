@@ -3,6 +3,7 @@ import Surface from '@/components/common/Surface'
 import { useWeather } from '@/hooks/useWeather'
 import type { CultEvent } from '@/types'
 import WeatherIcon from './WeatherIcon'
+import { weatherMomentLabel } from './weatherLabels'
 import { WeatherMessage, WeatherTitle } from './WeatherMessage'
 import WeatherStats from './WeatherStats'
 
@@ -26,7 +27,12 @@ export default function WeatherCard({ event }: Readonly<{ event: CultEvent }>) {
       data-weather={weather.theme}
     >
       <div className="flex items-center justify-between gap-3.5">
-        <WeatherTitle eventTime={event.eventTime} forecastType={weather.forecastType} level="h3" />
+        <WeatherTitle
+          eventTime={event.eventTime}
+          eventInProgress={weather.eventInProgress}
+          forecastType={weather.forecastType}
+          level="h3"
+        />
         <Eyebrow className="text-2xs text-muted-foreground">PREVISÃO</Eyebrow>
       </div>
 
@@ -36,7 +42,7 @@ export default function WeatherCard({ event }: Readonly<{ event: CultEvent }>) {
           <p className="text-4xl font-semibold tracking-tighter text-foreground">{weather.temperature}</p>
           <p className="font-semibold text-foreground">{weather.condition}</p>
           <p className="text-xs text-muted-foreground">
-            {event.schedule} • {event.venue}
+            {weatherMomentLabel(event, weather)} • {event.venue}
           </p>
         </div>
       </div>

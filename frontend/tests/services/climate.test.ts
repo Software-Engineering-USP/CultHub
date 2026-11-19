@@ -193,7 +193,7 @@ describe('getEventWeather', () => {
 
   it('mostra a previsão de hoje para um evento em andamento', async () => {
     vi.setSystemTime(new Date('2040-03-07T12:00:00Z'))
-    mockFetch(jsonResponse(forecast(3, 1, '2040-03-07')))
+    mockFetch(jsonResponse(forecast(3, 1, '2040-03-07', '12:00')))
 
     const weather = await getEventWeather(location, '2040-03-06', '20:00', new AbortController().signal, {
       startsAt: '2040-03-06T20:00:00Z',
@@ -202,7 +202,7 @@ describe('getEventWeather', () => {
       timeZone: 'UTC',
     })
 
-    expect(weather.forecastType).toBe('daily')
+    expect(weather).toMatchObject({ forecastType: 'hourly', eventInProgress: true })
   })
 
   it('usa o fuso do evento em vez do fuso do navegador', async () => {

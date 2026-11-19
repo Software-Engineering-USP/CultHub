@@ -122,4 +122,5 @@ export interface Weather {
   wind?: string
   precipitation?: string
   forecastType: 'hourly' | 'daily'
+  eventInProgress?: boolean
 }
