@@ -106,6 +106,11 @@ class RecuperarSenhaView(APIView):
                 f"senha:\n{url}\n\n"
                 "Se você não pediu a redefinição, ignore este e-mail."
             )
+            if settings.EMAIL_BACKEND.endswith(".dummy.EmailBackend"):
+                logger.warning(
+                    "EMAIL_BACKEND não configurado: o e-mail de "
+                    "recuperação de senha foi descartado"
+                )
             try:
                 send_mail(
                     "Redefinição de senha | CultHub",

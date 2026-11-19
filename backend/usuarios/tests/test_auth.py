@@ -163,6 +163,15 @@ class RecuperacaoSenhaTest(APITestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertIn("recuperação", log.output[0])
 
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.dummy.EmailBackend"
+    )
+    def test_sem_backend_de_email_avisa_no_log(self):
+        with self.assertLogs("usuarios.views", level="WARNING") as log:
+            resposta = self.solicitar()
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("EMAIL_BACKEND", log.output[0])
+
     def test_envia_link_e_token_permite_trocar_a_senha_uma_vez(self):
         resposta = self.solicitar()
         self.assertEqual(resposta.status_code, 200)
