@@ -44,7 +44,7 @@ async function fetchAllPages(loadPage: PageLoader) {
   const remainingPages = await Promise.all(
     Array.from({ length: pageCount - 1 }, (_, index) => loadPage(index + 2)),
   )
-  return [firstPage, ...remainingPages].flatMap((page) => page.results.map(toCultEvent))
+  return [firstPage, ...remainingPages].flatMap((page) => page.results.map((event) => toCultEvent(event)))
 }
 
 /** Uma das listas do usuário logado; vazia (sem buscar nada) para visitantes. */
