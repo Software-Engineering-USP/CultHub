@@ -8,7 +8,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.generics import RetrieveAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 from usuarios.serializers import (
     CadastroSerializer,
     EntrarSerializer,
+    PerfilPublicoSerializer,
     PerfilSerializer,
     RecuperarSenhaSerializer,
     RedefinirSenhaSerializer,
@@ -172,3 +173,19 @@ class EuView(RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class PerfilPublicoView(RetrieveAPIView):
+    """Perfil de outra pessoa, só com os dados públicos.
+
+    Exige login. Conta desativada responde 404, como se não existisse.
+    """
+
+    serializer_class = PerfilPublicoSerializer
+
+    def get_queryset(self):
+        return (
+            get_user_model()
+            .objects.filter(is_active=True)
+            .prefetch_related("preferencias")
+        )

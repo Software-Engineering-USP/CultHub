@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
@@ -28,6 +30,34 @@ class PerfilSerializer(serializers.ModelSerializer):
             "iniciais",
         )
         read_only_fields = ("id", "email")
+
+
+class PerfilPublicoSerializer(serializers.ModelSerializer):
+    """O que outra pessoa logada vê de um usuário.
+
+    Fica de fora o que identifica ou localiza demais: e-mail e bairro.
+    """
+
+    preferencias = serializers.SlugRelatedField(
+        many=True, slug_field="codigo", read_only=True
+    )
+    membro_desde = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Usuario
+        fields = (
+            "id",
+            "nome",
+            "iniciais",
+            "cidade",
+            "preferencias",
+            "membro_desde",
+        )
+        read_only_fields = fields
+
+    def get_membro_desde(self, usuario) -> date:
+        # Só o dia: a hora exata do cadastro não interessa a mais ninguém.
+        return timezone.localdate(usuario.criado_em)
 
 
 class CadastroSerializer(serializers.Serializer):
