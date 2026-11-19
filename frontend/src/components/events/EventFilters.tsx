@@ -1,11 +1,12 @@
-import { X } from 'lucide-react'
-import { useState } from 'react'
+import { LocateFixed, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useDeviceLocation } from '@/hooks/useDeviceLocation'
 import { todayIso } from '@/lib/agenda'
 import { categories, categoryOrder } from '@/lib/categories'
 import { paths } from '@/lib/paths'
@@ -20,6 +21,8 @@ const priceModes: { value: PriceMode; label: string }[] = [
   { value: 'paid', label: 'Pago' },
 ]
 
+const radiusOptions = [1, 5, 10, 25, 50]
+
 interface EventFiltersProps {
   onClose: () => void
 }
@@ -27,6 +30,30 @@ interface EventFiltersProps {
 export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const myLocation = useDeviceLocation()
+  const initialLat = Number(searchParams.get('lat'))
+  const initialLng = Number(searchParams.get('lng'))
+  const hasInitialLocation =
+    searchParams.has('lat') &&
+    searchParams.has('lng') &&
+    Number.isFinite(initialLat) &&
+    Number.isFinite(initialLng) &&
+    Math.abs(initialLat) <= 90 &&
+    Math.abs(initialLng) <= 180
+  const [nearby, setNearby] = useState<{ lat: number; lng: number } | null>(() =>
+    hasInitialLocation ? { lat: initialLat, lng: initialLng } : null,
+  )
+  const [radius, setRadius] = useState(() => {
+    const value = Number(searchParams.get('raio'))
+    return radiusOptions.includes(value) ? value : 10
+  })
+  const [waitingForLocation, setWaitingForLocation] = useState(false)
+  useEffect(() => {
+    if (waitingForLocation && myLocation.position) {
+      setNearby({ lat: myLocation.position.latitude, lng: myLocation.position.longitude })
+      setWaitingForLocation(false)
+    }
+  }, [myLocation.position, waitingForLocation])
   const fromUrl = searchParams.get('categorias')?.split(',')
   const [selected, setSelected] = useState<CategoryId[]>(() =>
     fromUrl?.length ? categoryOrder.filter((category) => fromUrl.includes(category)) : [...categoryOrder],
@@ -72,6 +99,15 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
       if (value) params.set(key, value)
       else params.delete(key)
     }
+    if (nearby) {
+      params.set('lat', String(nearby.lat))
+      params.set('lng', String(nearby.lng))
+      params.set('raio', String(radius))
+    } else {
+      params.delete('lat')
+      params.delete('lng')
+      params.delete('raio')
+    }
     navigate({ pathname: paths.home, search: params.toString() })
     onClose()
   }
@@ -103,6 +139,62 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
             </div>
           ))}
         </div>
+      </fieldset>
+
+      <fieldset className="mt-4">
+        <legend className="mb-2 text-xs font-bold">Localização</legend>
+        <Button
+          type="button"
+          variant={nearby ? 'default' : 'outline'}
+          size="sm"
+          disabled={myLocation.status === 'locating'}
+          onClick={() => {
+            if (nearby) {
+              setNearby(null)
+              setWaitingForLocation(false)
+            } else if (myLocation.position) {
+              setNearby({ lat: myLocation.position.latitude, lng: myLocation.position.longitude })
+            } else {
+              setWaitingForLocation(true)
+              myLocation.request()
+            }
+          }}
+          aria-pressed={nearby !== null}
+        >
+          <LocateFixed />
+          {myLocation.status === 'locating'
+            ? 'Obtendo localização…'
+            : nearby
+              ? 'Perto de mim: ativo'
+              : 'Usar minha localização'}
+        </Button>
+        {nearby ? (
+          <div className="mt-3 grid gap-1">
+            <Label htmlFor="filtro-raio" className="text-xs font-normal">
+              Raio da busca
+            </Label>
+            <select
+              id="filtro-raio"
+              value={radius}
+              onChange={(event) => setRadius(Number(event.target.value))}
+              className="min-h-9 rounded-lg border border-input bg-background px-2 text-sm"
+            >
+              {radiusOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value} km
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <p className="mt-1 text-2xs text-muted-foreground">
+            {myLocation.status === 'denied'
+              ? 'A localização foi bloqueada. Libere a permissão no navegador e tente novamente.'
+              : myLocation.status === 'unavailable'
+                ? 'Não foi possível obter sua localização. Você ainda pode usar os outros filtros.'
+                : 'Mostra eventos próximos à sua localização.'}
+          </p>
+        )}
       </fieldset>
 
       <fieldset className="mt-4">
@@ -171,6 +263,9 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
             setPrice('all')
             setFrom('')
             setTo('')
+            setNearby(null)
+            setRadius(10)
+            setWaitingForLocation(false)
           }}
           className="border-maroon/30 text-maroon"
         >
