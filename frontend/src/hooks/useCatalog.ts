@@ -22,9 +22,12 @@ export function useCatalog(query: CatalogQuery) {
       preco: query.preco,
       de: query.de,
       ate: query.ate,
+      lat: query.lat,
+      lng: query.lng,
+      raio: query.raio,
       categorias: categoryKey ? (categoryKey.split(',') as CatalogQuery['categorias']) : undefined,
     }),
-    [categoryKey, query.preco, query.q, query.de, query.ate],
+    [categoryKey, query.preco, query.q, query.de, query.ate, query.lat, query.lng, query.raio],
   )
   const [state, setState] = useState<CatalogState>({
     events: [],
