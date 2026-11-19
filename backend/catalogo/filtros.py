@@ -66,8 +66,7 @@ class Normalizar(Func):
 
 
 def _busca(queryset, texto):
-    # O Postgres recusa o byte NUL em qualquer texto.
-    texto = normalizar_texto(texto.replace("\x00", "").strip())
+    texto = normalizar_texto(texto.strip())
     if not texto:
         return queryset
     return queryset.alias(
@@ -206,8 +205,11 @@ def _distancia(queryset, params):
 def aplicar_filtros(queryset, params):
     """Aplica os filtros da querystring (combinados com E).
 
-    Parâmetro vazio (ou só espaços) equivale a ausente.
+    Parâmetro vazio (ou só espaços) equivale a ausente. O byte NUL sai de
+    todos os valores: o Postgres o recusa em qualquer texto e a consulta
+    daria 500.
     """
+    params = {k: v.replace("\x00", "") for k, v in params.items()}
     params = {k: v for k, v in params.items() if v.strip()}
     if "q" in params:
         queryset = _busca(queryset, params["q"])

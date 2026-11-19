@@ -113,6 +113,15 @@ class FiltrosBuscaTest(APITestCase):
         self.assertEqual(resposta.status_code, 400)
         self.assertIn("categorias", resposta.json())
 
+    def test_byte_nul_sai_de_todos_os_parametros(self):
+        # O Postgres recusa NUL em texto; sem tratar, a consulta dá 500.
+        criar_evento(titulo="Musica", categorias=["music"])
+        criar_evento(titulo="Arte", categorias=["art"])
+        self.assertEqual(self.titulos(categorias="\x00music"), ["Musica"])
+        resposta = self.buscar(categorias="\x00x")
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("categorias", resposta.json())
+
     def test_preco_gratuito(self):
         criar_evento(titulo="Free", gratuito=True)
         criar_evento(titulo="Pago", gratuito=False)
