@@ -293,6 +293,11 @@ LOGGING = {
     "filters": {
         "com_debug": {"()": "django.utils.log.RequireDebugTrue"},
     },
+    "formatters": {
+        "producao": {
+            "format": "%(asctime)s %(levelname)s %(name)s: %(message)s",
+        },
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
@@ -302,13 +307,21 @@ LOGGING = {
         "producao": {
             "class": "logging.StreamHandler",
             "level": "WARNING",
+            "formatter": "producao",
         },
     },
     "loggers": {
         "django": {
             "handlers": ["console" if DEBUG else "producao"],
             "level": "INFO",
+            "propagate": False,
         },
+    },
+    # Loggers do projeto (`usuarios.views`, `rotas.views`...) com nível,
+    # horário e origem, em vez do handler de último recurso do Python.
+    "root": {
+        "handlers": ["console" if DEBUG else "producao"],
+        "level": "WARNING",
     },
 }
 
