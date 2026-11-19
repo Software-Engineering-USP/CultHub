@@ -2,7 +2,7 @@ import { ArrowUpRight, Route } from 'lucide-react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import Eyebrow from '@/components/common/Eyebrow'
 import PlanVisitLayout, { PlanVisitPanel } from '@/components/events/PlanVisitLayout'
-import RouteMap from '@/components/map/RouteMap'
+import EventsMap from '@/components/map/EventsMap'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -54,7 +54,13 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
         </Badge>
       }
       map={
-        <RouteMap origin={origin} destination={event.location} destinationLabel={event.venue} route={route} />
+        <EventsMap
+          events={[event]}
+          userPosition={null}
+          recenter={0}
+          onSelect={() => undefined}
+          className="h-[min(690px,70vh)] w-full rounded-3xl border border-border max-md:h-80 max-sm:rounded-2xl"
+        />
       }
     >
       <PlanVisitPanel aria-labelledby="trajeto-titulo" className="bg-cream">

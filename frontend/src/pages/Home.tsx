@@ -49,10 +49,10 @@ export default function Home() {
   const featured = events.slice(0, 5)
   const pinned = events.filter((event) => event.location).length
 
-  // Com a posição já conhecida, só centraliza de novo; sem ela, pede a permissão.
+  // Cada clique pede a posição atual, mesmo se já houver uma posição em cache.
   function locate() {
-    if (myLocation.position) setRecenter((value) => value + 1)
-    else myLocation.request()
+    setRecenter((value) => value + 1)
+    myLocation.request()
   }
 
   return (

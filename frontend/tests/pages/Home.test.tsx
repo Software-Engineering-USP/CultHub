@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { categoryOrder } from '@/lib/categories'
@@ -131,6 +131,19 @@ describe('Home', () => {
     await user.click(screen.getByRole('button', { name: /Minha Localização/ }))
     expect(await screen.findByRole('img', { name: 'Você está aqui' })).toBeInTheDocument()
     expect(getCurrentPosition).toHaveBeenCalledOnce()
+  })
+
+  it('pede a posição atual mesmo quando já há uma localização concedida', async () => {
+    vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([]))
+    const getCurrentPosition = vi.fn((success: PositionCallback) =>
+      success({ coords: { latitude: -23.6, longitude: -46.7 } } as GeolocationPosition),
+    )
+    stubGeolocation(fakePermission('granted'), getCurrentPosition)
+    const { user } = renderWithRouter(<Home />)
+
+    await waitFor(() => expect(getCurrentPosition).toHaveBeenCalledOnce())
+    await user.click(screen.getByRole('button', { name: /Minha Localização/ }))
+    await waitFor(() => expect(getCurrentPosition).toHaveBeenCalledTimes(2))
   })
 
   it('avisa quando a pessoa não permite a localização', async () => {

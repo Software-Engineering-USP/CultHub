@@ -25,7 +25,7 @@ interface PlanVisitLayoutProps {
   description: string
   /** Selo à direita do título */
   status: ReactNode
-  /** Mapa da coluna da direita (OriginMap ou RouteMap) */
+  /** Mapa da coluna da direita (OriginMap ou mapa do evento) */
   map: ReactNode
   /** Painel da coluna da esquerda (use PlanVisitPanel) */
   children: ReactNode

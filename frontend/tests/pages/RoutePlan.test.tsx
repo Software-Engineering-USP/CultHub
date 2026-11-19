@@ -86,9 +86,8 @@ describe('RoutePlan', () => {
     const point = { latitude: -23.6, longitude: -46.7 }
     expect(rotaSpy).toHaveBeenCalledWith(id, point, 'carro', expect.any(AbortSignal))
     expect(rotaSpy).toHaveBeenCalledWith(id, point, 'a_pe', expect.any(AbortSignal))
-    expect(screen.getByRole('region', { name: 'Mapa do trajeto até o evento' })).toHaveTextContent(
-      'Corrigir o mapa',
-    )
+    const map = await screen.findByRole('region', { name: 'Mapa dos eventos' })
+    expect(within(map).getByRole('img', { name: 'Jazz no Parque' })).toBeInTheDocument()
   })
 
   it('troca de modo pelos cartões sem calcular de novo', async () => {
