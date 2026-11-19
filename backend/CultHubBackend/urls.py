@@ -37,10 +37,11 @@ urlpatterns = [
         name="docs",
     ),
     # Qualquer outro caminho é uma rota do React (quando o front buildado
-    # está na mesma imagem; ver FRONTEND_DIST). Arquivo de `assets/` que
-    # não existe responde 404, e não a página.
+    # está na mesma imagem; ver FRONTEND_DIST). Arquivo que não existe
+    # (em `assets/` ou com extensão, como `/favicon.ico`) responde 404, e
+    # não a página; os que existem o WhiteNoise serve antes.
     re_path(
-        r"^(?!(?:api|admin|static|assets)(?:/|$)).*$",
+        r"^(?!(?:api|admin|static|assets)(?:/|$))(?!.*\.[A-Za-z0-9]+/?$).*$",
         pagina_do_front,
     ),
 ]

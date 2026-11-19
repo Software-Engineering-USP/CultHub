@@ -25,7 +25,13 @@ class PaginaDoFrontTest(SimpleTestCase):
 
     def test_api_e_arquivo_inexistentes_continuam_404(self):
         with override_settings(FRONTEND_DIST=self.dist):
-            for caminho in ("/api/nao-existe/", "/assets/antigo-abc123.js"):
+            for caminho in (
+                "/api/nao-existe/",
+                "/assets/antigo-abc123.js",
+                "/favicon.ico",
+                "/robots.txt",
+                "/.well-known/security.txt",
+            ):
                 with self.subTest(caminho=caminho):
                     resposta = self.client.get(caminho)
                     self.assertEqual(resposta.status_code, 404)
@@ -39,6 +45,12 @@ class PaginaDoFrontTest(SimpleTestCase):
 
     def test_sem_front_buildado_responde_404(self):
         with override_settings(FRONTEND_DIST=None):
+            resposta = self.client.get("/conta")
+        self.assertEqual(resposta.status_code, 404)
+
+    def test_dist_sem_index_responde_404(self):
+        (self.dist / "index.html").unlink()
+        with override_settings(FRONTEND_DIST=self.dist):
             resposta = self.client.get("/conta")
         self.assertEqual(resposta.status_code, 404)
 
