@@ -96,7 +96,13 @@ describe('catalogApi', () => {
 
 describe('toCultEvent', () => {
   it('mapeia os campos do backend para o tipo usado pelos cards e detalhes', () => {
-    const event = toCultEvent(apiEvent())
+    const event = toCultEvent(
+      apiEvent({
+        data_fim: '2040-03-11',
+        hora_fim: '01:00:00',
+        fim: '2040-03-11T01:00:00-03:00',
+      }),
+    )
 
     expect(event).toMatchObject({
       id: '6f2da8a0-ccaa-4c27-a260-ec471e7c7ec1',
@@ -107,6 +113,11 @@ describe('toCultEvent', () => {
       location: { latitude: -23.5874, longitude: -46.6576 },
       priceValue: 80,
       image: 'https://img.example/jazz.jpg',
+      eventStartsAt: '2040-03-10T20:00:00-03:00',
+      eventEndDate: '2040-03-11',
+      eventEndTime: '01:00:00',
+      eventEndsAt: '2040-03-11T01:00:00-03:00',
+      eventTimezone: 'America/Sao_Paulo',
       details: { about: ['Show ao ar livre.'], startTime: '20:00' },
     })
     expect(event.price.replaceAll('\u00a0', ' ')).toBe('A partir de R$ 80,00')

@@ -69,7 +69,19 @@ describe('WeatherCard', () => {
   it('mostra carregamento', () => {
     useWeatherMock.mockReturnValue({ status: 'loading' })
     render(<WeatherCard event={event} />)
-    expect(screen.getByText('Consultando a previsão para o local do evento…')).toBeInTheDocument()
+    expect(screen.getByText('Consultando a previsão do tempo para o evento…')).toHaveClass('mt-3')
+  })
+
+  it('mostra clima de agora e não o horário original durante um evento em andamento', () => {
+    useWeatherMock.mockReturnValue({
+      status: 'ready',
+      weather: { ...hourly, eventInProgress: true },
+    })
+    render(<WeatherCard event={event} />)
+
+    expect(screen.getByRole('heading', { name: 'Clima agora' })).toBeInTheDocument()
+    expect(screen.getByText('Agora • Parque')).toBeInTheDocument()
+    expect(screen.queryByText(`${event.schedule} • ${event.venue}`)).not.toBeInTheDocument()
   })
 
   it('mostra quando a previsão não está disponível', () => {
@@ -101,10 +113,21 @@ describe('WeatherStrip', () => {
   it('mostra carregamento e erros de previsão', () => {
     useWeatherMock.mockReturnValue({ status: 'loading' })
     const { rerender } = render(<WeatherStrip event={event} />)
-    expect(screen.getByText('Consultando a previsão do evento…')).toBeInTheDocument()
+    expect(screen.getByText('Consultando a previsão do tempo para o evento…')).toHaveClass('mt-1')
 
     useWeatherMock.mockReturnValue({ status: 'unavailable', message: 'Previsão indisponível.' })
     rerender(<WeatherStrip event={event} />)
     expect(screen.getByText('Previsão indisponível.')).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('usa “hoje” no título e no horário quando o evento está em andamento sem previsão horária', () => {
+    useWeatherMock.mockReturnValue({
+      status: 'ready',
+      weather: { ...daily, eventInProgress: true },
+    })
+    render(<WeatherStrip event={event} />)
+
+    expect(screen.getByRole('heading', { name: 'Previsão para hoje' })).toBeInTheDocument()
+    expect(screen.getByText('Hoje • Nublado')).toBeInTheDocument()
   })
 })

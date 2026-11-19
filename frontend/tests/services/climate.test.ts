@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getEventWeather } from '@/services/climate'
 
 const date = '2040-03-10'
@@ -11,10 +11,10 @@ function jsonResponse(body: unknown, status = 200) {
   })
 }
 
-function forecast(code: number, isDay = 1) {
+function forecast(code: number, isDay = 1, forecastDate = date, forecastTime = '20:00') {
   return {
     hourly: {
-      time: [`${date}T20:00`],
+      time: [`${forecastDate}T${forecastTime}`],
       temperature_2m: [22],
       relative_humidity_2m: [58],
       apparent_temperature: [20],
@@ -24,7 +24,7 @@ function forecast(code: number, isDay = 1) {
       is_day: [isDay],
     },
     daily: {
-      time: [date],
+      time: [forecastDate],
       weather_code: [code],
       temperature_2m_max: [26],
       temperature_2m_min: [17],
@@ -40,7 +40,15 @@ function mockFetch(...responses: Response[]) {
   return fetchMock
 }
 
-afterEach(() => vi.unstubAllGlobals())
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2040-03-07T12:00:00'))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 describe('getEventWeather', () => {
   it.each([
@@ -108,6 +116,17 @@ describe('getEventWeather', () => {
     )
   })
 
+  it('solicita sempre os 16 dias para aproveitar o cache compartilhado', async () => {
+    const otherDate = '2040-03-12'
+    const fetchMock = mockFetch(jsonResponse(forecast(0)), jsonResponse(forecast(0, 1, otherDate)))
+
+    await getEventWeather(location, date, '20:00', new AbortController().signal)
+    await getEventWeather(location, otherDate, '20:00', new AbortController().signal)
+
+    const requestUrls = fetchMock.mock.calls.map(([url]) => new URL(String(url), 'http://localhost'))
+    expect(requestUrls.map((url) => url.searchParams.get('dias'))).toEqual(['16', '16'])
+  })
+
   it('usa o primeiro resultado se a busca não devolver código de país', async () => {
     const fetchMock = mockFetch(
       jsonResponse({ resultados: [{ latitude: -23.55, longitude: -46.63 }] }),
@@ -145,13 +164,56 @@ describe('getEventWeather', () => {
     ).rejects.toThrow('Não encontramos a cidade')
   })
 
-  it('informa quando falta a data ou ela não está na janela da previsão', async () => {
+  it('informa quando falta a data ou a previsão ainda não está disponível', async () => {
     const signal = new AbortController().signal
     await expect(getEventWeather(location, undefined, '20:00', signal)).rejects.toThrow('data deste evento')
-    mockFetch(jsonResponse(forecast(0)))
-    await expect(getEventWeather(location, '2040-03-11', '20:00', signal)).rejects.toThrow(
-      'até 16 dias antes',
+    mockFetch(jsonResponse({ daily: { time: [] } }))
+    await expect(getEventWeather(location, date, '20:00', signal)).rejects.toThrow(
+      'O serviço oferece previsão para até 16 dias',
     )
+  })
+
+  it('não consulta o serviço para eventos encerrados', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    vi.setSystemTime(new Date('2040-03-07T12:00:00Z'))
+
+    await expect(
+      getEventWeather(location, '2040-03-06', '20:00', new AbortController().signal),
+    ).rejects.toThrow('Este evento já aconteceu')
+    await expect(
+      getEventWeather(location, '2040-03-07', '20:00', new AbortController().signal, {
+        timeZone: 'UTC',
+        endDate: '2040-03-07',
+        endTime: '11:00',
+      }),
+    ).rejects.toThrow('Este evento já aconteceu')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('mostra a previsão de hoje para um evento em andamento', async () => {
+    vi.setSystemTime(new Date('2040-03-07T12:00:00Z'))
+    mockFetch(jsonResponse(forecast(3, 1, '2040-03-07', '12:00')))
+
+    const weather = await getEventWeather(location, '2040-03-06', '20:00', new AbortController().signal, {
+      startsAt: '2040-03-06T20:00:00Z',
+      endDate: '2040-03-10',
+      endTime: '22:00',
+      timeZone: 'UTC',
+    })
+
+    expect(weather).toMatchObject({ forecastType: 'hourly', eventInProgress: true })
+  })
+
+  it('usa o fuso do evento em vez do fuso do navegador', async () => {
+    vi.setSystemTime(new Date('2040-03-07T03:30:00Z'))
+    mockFetch(jsonResponse(forecast(0, 1, '2040-03-06', '23:00')))
+
+    const weather = await getEventWeather(location, '2040-03-06', '23:00', new AbortController().signal, {
+      timeZone: 'America/Rio_Branco',
+    })
+
+    expect(weather.forecastType).toBe('hourly')
   })
 
   it('usa o resumo diário se o horário não aparecer nos dados horários', async () => {
@@ -174,6 +236,14 @@ describe('getEventWeather', () => {
 
   it('usa uma mensagem padrão quando a resposta de erro não é JSON', async () => {
     mockFetch(new Response('indisponível', { status: 502 }))
+
+    await expect(getEventWeather(location, date, '20:00', new AbortController().signal)).rejects.toThrow(
+      'Não foi possível consultar a previsão do tempo.',
+    )
+  })
+
+  it('mantém uma mensagem amigável para erros de validação 4xx', async () => {
+    mockFetch(jsonResponse({ latitude: ['Latitude inválida.'] }, 400))
 
     await expect(getEventWeather(location, date, '20:00', new AbortController().signal)).rejects.toThrow(
       'Não foi possível consultar a previsão do tempo.',

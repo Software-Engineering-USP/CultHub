@@ -67,6 +67,10 @@ class PrevisaoApiTest(APITestCase):
             "longitude": -46.63,
             "timezone": "America/Sao_Paulo",
             "current": {"temperature_2m": 24.1},
+            "hourly": {
+                "time": ["2026-11-19T18:00"],
+                "temperature_2m": [24.1],
+            },
             "daily": {"temperature_2m_max": [27.0]},
         }
         buscar.return_value = dados

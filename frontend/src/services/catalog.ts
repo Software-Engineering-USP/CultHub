@@ -145,15 +145,25 @@ function formatSchedule(event: ApiEvent): string {
   return `${dateLabel}, ${event.hora_inicio.slice(0, 5)}`
 }
 
-function todayInTimeZone(timeZone: string): string {
+export function dateTimeInTimeZone(date: Date, timeZone: string): { date: string; time: string } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts()
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value
-  return `${value('year')}-${value('month')}-${value('day')}`
+  return {
+    date: `${value('year')}-${value('month')}-${value('day')}`,
+    time: `${value('hour')}:${value('minute')}`,
+  }
+}
+
+function todayInTimeZone(timeZone: string): string {
+  return dateTimeInTimeZone(new Date(), timeZone).date
 }
 
 function availability(event: ApiEvent): EventAvailability | undefined {
@@ -208,6 +218,11 @@ export function toCultEvent(event: ApiEvent): EventWithDetails {
       : undefined,
     eventDate: event.data_inicio,
     eventTime: event.hora_inicio,
+    eventStartsAt: event.inicio,
+    eventEndDate: event.data_fim,
+    eventEndTime: event.hora_fim,
+    eventEndsAt: event.fim,
+    eventTimezone: event.fuso,
     details: {
       about: [event.descricao || 'Mais informações sobre este evento em breve.'],
       startTime: event.hora_inicio?.slice(0, 5) ?? 'Horário a confirmar',

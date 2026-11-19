@@ -48,7 +48,11 @@ class ClienteOpenMeteoTest(SimpleTestCase):
 
     @patch("clima.servicos.urllib.request.urlopen")
     def test_busca_previsao_envia_coordenadas_e_variaveis(self, urlopen):
-        dados = {"current": {"temperature_2m": 22.0}, "daily": {}}
+        dados = {
+            "current": {"temperature_2m": 22.0},
+            "hourly": {"time": ["2026-11-19T18:00"], "temperature_2m": [22.0]},
+            "daily": {},
+        }
         urlopen.return_value = resposta_json(dados)
 
         resposta = buscar_previsao(-23.55, -46.63, 5)
@@ -62,7 +66,10 @@ class ClienteOpenMeteoTest(SimpleTestCase):
         self.assertEqual(parametros["forecast_days"], ["5"])
         self.assertEqual(parametros["timezone"], ["auto"])
         self.assertIn("temperature_2m", parametros["current"][0])
+        self.assertIn("temperature_2m", parametros["hourly"][0])
+        self.assertIn("weather_code", parametros["hourly"][0])
         self.assertIn("temperature_2m_max", parametros["daily"][0])
+        self.assertEqual(resposta["hourly"]["temperature_2m"], [22.0])
 
     def test_falhas_de_rede_sao_convertidas_em_erro_openmeteo(self):
         falhas = (

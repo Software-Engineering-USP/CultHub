@@ -1,4 +1,13 @@
 import type { Weather } from '@/types'
+import { apiGet, dateTimeInTimeZone } from './catalog'
+
+export interface EventTiming {
+  startsAt?: string | null
+  endDate?: string | null
+  endTime?: string | null
+  endsAt?: string | null
+  timeZone?: string
+}
 
 interface Locality {
   latitude: number
@@ -30,21 +39,52 @@ interface LocalitiesResponse {
   resultados: Locality[]
 }
 
-async function get<T>(path: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(`/api${path}`, { credentials: 'same-origin', signal })
-  if (!response.ok) {
-    let message = 'Não foi possível consultar a previsão do tempo.'
-    try {
-      const body: unknown = await response.json()
-      if (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string') {
-        message = body.detail
-      }
-    } catch {
-      // Mantém a mensagem padrão quando a resposta não contém JSON.
-    }
-    throw new Error(message)
+function get<T>(path: string, signal: AbortSignal): Promise<T> {
+  return apiGet<T>(path, {
+    signal,
+    describe: (status, detail) => {
+      if (status >= 400 && status < 500) return 'Não foi possível consultar a previsão do tempo.'
+      return detail ?? 'Não foi possível consultar a previsão do tempo.'
+    },
+  })
+}
+
+function instanteAtingido(dateTime: string | null | undefined, now: Date): boolean | undefined {
+  if (!dateTime) return undefined
+  const timestamp = Date.parse(dateTime)
+  return Number.isFinite(timestamp) ? timestamp <= now.getTime() : undefined
+}
+
+function dataHoraAtingida(
+  date: string,
+  time: string | null | undefined,
+  now: { date: string; time: string },
+): boolean {
+  if (date < now.date) return true
+  if (date > now.date || !time) return false
+  return time.slice(0, 5) <= now.time
+}
+
+export function getEventWeatherContext(
+  date: string,
+  time: string | null | undefined,
+  timing: EventTiming = {},
+  now = new Date(),
+): { date: string; time: string | null | undefined; inProgress: boolean; ended: boolean } {
+  const timeZone = timing.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  const nowLocal = dateTimeInTimeZone(now, timeZone)
+  const startedAt = instanteAtingido(timing.startsAt, now)
+  const endedAt = instanteAtingido(timing.endsAt, now)
+  const started = startedAt ?? dataHoraAtingida(date, time, nowLocal)
+  const ended = endedAt ?? dataHoraAtingida(timing.endDate ?? date, timing.endTime, nowLocal)
+  const inProgress = started && !ended
+
+  return {
+    date: inProgress ? nowLocal.date : date,
+    time: inProgress ? (time ? nowLocal.time : null) : time,
+    inProgress,
+    ended,
   }
-  return response.json() as Promise<T>
 }
 
 async function eventCoordinates(
@@ -152,8 +192,15 @@ export async function getEventWeather(
   date: string | undefined,
   time: string | null | undefined,
   signal: AbortSignal,
+  timing: EventTiming = {},
 ): Promise<Weather> {
   if (!date) throw new Error('A data deste evento não está disponível para consultar a previsão.')
+
+  const now = new Date()
+  const eventForecast = getEventWeatherContext(date, time, timing, now)
+  if (eventForecast.ended) {
+    throw new Error('Este evento já aconteceu; a previsão do tempo não está mais disponível.')
+  }
   const { latitude, longitude } = await eventCoordinates(location, signal)
   const params = new URLSearchParams({
     latitude: String(latitude),
@@ -161,9 +208,11 @@ export async function getEventWeather(
     dias: '16',
   })
   const forecast = await get<ForecastResponse>(`/clima/previsao/?${params}`, signal)
-  const weather = (time && hourlyWeather(forecast, date, time)) || dailyWeather(forecast, date)
-  if (weather) return weather
+  const weather =
+    (eventForecast.time && hourlyWeather(forecast, eventForecast.date, eventForecast.time)) ||
+    dailyWeather(forecast, eventForecast.date)
+  if (weather) return { ...weather, eventInProgress: eventForecast.inProgress }
   throw new Error(
-    'A previsão para esse evento ainda não está disponível. Ela fica disponível até 16 dias antes.',
+    'A previsão para esse dia ainda não está disponível. O serviço oferece previsão para até 16 dias a partir de hoje.',
   )
 }

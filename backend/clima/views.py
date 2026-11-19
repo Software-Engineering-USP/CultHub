@@ -93,14 +93,16 @@ class LocalidadeListView(APIView):
     ],
     responses={
         200: OpenApiResponse(
-            description="Condições atuais e previsão diária local."
+            description=(
+                "Condições atuais e previsões horárias e diárias locais."
+            )
         ),
         400: OpenApiResponse(description="Parâmetro inválido."),
         502: OpenApiResponse(description="Falha no serviço de clima."),
     },
 )
 class PrevisaoView(APIView):
-    """Condições atuais e previsão diária para coordenadas WGS84."""
+    """Condições atuais e previsões horárias e diárias (WGS84)."""
 
     permission_classes = (AllowAny,)
 
