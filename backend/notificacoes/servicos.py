@@ -71,12 +71,18 @@ def _destinatarios(evento, por_categoria):
     }
 
 
-def _montar(eventos, por_categoria):
-    """Notificações a criar, respeitando o limite por pessoa."""
+def _montar(eventos, por_categoria, ja_avisados):
+    """Notificações a criar, respeitando o limite por pessoa.
+
+    Pares (usuário, evento) já avisados ficam de fora antes do limite,
+    para não gastarem as vagas dos eventos que ainda não foram avisados.
+    """
     recebidas = defaultdict(int)
     novas = []
     for evento in eventos:
         for usuario_id in _destinatarios(evento, por_categoria):
+            if (usuario_id, evento.pk) in ja_avisados:
+                continue
             if recebidas[usuario_id] >= LIMITE_POR_USUARIO:
                 continue
             recebidas[usuario_id] += 1
@@ -112,17 +118,14 @@ def notificar_eventos_novos(ids_eventos):
     }
     if not categorias:
         return 0
-    novas = _montar(eventos, _interessados_por_categoria(categorias))
     # Repetir a chamada para os mesmos eventos não duplica nem conta de novo.
     ja_avisados = set(
         Notificacao.objects.filter(
             tipo=TipoNotificacao.EVENTO_NOVO, evento__in=eventos
         ).values_list("usuario_id", "evento_id")
     )
-    novas = [
-        nova
-        for nova in novas
-        if (nova.usuario_id, nova.evento_id) not in ja_avisados
-    ]
+    novas = _montar(
+        eventos, _interessados_por_categoria(categorias), ja_avisados
+    )
     Notificacao.objects.bulk_create(novas)
     return len(novas)

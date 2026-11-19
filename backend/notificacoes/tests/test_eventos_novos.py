@@ -154,6 +154,24 @@ class NotificarEventosNovosTest(TestCase):
             {f"Show {dias}" for dias in range(1, LIMITE_POR_USUARIO + 1)},
         )
 
+    def test_ja_avisados_nao_gastam_o_limite(self):
+        ana = criar_usuario("Ana", ["music"])
+        hoje = timezone.localdate()
+        eventos = [
+            criar_evento(
+                titulo=f"Show {dias}",
+                categorias=["music"],
+                data_inicio=hoje + timedelta(days=dias),
+            )
+            for dias in range(1, LIMITE_POR_USUARIO + 4)
+        ]
+        notificar_eventos_novos([evento.pk for evento in eventos[:5]])
+
+        criadas = notificar_eventos_novos([evento.pk for evento in eventos])
+
+        self.assertEqual(criadas, 3)
+        self.assertEqual(ana.notificacoes.count(), LIMITE_POR_USUARIO + 3)
+
     def test_repetir_nao_duplica(self):
         criar_usuario("Ana", ["music"])
         evento = criar_evento(categorias=["music"])
