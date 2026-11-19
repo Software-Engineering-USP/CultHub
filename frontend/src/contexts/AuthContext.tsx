@@ -81,9 +81,15 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     setLoading(false)
   }, [])
 
+  const clearSession = useCallback(() => {
+    authVersion.current += 1
+    setUser(null)
+    setLoading(false)
+  }, [])
+
   const value = useMemo(
-    () => ({ user, loading, signUp, signIn, signOut, updateUser }),
-    [user, loading, signUp, signIn, signOut, updateUser],
+    () => ({ user, loading, signUp, signIn, signOut, updateUser, clearSession }),
+    [user, loading, signUp, signIn, signOut, updateUser, clearSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

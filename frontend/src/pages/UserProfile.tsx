@@ -1,4 +1,5 @@
 import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react'
+import { useEffect } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import CategoryDot from '@/components/common/CategoryDot'
 import Eyebrow from '@/components/common/Eyebrow'
@@ -10,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { usePublicProfile } from '@/hooks/usePublicProfile'
 import { categories, categoryOrder } from '@/lib/categories'
+import { chipClass } from '@/lib/classes'
 import { paths } from '@/lib/paths'
 import { ApiError } from '@/services/api'
 import { formatMemberSince } from '@/services/users'
@@ -17,13 +19,16 @@ import type { PublicProfile } from '@/types'
 
 export default function UserProfile() {
   const { id } = useParams()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, clearSession } = useAuth()
   const { profile, loading, error } = usePublicProfile(id, Boolean(user))
+  const sessionExpired = error instanceof ApiError && (error.status === 401 || error.status === 403)
 
-  if (authLoading) return <output className="block">Carregando perfil...</output>
+  useEffect(() => {
+    if (sessionExpired) clearSession()
+  }, [sessionExpired, clearSession])
+
+  if (authLoading || loading || sessionExpired) return <ProfileLoading />
   if (!user) return <SignInRequired />
-  if (loading)
-    return <output className="block py-12 text-center text-muted-foreground">Carregando perfil…</output>
   if (!profile) {
     if (error instanceof ApiError && error.status === 404) return <ProfileNotFound />
     return <ProfileError message={error?.message} />
@@ -94,7 +99,7 @@ function ProfileContent({ profile, isMe }: Readonly<{ profile: PublicProfile; is
               {preferences.map((id) => (
                 <li
                   key={id}
-                  className="inline-flex items-center gap-2 rounded-[30px] border border-line bg-[#f7f3eb] px-[17px] py-[9px] text-[12px] font-semibold"
+                  className={`inline-flex items-center gap-2 ${chipClass} px-[17px] py-[9px] font-semibold`}
                 >
                   <CategoryDot id={id} size="md" />
                   {categories[id].label}
@@ -121,8 +126,14 @@ function ProfileContent({ profile, isMe }: Readonly<{ profile: PublicProfile; is
   )
 }
 
+function ProfileLoading() {
+  useDocumentTitle('Perfil | CultHub')
+  return <output className="block py-12 text-center text-muted-foreground">Carregando perfil…</output>
+}
+
 function SignInRequired() {
   useDocumentTitle('Perfil | CultHub')
+  const { pathname } = useLocation()
   return (
     <Surface as="section" aria-labelledby="perfil-entrar" className="mx-auto max-w-xl text-center">
       <h1 id="perfil-entrar" className="text-3xl">
@@ -132,7 +143,9 @@ function SignInRequired() {
         Os perfis de outras pessoas só aparecem para quem tem conta.
       </p>
       <Button asChild className="mt-6">
-        <Link to={paths.signIn}>Entrar ou criar conta</Link>
+        <Link to={paths.signIn} state={{ from: pathname }}>
+          Entrar ou criar conta
+        </Link>
       </Button>
     </Surface>
   )

@@ -12,6 +12,12 @@ interface PublicProfileState {
 /** Carrega o perfil público do usuário `id`. Sem `id` (ou com `enabled` falso), não chama a API. */
 export function usePublicProfile(id: string | undefined, enabled = true) {
   const [state, setState] = useState<PublicProfileState>({ error: null })
+  const [prevEnabled, setPrevEnabled] = useState(enabled)
+  // Ao reativar, descarta o resultado anterior para não mostrá-lo enquanto busca de novo.
+  if (enabled !== prevEnabled) {
+    setPrevEnabled(enabled)
+    setState({ error: null })
+  }
 
   useEffect(() => {
     if (!id || !enabled) return

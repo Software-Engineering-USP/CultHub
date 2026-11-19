@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import SignIn from '@/pages/SignIn'
@@ -74,6 +75,42 @@ describe('SignIn', () => {
       password: 'segredo123',
       acceptedTerms: true,
     })
+  })
+
+  function renderFrom(from: unknown) {
+    return render(
+      <AuthTestProvider initialUser={null}>
+        <MemoryRouter initialEntries={[{ pathname: '/entrar', state: { from } }]}>
+          <Routes>
+            <Route path="/entrar" element={<SignIn />} />
+            <Route path="/usuarios/:id" element={<h1>Perfil de destino</h1>} />
+            <Route path="/conta" element={<h1>Minha conta</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthTestProvider>,
+    )
+  }
+
+  async function logIn() {
+    const user = userEvent.setup()
+    const login = screen.getByRole('form', { name: 'Entrar' })
+    await user.type(within(login).getByLabelText('E-mail'), 'voce@exemplo.com')
+    await user.type(within(login).getByLabelText('Senha'), 'segredo123')
+    await user.click(within(login).getByRole('button', { name: 'Entrar' }))
+  }
+
+  it('depois de entrar, volta para a página que pediu login', async () => {
+    vi.spyOn(api.auth, 'signIn').mockResolvedValue(profile)
+    renderFrom('/usuarios/caio-prado')
+    await logIn()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Perfil de destino' })).toBeInTheDocument()
+  })
+
+  it('ignora destino externo e vai para a Minha conta', async () => {
+    vi.spyOn(api.auth, 'signIn').mockResolvedValue(profile)
+    renderFrom('//exemplo.com/phishing')
+    await logIn()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Minha conta' })).toBeInTheDocument()
   })
 
   it('não cria a conta sem aceitar os termos', async () => {

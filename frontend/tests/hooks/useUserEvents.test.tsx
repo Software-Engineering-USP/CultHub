@@ -31,6 +31,7 @@ function SwitchableAuthProvider({ children }: Readonly<{ children: ReactNode }>)
     signIn: async () => switchProfile,
     signOut: async () => setUser(null),
     updateUser: () => setUser({ ...currentUser, id: switchProfile.id }),
+    clearSession: () => setUser(null),
   }
 
   return (

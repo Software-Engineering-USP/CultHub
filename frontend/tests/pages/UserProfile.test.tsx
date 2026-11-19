@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MockInstance } from 'vitest'
 import { currentUser } from '@/data/user'
@@ -11,6 +11,11 @@ import type { ApiPublicProfile } from '@/services/api'
 import type { User } from '@/types'
 import { AuthTestProvider } from '@tests/auth'
 import { renderWithRouter } from '@tests/render'
+
+function FromState() {
+  const state = useLocation().state as { from?: string } | null
+  return <p data-testid="from">{state?.from}</p>
+}
 
 function publicProfile(overrides: Partial<ApiPublicProfile> = {}): ApiPublicProfile {
   return {
@@ -108,6 +113,38 @@ describe('UserProfile', () => {
     expect(profile).not.toHaveBeenCalled()
     await user.click(screen.getByRole('link', { name: 'Entrar ou criar conta' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Entrar' })).toBeInTheDocument()
+  })
+
+  it('o link de entrar guarda o perfil para voltar depois do login', () => {
+    render(
+      <AuthTestProvider initialUser={null}>
+        <MemoryRouter initialEntries={[paths.user('caio-prado')]}>
+          <Routes>
+            <Route path={routes.user} element={<UserProfile />} />
+            <Route path={routes.signIn} element={<FromState />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthTestProvider>,
+    )
+    fireEvent.click(screen.getByRole('link', { name: 'Entrar ou criar conta' }))
+    expect(screen.getByTestId('from')).toHaveTextContent(paths.user('caio-prado'))
+  })
+
+  it('sessão expirada (403) pede para entrar de novo em vez de mostrar erro', async () => {
+    profile.mockRejectedValue(new ApiError('As credenciais de autenticação não foram fornecidas.', 403))
+    renderProfile()
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Entre para ver este perfil' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('enquanto carrega, a aba já mostra o título do perfil', () => {
+    profile.mockReturnValue(new Promise(() => {}))
+    renderProfile()
+    expect(screen.getByText('Carregando perfil…')).toBeInTheDocument()
+    expect(document.title).toBe('Perfil | CultHub')
   })
 
   it('sem histórico, o botão de voltar leva ao mapa', async () => {

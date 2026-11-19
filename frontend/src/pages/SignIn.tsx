@@ -22,19 +22,27 @@ function errorText(error: unknown): string {
     : 'Não foi possível conectar ao CultHub. Confira se o servidor está ativo e tente novamente.'
 }
 
+/** Para onde ir depois de entrar: a página que pediu login (só caminhos internos) ou a Minha conta. */
+function safeRedirect(from: unknown): string {
+  if (typeof from === 'string' && from.startsWith('/') && !from.startsWith('//')) return from
+  return paths.account
+}
+
 export default function SignIn() {
   useDocumentTitle('Entrar ou criar conta | CultHub')
   const { signIn, signUp, user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const passwordReset = (location.state as { passwordReset?: boolean } | null)?.passwordReset
+  const state = location.state as { passwordReset?: boolean; from?: unknown } | null
+  const passwordReset = state?.passwordReset
+  const redirectTo = safeRedirect(state?.from)
   const [loginMessage, setLoginMessage] = useState(
     passwordReset ? 'Senha alterada. Entre com sua nova senha.' : '',
   )
   const [signupMessage, setSignupMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  if (user) return <Navigate to={paths.account} replace />
+  if (user) return <Navigate to={redirectTo} replace />
 
   return (
     <>
@@ -91,7 +99,7 @@ export default function SignIn() {
                   password: text(data, 'senha'),
                   remember: data.has('lembrar'),
                 })
-                navigate(paths.account, { replace: true })
+                navigate(redirectTo, { replace: true })
               } catch (error) {
                 setLoginMessage(errorText(error))
               } finally {
@@ -158,7 +166,7 @@ export default function SignIn() {
                   password: text(data, 'senha'),
                   acceptedTerms: data.has('termos'),
                 })
-                navigate(paths.account, { replace: true })
+                navigate(redirectTo, { replace: true })
               } catch (error) {
                 setSignupMessage(errorText(error))
               } finally {

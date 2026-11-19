@@ -19,7 +19,7 @@ import { useUserComments } from '@/hooks/useComments'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useSavedEvents } from '@/hooks/useUserEvents'
 import { categories } from '@/lib/categories'
-import { peerFocusRing } from '@/lib/classes'
+import { chipClass, peerFocusRing } from '@/lib/classes'
 import { onFormSubmit, text } from '@/lib/forms'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
@@ -260,7 +260,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
                   />
                   <label
                     htmlFor={`pref-${id}`}
-                    className={`block rounded-[30px] border border-line bg-[#f7f3eb] py-[11px] pr-[17px] pl-10 text-[12px] peer-checked:border-[#ba7e48] peer-checked:bg-[#ffe4bc] peer-checked:font-[650] peer-checked:text-maroon ${peerFocusRing}`}
+                    className={`block ${chipClass} py-[11px] pr-[17px] pl-10 peer-checked:border-[#ba7e48] peer-checked:bg-[#ffe4bc] peer-checked:font-[650] peer-checked:text-maroon ${peerFocusRing}`}
                   >
                     {categories[id].label}
                   </label>
