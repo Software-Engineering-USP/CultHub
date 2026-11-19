@@ -147,9 +147,7 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
             } else if (myLocation.position) {
               setNearby({ lat: myLocation.position.latitude, lng: myLocation.position.longitude })
             } else {
-              myLocation.request((position) =>
-                setNearby({ lat: position.latitude, lng: position.longitude }),
-              )
+              myLocation.request((position) => setNearby({ lat: position.latitude, lng: position.longitude }))
             }
           }}
           aria-pressed={nearby !== null}
