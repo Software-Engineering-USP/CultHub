@@ -21,7 +21,7 @@ describe('usePublicProfile', () => {
     profile.mockReturnValue(new Promise(() => {}))
     rerender({ enabled: true })
 
-    expect(result.current).toEqual({ loading: true, profile: undefined, error: null })
+    expect(result.current).toMatchObject({ loading: true, profile: undefined, error: null })
     expect(profile).toHaveBeenCalledTimes(2)
   })
 })

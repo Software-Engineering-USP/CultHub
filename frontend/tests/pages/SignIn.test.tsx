@@ -106,12 +106,15 @@ describe('SignIn', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Perfil de destino' })).toBeInTheDocument()
   })
 
-  it('ignora destino externo e vai para a Minha conta', async () => {
-    vi.spyOn(api.auth, 'signIn').mockResolvedValue(profile)
-    renderFrom('//exemplo.com/phishing')
-    await logIn()
-    expect(await screen.findByRole('heading', { level: 1, name: 'Minha conta' })).toBeInTheDocument()
-  })
+  it.each(['//exemplo.com/phishing', '/\\exemplo.com/phishing'])(
+    'ignora destino externo (%s) e vai para a Minha conta',
+    async (from) => {
+      vi.spyOn(api.auth, 'signIn').mockResolvedValue(profile)
+      renderFrom(from)
+      await logIn()
+      expect(await screen.findByRole('heading', { level: 1, name: 'Minha conta' })).toBeInTheDocument()
+    },
+  )
 
   it('não cria a conta sem aceitar os termos', async () => {
     const signUp = vi.spyOn(api.auth, 'signUp').mockResolvedValue(profile)

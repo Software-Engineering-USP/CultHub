@@ -24,7 +24,8 @@ function errorText(error: unknown): string {
 
 /** Para onde ir depois de entrar: a página que pediu login (só caminhos internos) ou a Minha conta. */
 function safeRedirect(from: unknown): string {
-  if (typeof from === 'string' && from.startsWith('/') && !from.startsWith('//')) return from
+  // O navegador lê `\` como `/`, então `/\site.com` também seria outro domínio.
+  if (typeof from === 'string' && /^\/(?![/\\])/.test(from)) return from
   return paths.account
 }
 
