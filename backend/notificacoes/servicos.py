@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 
 from django.contrib.auth import get_user_model
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 from catalogo.filtros import normalizar_texto, visiveis
@@ -15,29 +15,54 @@ from notificacoes.models import Notificacao, TipoNotificacao
 # máximo este tanto por execução, começando pelos que acontecem antes.
 LIMITE_POR_USUARIO = 5
 
+UFS = frozenset(
+    {
+        "ac", "al", "ap", "am", "ba", "ce", "df", "es", "go", "ma", "mt",
+        "ms", "mg", "pa", "pb", "pr", "pe", "pi", "rj", "rn", "rs", "ro",
+        "rr", "sc", "sp", "se", "to",
+    }
+)  # fmt: skip
+
+
+def ainda_nao_comecou(agora, prefixo=""):
+    """Filtro de evento que não começou; sem horário, vale o dia.
+
+    `prefixo` é o caminho até o evento (ex.: "evento__").
+    """
+    hoje = timezone.localtime(agora).date()
+    return Q(**{f"{prefixo}inicio__gt": agora}) | Q(
+        **{
+            f"{prefixo}inicio__isnull": True,
+            f"{prefixo}data_inicio__gte": hoje,
+        }
+    )
+
 
 def _cidade_e_uf(texto):
     """("sao paulo", "sp") a partir de "São Paulo, SP"; a UF é opcional.
 
     A cidade do perfil é texto livre: aceita "Cidade, UF", "Cidade - UF",
-    "Cidade-UF", "Cidade – UF" e "Cidade/UF", sem caixa nem acento. Um
-    valor isolado de duas letras ("SP") é só a UF.
+    "Cidade-UF", "Cidade – UF", "Cidade/UF" e "Cidade UF", sem caixa nem
+    acento. Só as 27 siglas de estado contam como UF ("São Paulo, BR"
+    fica sem UF), e uma sigla isolada ("SP") é só a UF.
     """
     partes = [
         parte.strip()
-        for parte in re.split(r",|/", normalizar_texto(texto))
+        for parte in re.split(r"[,/]", normalizar_texto(texto))
         if parte.strip()
     ]
     if not partes:
         return "", ""
-    # Hífen ou travessão só separa a UF no fim, para não quebrar cidades
-    # como "Embu-Guaçu".
-    final = re.fullmatch(r"(.*?)\s*[-–—]\s*([a-z]{2})", partes[-1])
-    if final and final.group(1):
-        partes[-1:] = [final.group(1), final.group(2)]
-    if len(partes) == 1 and re.fullmatch(r"[a-z]{2}", partes[0]):
+    # Espaço, hífen ou travessão só separam uma UF no fim, para não
+    # quebrar cidades como "Embu-Guaçu".
+    ultima = partes[-1]
+    resto = ultima[:-2]
+    cidade = resto.rstrip(" \t-–—")
+    if ultima[-2:] in UFS and cidade and cidade != resto:
+        partes[-1:] = [cidade, ultima[-2:]]
+    if len(partes) == 1 and partes[0] in UFS:
         return "", partes[0]
-    uf = partes[-1] if len(partes) > 1 and len(partes[-1]) == 2 else ""
+    uf = partes[-1] if len(partes) > 1 and partes[-1] in UFS else ""
     return partes[0], uf
 
 
@@ -106,17 +131,31 @@ def _montar(eventos, por_categoria, ja_avisados):
     return novas
 
 
+def _avisos_de(eventos):
+    return Notificacao.objects.filter(
+        tipo=TipoNotificacao.EVENTO_NOVO, evento__in=eventos
+    )
+
+
+def _ja_avisados(eventos):
+    """Pares (usuário, evento) que já têm aviso de evento novo."""
+    return set(_avisos_de(eventos).values_list("usuario_id", "evento_id"))
+
+
 def notificar_eventos_novos(ids_eventos):
     """Avisa quem tem a categoria do evento nas preferências.
 
-    Quem preencheu a cidade no perfil só recebe eventos de lá (ver
-    `_mesma_regiao`); quem não escolheu nenhuma preferência não recebe
-    nada. Devolve quantas notificações foram criadas.
+    Só entram eventos que ainda não começaram, os mesmos que a lista de
+    notificações mostra. Quem preencheu a cidade no perfil só recebe
+    eventos de lá (ver `_mesma_regiao`); quem não escolheu nenhuma
+    preferência não recebe nada. Devolve quantas notificações foram criadas.
     """
     if not ids_eventos:
         return 0
+    agora = timezone.now()
     eventos = list(
-        visiveis(Evento.objects.filter(pk__in=ids_eventos), timezone.now())
+        visiveis(Evento.objects.filter(pk__in=ids_eventos), agora)
+        .filter(ainda_nao_comecou(agora))
         .select_related("local")
         .prefetch_related("categorias")
         .order_by(
@@ -134,15 +173,13 @@ def notificar_eventos_novos(ids_eventos):
     if not categorias:
         return 0
     # Repetir a chamada para os mesmos eventos não duplica nem conta de novo.
-    ja_avisados = set(
-        Notificacao.objects.filter(
-            tipo=TipoNotificacao.EVENTO_NOVO, evento__in=eventos
-        ).values_list("usuario_id", "evento_id")
-    )
+    ja_avisados = _ja_avisados(eventos)
     novas = _montar(
         eventos, _interessados_por_categoria(categorias), ja_avisados
     )
     # `ignore_conflicts`: uma importação sobreposta não pode levantar
     # IntegrityError, que desfaria a importação inteira junto.
+    # As ignoradas pelo conflito não entram na conta.
+    antes = _avisos_de(eventos).count()
     Notificacao.objects.bulk_create(novas, ignore_conflicts=True)
-    return len(novas)
+    return _avisos_de(eventos).count() - antes

@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 from catalogo.models import Evento
 from notificacoes.models import Notificacao, TipoNotificacao
 from notificacoes.serializers import NotificacaoSerializer
+from notificacoes.servicos import ainda_nao_comecou
 
 # Por quanto tempo um aviso de evento novo continua na lista.
 DIAS_DE_EVENTO_NOVO = 7
@@ -94,10 +95,7 @@ def _notificacoes_ativas(usuario):
         Q(tipo=TipoNotificacao.EVENTO_NOVO)
         & ~tem_lembrete
         & Q(criada_em__gte=agora - timedelta(days=DIAS_DE_EVENTO_NOVO))
-        & (
-            Q(evento__inicio__gt=agora)
-            | Q(evento__inicio__isnull=True, evento__data_inicio__gte=hoje)
-        )
+        & ainda_nao_comecou(agora, "evento__")
     )
     return (
         Notificacao.objects.filter(

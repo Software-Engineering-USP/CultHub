@@ -97,6 +97,34 @@ class NotificarEventosNovosTest(TestCase):
         self.assertEqual(destinatarios(evento), {"Ana", "Bia"})
         self.assertEqual(destinatarios(embu), {"Caio"})
 
+    def test_cidade_do_perfil_aceita_uf_separada_por_espaco(self):
+        criar_usuario("Ana", ["music"], cidade="São Paulo SP")
+        criar_usuario("Bia", ["music"], cidade="São Paulo RJ")
+        evento = criar_evento(
+            categorias=["music"],
+            local=Local.objects.create(
+                nome="Casa", cidade="São Paulo", estado="SP"
+            ),
+        )
+
+        notificar_eventos_novos([evento.pk])
+
+        self.assertEqual(destinatarios(evento), {"Ana"})
+
+    def test_sigla_que_nao_e_estado_nao_vira_uf(self):
+        criar_usuario("Ana", ["music"], cidade="São Paulo, BR")
+        criar_usuario("Bia", ["music"], cidade="BR")
+        evento = criar_evento(
+            categorias=["music"],
+            local=Local.objects.create(
+                nome="Casa", cidade="São Paulo", estado="SP"
+            ),
+        )
+
+        notificar_eventos_novos([evento.pk])
+
+        self.assertEqual(destinatarios(evento), {"Ana"})
+
     def test_perfil_so_com_a_uf_filtra_pelo_estado(self):
         criar_usuario("Ana", ["music"], cidade="SP")
         criar_usuario("Bia", ["music"], cidade="rj")
@@ -175,6 +203,43 @@ class NotificarEventosNovosTest(TestCase):
         self.assertEqual(criadas, 0)
         self.assertFalse(Notificacao.objects.exists())
 
+    def test_evento_que_ja_comecou_nao_gasta_o_limite(self):
+        ana = criar_usuario("Ana", ["music"])
+        uma_hora_atras = timezone.localtime() - timedelta(hours=1)
+        hoje = timezone.localdate()
+        em_andamento = criar_evento(
+            titulo="Em andamento",
+            categorias=["music"],
+            data_inicio=uma_hora_atras.date(),
+            hora_inicio=uma_hora_atras.time(),
+            data_fim=hoje + timedelta(days=1),
+        )
+        festival = criar_evento(
+            titulo="Festival",
+            categorias=["music"],
+            data_inicio=hoje - timedelta(days=1),
+            hora_inicio=None,
+            data_fim=hoje + timedelta(days=1),
+        )
+        futuros = [
+            criar_evento(
+                titulo=f"Show {dias}",
+                categorias=["music"],
+                data_inicio=hoje + timedelta(days=dias),
+            )
+            for dias in range(1, LIMITE_POR_USUARIO + 1)
+        ]
+
+        criadas = notificar_eventos_novos(
+            [em_andamento.pk, festival.pk, *(e.pk for e in futuros)]
+        )
+
+        self.assertEqual(criadas, LIMITE_POR_USUARIO)
+        self.assertEqual(
+            set(ana.notificacoes.values_list("evento__titulo", flat=True)),
+            {evento.titulo for evento in futuros},
+        )
+
     def test_limite_por_pessoa_fica_com_os_que_acontecem_antes(self):
         ana = criar_usuario("Ana", ["music"])
         hoje = timezone.localdate()
@@ -247,12 +312,10 @@ class NotificarEventosNovosTest(TestCase):
             usuario=ana, evento=evento, tipo=TipoNotificacao.EVENTO_NOVO
         )
 
-        with patch(
-            "notificacoes.servicos.Notificacao.objects.filter"
-        ) as filtro:
-            filtro.return_value.values_list.return_value = []
-            notificar_eventos_novos([evento.pk])
+        with patch("notificacoes.servicos._ja_avisados", return_value=set()):
+            criadas = notificar_eventos_novos([evento.pk])
 
+        self.assertEqual(criadas, 0)
         self.assertEqual(ana.notificacoes.count(), 1)
 
     def test_repetir_nao_duplica(self):
