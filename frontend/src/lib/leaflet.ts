@@ -108,7 +108,7 @@ export function markerPin(
       span.append(layer)
     })
     const front = document.createElement('span')
-    front.className = `absolute drop-shadow-md ${colors[colors.length - 1]}`
+    front.className = `absolute drop-shadow-md ${colors.at(-1)}`
     front.style.left = '0'
     front.style.top = '10px'
     front.style.zIndex = String(colors.length)

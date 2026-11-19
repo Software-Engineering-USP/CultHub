@@ -23,6 +23,57 @@ const priceModes: { value: PriceMode; label: string }[] = [
 
 const radiusOptions = [1, 5, 10, 25, 50]
 
+type DeviceLocationStatus = ReturnType<typeof useDeviceLocation>['status']
+
+function locationFromSearchParams(searchParams: URLSearchParams) {
+  const lat = Number(searchParams.get('lat'))
+  const lng = Number(searchParams.get('lng'))
+  const valid =
+    searchParams.has('lat') &&
+    searchParams.has('lng') &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180
+  return valid ? { lat, lng } : null
+}
+
+function priceModeFromSearchParams(searchParams: URLSearchParams): PriceMode {
+  const price = searchParams.get('preco')
+  if (price === 'gratuito') return 'free'
+  if (price === 'pago') return 'paid'
+  return 'all'
+}
+
+function periodErrorFor(from: string, to: string, today: string) {
+  if (from && from < today) {
+    return { field: 'de' as const, message: 'Escolha uma data a partir de hoje.' }
+  }
+  if (to && to < today) {
+    return { field: 'ate' as const, message: 'Escolha uma data a partir de hoje.' }
+  }
+  if (from && to && from > to) {
+    return { field: 'ate' as const, message: 'A data final não pode ser anterior à inicial.' }
+  }
+  return null
+}
+
+function locationButtonLabel(status: DeviceLocationStatus, nearby: boolean) {
+  if (status === 'locating') return 'Obtendo localização…'
+  if (nearby) return 'Perto de mim: ativo'
+  return 'Usar minha localização'
+}
+
+function locationHint(status: DeviceLocationStatus) {
+  if (status === 'denied') {
+    return 'A localização foi bloqueada. Libere a permissão no navegador e tente novamente.'
+  }
+  if (status === 'unavailable') {
+    return 'Não foi possível obter sua localização. Você ainda pode usar os outros filtros.'
+  }
+  return 'Mostra eventos próximos à sua localização.'
+}
+
 interface EventFiltersProps {
   onClose: () => void
 }
@@ -31,17 +82,8 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const myLocation = useDeviceLocation()
-  const initialLat = Number(searchParams.get('lat'))
-  const initialLng = Number(searchParams.get('lng'))
-  const hasInitialLocation =
-    searchParams.has('lat') &&
-    searchParams.has('lng') &&
-    Number.isFinite(initialLat) &&
-    Number.isFinite(initialLng) &&
-    Math.abs(initialLat) <= 90 &&
-    Math.abs(initialLng) <= 180
   const [nearby, setNearby] = useState<{ lat: number; lng: number } | null>(() =>
-    hasInitialLocation ? { lat: initialLat, lng: initialLng } : null,
+    locationFromSearchParams(searchParams),
   )
   const [radius, setRadius] = useState(() => {
     const value = Number(searchParams.get('raio'))
@@ -51,21 +93,13 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
   const [selected, setSelected] = useState<CategoryId[]>(() =>
     fromUrl?.length ? categoryOrder.filter((category) => fromUrl.includes(category)) : [...categoryOrder],
   )
-  const initialPrice = searchParams.get('preco')
-  let initialPriceMode: PriceMode = 'all'
-  if (initialPrice === 'gratuito') initialPriceMode = 'free'
-  else if (initialPrice === 'pago') initialPriceMode = 'paid'
-  const [price, setPrice] = useState<PriceMode>(initialPriceMode)
+  const [price, setPrice] = useState<PriceMode>(() => priceModeFromSearchParams(searchParams))
   const [from, setFrom] = useState(searchParams.get('de') ?? '')
   const [to, setTo] = useState(searchParams.get('ate') ?? '')
   const today = todayIso()
   // Digitando a data, dá para passar por cima do min/max do campo. Datas passadas sempre dariam lista
   // vazia, porque o catálogo já esconde os eventos encerrados.
-  let periodError: { field: 'de' | 'ate'; message: string } | null = null
-  if (from && from < today) periodError = { field: 'de', message: 'Escolha uma data a partir de hoje.' }
-  else if (to && to < today) periodError = { field: 'ate', message: 'Escolha uma data a partir de hoje.' }
-  else if (from && to && from > to)
-    periodError = { field: 'ate', message: 'A data final não pode ser anterior à inicial.' }
+  const periodError = periodErrorFor(from, to, today)
   const invalidPeriod = periodError !== null
   const errorProps = (field: 'de' | 'ate') =>
     periodError?.field === field ? { 'aria-invalid': true, 'aria-describedby': 'filtro-periodo-erro' } : {}
@@ -154,11 +188,7 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
           aria-pressed={nearby !== null}
         >
           <LocateFixed />
-          {myLocation.status === 'locating'
-            ? 'Obtendo localização…'
-            : nearby
-              ? 'Perto de mim: ativo'
-              : 'Usar minha localização'}
+          {locationButtonLabel(myLocation.status, nearby !== null)}
         </Button>
         {nearby ? (
           <div className="mt-3 grid gap-1">
@@ -179,13 +209,7 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
             </select>
           </div>
         ) : (
-          <p className="mt-1 text-2xs text-muted-foreground">
-            {myLocation.status === 'denied'
-              ? 'A localização foi bloqueada. Libere a permissão no navegador e tente novamente.'
-              : myLocation.status === 'unavailable'
-                ? 'Não foi possível obter sua localização. Você ainda pode usar os outros filtros.'
-                : 'Mostra eventos próximos à sua localização.'}
-          </p>
+          <p className="mt-1 text-2xs text-muted-foreground">{locationHint(myLocation.status)}</p>
         )}
       </fieldset>
 
