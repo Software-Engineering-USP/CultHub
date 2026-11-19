@@ -14,6 +14,7 @@ const SignIn = lazy(() => import('@/pages/SignIn'))
 const RecoverPassword = lazy(() => import('@/pages/RecoverPassword'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'))
 const Account = lazy(() => import('@/pages/Account'))
+const UserProfile = lazy(() => import('@/pages/UserProfile'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
 export default function App() {
@@ -46,6 +47,7 @@ export default function App() {
         <Route path={routes.recoverPassword} element={<RecoverPassword />} />
         <Route path={routes.resetPassword} element={<ResetPassword />} />
         <Route path={routes.account} element={<Account />} />
+        <Route path={routes.user} element={<UserProfile />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

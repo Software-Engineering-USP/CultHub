@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/App'
 import { currentUser } from '@/data/user'
 import { paths } from '@/lib/paths'
+import { api } from '@/services/api'
 import { ApiError, catalogApi } from '@/services/catalog'
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
 import { AuthTestProvider } from './auth'
@@ -27,6 +28,14 @@ describe('rotas', () => {
       if (id === 'nao-existe') throw new ApiError('Não encontrado. (404)', 404)
       return apiEvent({ id, titulo: id === 'derby-paulista' ? 'Evento encontrado' : 'Jazz no Parque' })
     })
+    vi.spyOn(api.users, 'profile').mockResolvedValue({
+      id: 'caio-prado',
+      nome: 'Caio Prado',
+      iniciais: 'CP',
+      cidade: '',
+      preferencias: [],
+      membro_desde: '2026-10-28',
+    })
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -40,6 +49,7 @@ describe('rotas', () => {
     [paths.recoverPassword, 'Esqueceu sua senha?'],
     [paths.resetPassword('user-id', 'reset-token'), 'Crie uma nova senha'],
     [paths.account, 'Minha conta'],
+    [paths.user('caio-prado'), 'Caio Prado'],
     ['/nao-existe', 'Página não encontrada'],
   ])('%s abre a página certa', async (route, title) => {
     renderAt(route)

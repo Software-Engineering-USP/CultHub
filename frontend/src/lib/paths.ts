@@ -10,6 +10,7 @@ export const routes = {
   event: '/eventos/:id',
   eventOrigin: '/eventos/:id/origem',
   eventRoute: '/eventos/:id/rota',
+  user: '/usuarios/:id',
 } as const
 
 /** Links prontos para <Link to>. */
@@ -23,4 +24,6 @@ export const paths = {
   /** `search` (ver lib/origin) leva a origem escolhida entre as páginas "Como chegar". */
   eventOrigin: (id: string, search = '') => generatePath(routes.eventOrigin, { id }) + search,
   eventRoute: (id: string, search = '') => generatePath(routes.eventRoute, { id }) + search,
+  /** Perfil público de outra pessoa. */
+  user: (id: string) => generatePath(routes.user, { id }),
 }
