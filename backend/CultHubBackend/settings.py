@@ -204,7 +204,7 @@ REST_FRAMEWORK = {
     # IP do throttle = o da conexão, nunca o X-Forwarded-For (o cliente
     # poderia inventar um a cada pedido). Atrás de proxy reverso, usar o
     # número de proxies na frente do Django (DJANGO_NUM_PROXIES).
-    "NUM_PROXIES": int(os.environ.get("DJANGO_NUM_PROXIES", "0")),
+    "NUM_PROXIES": int(os.environ.get("DJANGO_NUM_PROXIES") or 0),
 }
 
 # Níveis de resposta nos comentários: 1 = só respostas diretas (como no
@@ -322,6 +322,14 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     "DEFAULT_FROM_EMAIL", "CultHub <noreply@culthub.local>"
 )
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+# Sem estas, a produção sobe mas falha em silêncio: o link do e-mail de
+# recuperação apontaria para o localhost e, atrás do proxy, todos os
+# usuários dividiriam o mesmo limite de pedidos por IP.
+if not DEBUG:
+    for _variavel in ("FRONTEND_URL", "DJANGO_NUM_PROXIES"):
+        if not os.environ.get(_variavel):
+            raise ImproperlyConfigured(f"Defina {_variavel} em produção.")
 
 # Envio por API HTTP (django-anymail), para hospedagens que bloqueiam SMTP:
 # EMAIL_BACKEND=anymail.backends.brevo.EmailBackend e a chave abaixo.

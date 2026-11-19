@@ -94,6 +94,7 @@ jobs:
         run: |
           docker run -d --name producao -p 10000:10000 \
             -e DJANGO_SECRET_KEY=ci -e DJANGO_DB_PATH=/tmp/db.sqlite3 \
+            -e FRONTEND_URL=http://localhost:10000 -e DJANGO_NUM_PROXIES=0 \
             culthub-producao
           for tentativa in $(seq 1 30); do
             curl -fsS http://localhost:10000/api/categorias/ && break

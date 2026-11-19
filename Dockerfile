@@ -43,8 +43,10 @@ COPY backend/comentarios ./comentarios
 COPY backend/notificacoes ./notificacoes
 COPY --from=frontend /app/dist ./frontend_dist
 
-# A chave só existe neste comando; a de verdade vem do ambiente ao rodar.
-RUN DJANGO_SECRET_KEY=somente-para-o-collectstatic python manage.py collectstatic --noinput
+# Estas variáveis só existem neste comando; as de verdade vêm do ambiente
+# ao rodar.
+RUN DJANGO_SECRET_KEY=somente-para-o-collectstatic FRONTEND_URL=http://localhost \
+    DJANGO_NUM_PROXIES=0 python manage.py collectstatic --noinput
 
 RUN useradd --uid 1000 --create-home app
 USER app

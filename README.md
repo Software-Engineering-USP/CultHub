@@ -140,8 +140,8 @@ Ao iniciar, o container aplica as migrações e sobe o gunicorn na porta de `POR
 | `DJANGO_SECRET_KEY` | chave aleatória longa |
 | `DJANGO_ALLOWED_HOSTS` | domínio público, sem esquema |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | origem pública, com `https://` |
-| `DJANGO_NUM_PROXIES` | quantos proxies a hospedagem põe na frente (para o limite de pedidos por IP); o log de acesso mostra o `X-Forwarded-For` de cada pedido |
-| `FRONTEND_URL` | origem pública; é a base do link do e-mail de recuperação de senha |
+| `DJANGO_NUM_PROXIES` | quantos proxies a hospedagem põe na frente (para o limite de pedidos por IP); o log de acesso mostra o `X-Forwarded-For` de cada pedido. Obrigatória: sem ela o servidor não sobe |
+| `FRONTEND_URL` | origem pública; é a base do link do e-mail de recuperação de senha. Obrigatória: sem ela o servidor não sobe |
 | `TICKETMASTER_API_KEY` | chave da Ticketmaster |
 | `EMAIL_BACKEND`, `BREVO_API_KEY`, `DEFAULT_FROM_EMAIL` | envio de e-mail por API HTTP (`anymail.backends.brevo.EmailBackend`); sem isso, em produção o e-mail de recuperação de senha não é enviado nem registrado |
 
@@ -151,5 +151,5 @@ Para testar a imagem localmente:
 
 ```bash
 docker build -t culthub-producao .
-docker run --rm -p 127.0.0.1:10000:10000 -e DATABASE_URL=<url-do-postgres> -e DJANGO_SECRET_KEY=<chave> -e DJANGO_ALLOWED_HOSTS=localhost culthub-producao
+docker run --rm -p 127.0.0.1:10000:10000 -e DATABASE_URL=<url-do-postgres> -e DJANGO_SECRET_KEY=<chave> -e DJANGO_ALLOWED_HOSTS=localhost -e FRONTEND_URL=http://localhost:10000 -e DJANGO_NUM_PROXIES=0 culthub-producao
 ```
