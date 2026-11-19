@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import CommentItem from '@/components/events/CommentItem'
 import { ApiError } from '@/services/api'
@@ -13,7 +14,11 @@ function renderItem(overrides: Partial<ApiComment> = {}, canReply = true) {
     onUpdate: vi.fn().mockResolvedValue(undefined),
     onRemove: vi.fn().mockResolvedValue(undefined),
   }
-  render(<CommentItem comment={toEventComment(apiComment(overrides))} canReply={canReply} {...actions} />)
+  render(
+    <MemoryRouter>
+      <CommentItem comment={toEventComment(apiComment(overrides))} canReply={canReply} {...actions} />
+    </MemoryRouter>,
+  )
   return { user: userEvent.setup(), ...actions }
 }
 
@@ -29,6 +34,24 @@ describe('CommentItem', () => {
     expect(within(comment).getByText('Gostei da proposta!')).toBeInTheDocument()
     expect(comment.querySelector('time')).toHaveAttribute('dateTime', '2026-11-15T20:00:00Z')
     expect(comment).not.toHaveTextContent('editado')
+  })
+
+  it('o nome do autor leva ao perfil público dele', () => {
+    renderItem({
+      respostas: [
+        apiComment({
+          id: 'r1',
+          nivel: 1,
+          resposta_a: 'c1',
+          autor: { id: 'ana', nome: 'Ana Lima', iniciais: 'AL' },
+        }),
+      ],
+    })
+    expect(screen.getByRole('link', { name: 'Rafael Martins' })).toHaveAttribute(
+      'href',
+      '/usuarios/rafael-martins',
+    )
+    expect(screen.getByRole('link', { name: 'Ana Lima' })).toHaveAttribute('href', '/usuarios/ana')
   })
 
   it('indica quando o comentário foi editado', () => {
@@ -47,6 +70,8 @@ describe('CommentItem', () => {
     const removed = screen.getByRole('article', { name: 'Comentário removido' })
     expect(within(removed).getByText('Este comentário foi removido.')).toBeInTheDocument()
     expect(within(removed).getByText('Resposta que ficou')).toBeInTheDocument()
+    // O comentário removido não tem autor, então só a resposta tem link de perfil.
+    expect(screen.getAllByRole('link')).toHaveLength(1)
     // Só a resposta (de nível 1) aparece, e ela não pode ser respondida.
     expect(screen.queryByRole('button', { name: /Responder/ })).not.toBeInTheDocument()
   })

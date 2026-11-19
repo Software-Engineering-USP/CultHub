@@ -48,9 +48,11 @@ export function AuthTestProvider({
     setUser(null)
   }, [])
 
+  const clearSession = useCallback(() => setUser(null), [])
+
   const value = useMemo(
-    () => ({ user, loading: false, signUp, signIn, signOut, updateUser }),
-    [user, signUp, signIn, signOut, updateUser],
+    () => ({ user, loading: false, signUp, signIn, signOut, updateUser, clearSession }),
+    [user, signUp, signIn, signOut, updateUser, clearSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

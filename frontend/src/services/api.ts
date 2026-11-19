@@ -13,6 +13,18 @@ export interface ProfileResponse {
   iniciais: string
 }
 
+/** O que outra pessoa logada vê de um usuário (sem e-mail nem bairro). */
+export interface ApiPublicProfile {
+  id: string
+  nome: string
+  iniciais: string
+  /** Pode vir vazia. */
+  cidade: string
+  preferencias: CategoryId[]
+  /** Só a data do cadastro, AAAA-MM-DD. */
+  membro_desde: string
+}
+
 export interface ApiComment {
   id: string
   evento: string
@@ -161,6 +173,11 @@ export const api = {
       }),
     updatePreferences: (categories: CategoryId[]) =>
       apiRequest<ProfileResponse>('/eu/', 'PATCH', { preferencias: categories }),
+  },
+
+  users: {
+    /** Perfil público; exige login. 404 se não existe ou a conta foi desativada. */
+    profile: (id: string) => apiRequest<ApiPublicProfile>(`/usuarios/${encodeURIComponent(id)}/`),
   },
 
   agenda: {

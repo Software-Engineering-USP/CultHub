@@ -69,6 +69,18 @@ export interface User {
   savedEventIds: string[]
 }
 
+/** Perfil público de outra pessoa. */
+export interface PublicProfile {
+  id: string
+  name: string
+  initials: string
+  /** Vazia quando a pessoa não informou. */
+  city: string
+  preferences: CategoryId[]
+  /** Data do cadastro, AAAA-MM-DD. */
+  memberSince: string
+}
+
 export interface CommentAuthor {
   id: string
   name: string

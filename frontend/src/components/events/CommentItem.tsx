@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import InitialsAvatar from '@/components/common/InitialsAvatar'
 import CommentEditor from '@/components/events/CommentEditor'
 import { Button } from '@/components/ui/button'
+import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/services/api'
 import { formatCommentDate } from '@/services/comments'
@@ -60,7 +62,16 @@ export default function CommentItem({ comment, canReply, ...actions }: Readonly<
               <InitialsAvatar initials={comment.author.initials} size="sm" aria-hidden="true" />
             )}
             <div>
-              <strong>{authorName}</strong>
+              {comment.author ? (
+                <Link
+                  to={paths.user(comment.author.id)}
+                  className="font-bold text-foreground no-underline hover:text-maroon hover:underline"
+                >
+                  {authorName}
+                </Link>
+              ) : (
+                <strong>{authorName}</strong>
+              )}
               <p className="text-muted-foreground">
                 <time dateTime={comment.createdAt}>{formatCommentDate(comment.createdAt)}</time>
                 {comment.editedAt && ' • editado'}
