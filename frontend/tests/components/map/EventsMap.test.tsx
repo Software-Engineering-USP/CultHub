@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import L from 'leaflet'
 import { describe, expect, it, vi } from 'vitest'
 import EventsMap from '@/components/map/EventsMap'
 import { findEvent } from '@/data/events'
@@ -87,5 +88,50 @@ describe('EventsMap', () => {
 
     rerender(<EventsMap {...props} userPosition={{ latitude: -23.5, longitude: -46.6 }} />)
     expect(screen.getAllByRole('img', { name: 'Você está aqui' })).toHaveLength(1)
+  })
+
+  it('mostra uma dica só no pino (sem o title nativo do navegador)', () => {
+    const { container } = render(
+      <EventsMap events={[evento]} userPosition={null} recenter={0} onSelect={vi.fn()} />,
+    )
+    const marker = container.querySelector('.leaflet-marker-icon')
+    expect(marker).not.toHaveAttribute('title')
+  })
+
+  it('"carregar mais" só acrescenta pinos e mantém os que já estavam', () => {
+    const props = { userPosition: null, recenter: 0, onSelect: vi.fn() }
+    const outro = {
+      ...evento,
+      id: 'outro',
+      title: 'Outro show',
+      location: { latitude: -23.5, longitude: -46.6 },
+    }
+    const { rerender } = render(<EventsMap {...props} events={[evento]} />)
+    const antes = screen.getByRole('img', { name: evento.title })
+
+    rerender(<EventsMap {...props} events={[evento, outro]} />)
+
+    expect(screen.getByRole('img', { name: evento.title })).toBe(antes)
+    expect(screen.getByRole('img', { name: 'Outro show' })).toBeInTheDocument()
+
+    rerender(<EventsMap {...props} events={[outro]} />)
+    expect(screen.queryByRole('img', { name: evento.title })).not.toBeInTheDocument()
+  })
+
+  it('centraliza na primeira posição e no clique, mas não quando a posição só se atualiza', () => {
+    const setView = vi.spyOn(L.Map.prototype, 'setView')
+    const props = { events: [], onSelect: vi.fn() }
+    const { rerender } = render(<EventsMap {...props} userPosition={null} recenter={0} />)
+    setView.mockClear()
+
+    rerender(<EventsMap {...props} userPosition={{ latitude: -23.6, longitude: -46.7 }} recenter={0} />)
+    expect(setView).toHaveBeenCalledOnce()
+
+    rerender(<EventsMap {...props} userPosition={{ latitude: -23.61, longitude: -46.71 }} recenter={0} />)
+    expect(setView).toHaveBeenCalledOnce()
+
+    rerender(<EventsMap {...props} userPosition={{ latitude: -23.61, longitude: -46.71 }} recenter={1} />)
+    expect(setView).toHaveBeenCalledTimes(2)
+    setView.mockRestore()
   })
 })

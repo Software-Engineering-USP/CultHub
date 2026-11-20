@@ -6,7 +6,7 @@ import { paths, routes } from '@/lib/paths'
 import Home from '@/pages/Home'
 import { catalogApi } from '@/services/catalog'
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
-import { fakePermission, restoreGeolocation, stubGeolocation } from '@tests/geolocation'
+import { fakePermission, pendingGps, restoreGeolocation, stubGeolocation } from '@tests/geolocation'
 import { renderWithRouter } from '@tests/render'
 
 describe('Home', () => {
@@ -147,6 +147,24 @@ describe('Home', () => {
     await user.click(screen.getByRole('button', { name: /Minha Localização/ }))
     expect(await screen.findByRole('img', { name: 'Você está aqui' })).toBeInTheDocument()
     expect(getCurrentPosition).toHaveBeenCalledOnce()
+  })
+
+  it('o botão continua com o foco enquanto busca e aponta para o aviso', async () => {
+    vi.spyOn(catalogApi, 'events').mockResolvedValue(apiPage([]))
+    const gps = pendingGps()
+    stubGeolocation(fakePermission('prompt'), gps.getCurrentPosition)
+    const { user } = renderWithRouter(<Home />)
+    const button = screen.getByRole('button', { name: /Minha Localização/ })
+
+    await user.click(button)
+
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(button).not.toBeDisabled()
+    expect(button).toHaveFocus()
+    expect(button).toHaveAccessibleDescription('Obtendo sua localização…')
+    // Um segundo clique durante a busca não pede de novo.
+    await user.click(button)
+    expect(gps.getCurrentPosition).toHaveBeenCalledOnce()
   })
 
   it('avisa quando a pessoa não permite a localização', async () => {
