@@ -80,10 +80,12 @@ export function getEventWeatherContext(
   const started = startedAt ?? dataHoraAtingida(date, time, nowEventLocal)
   const ended = endedAt ?? dataHoraAtingida(timing.endDate ?? date, timing.endTime, nowEventLocal)
   const inProgress = started && !ended
+  let forecastTime = time
+  if (inProgress) forecastTime = time ? nowForecastLocal.time : null
 
   return {
     date: inProgress ? nowForecastLocal.date : date,
-    time: inProgress ? (time ? nowForecastLocal.time : null) : time,
+    time: forecastTime,
     inProgress,
     ended,
   }
