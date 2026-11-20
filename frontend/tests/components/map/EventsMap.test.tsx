@@ -134,4 +134,17 @@ describe('EventsMap', () => {
     expect(setView).toHaveBeenCalledTimes(2)
     setView.mockRestore()
   })
+
+  it('volta ao centro de SP quando a posição some (permissão revogada)', () => {
+    const setView = vi.spyOn(L.Map.prototype, 'setView')
+    const props = { events: [], onSelect: vi.fn(), recenter: 0 }
+    const { rerender } = render(<EventsMap {...props} userPosition={{ latitude: -23.8, longitude: -45.6 }} />)
+    setView.mockClear()
+
+    rerender(<EventsMap {...props} userPosition={null} />)
+
+    expect(setView).toHaveBeenCalledWith([-23.5505, -46.6333], 12)
+    expect(screen.queryByRole('img', { name: 'Você está aqui' })).not.toBeInTheDocument()
+    setView.mockRestore()
+  })
 })

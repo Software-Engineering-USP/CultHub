@@ -183,9 +183,11 @@ export default function EventsMap({
     const instance = map.current
     if (!instance) return
     if (latitude === undefined || longitude === undefined) {
+      // Perdeu a posição (ex.: permissão revogada): volta ao centro de SP, como diz o aviso, e a próxima
+      // posição que chegar centraliza de novo. Ao abrir a página, sem posição ainda, nada muda.
+      if (userMarker.current) instance.setView(toLatLng(CENTRO_PADRAO), 12)
       userMarker.current?.remove()
       userMarker.current = null
-      // Sem posição (ex.: permissão revogada): a próxima que chegar centraliza de novo.
       centered.current = false
       return
     }
