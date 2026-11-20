@@ -11,8 +11,9 @@ function jsonResponse(body: unknown, status = 200) {
   })
 }
 
-function forecast(code: number, isDay = 1, forecastDate = date, forecastTime = '20:00') {
+function forecast(code: number, isDay = 1, forecastDate = date, forecastTime = '20:00', timezone?: string) {
   return {
+    ...(timezone ? { timezone } : {}),
     hourly: {
       time: [`${forecastDate}T${forecastTime}`],
       temperature_2m: [22],
@@ -205,15 +206,21 @@ describe('getEventWeather', () => {
     expect(weather).toMatchObject({ forecastType: 'hourly', eventInProgress: true })
   })
 
-  it('usa o fuso do evento em vez do fuso do navegador', async () => {
+  it('usa a hora local do fuso devolvido pela previsão durante o evento', async () => {
     vi.setSystemTime(new Date('2040-03-07T03:30:00Z'))
-    mockFetch(jsonResponse(forecast(0, 1, '2040-03-06', '23:00')))
+    const fetchMock = mockFetch(jsonResponse(forecast(0, 1, '2040-03-06', '22:00', 'America/Rio_Branco')))
 
     const weather = await getEventWeather(location, '2040-03-06', '23:00', new AbortController().signal, {
-      timeZone: 'America/Rio_Branco',
+      startsAt: '2040-03-07T02:00:00Z',
+      endDate: '2040-03-07',
+      endTime: '02:00',
+      endsAt: '2040-03-07T05:00:00Z',
+      timeZone: 'America/Sao_Paulo',
     })
 
     expect(weather.forecastType).toBe('hourly')
+    expect(weather.temperature).toBe('22°C')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('usa o resumo diário se o horário não aparecer nos dados horários', async () => {
@@ -242,11 +249,19 @@ describe('getEventWeather', () => {
     )
   })
 
-  it('mantém uma mensagem amigável para erros de validação 4xx', async () => {
+  it('exibe o detail enviado pelo backend para erros 4xx', async () => {
+    mockFetch(jsonResponse({ detail: 'Informe uma cidade válida.' }, 400))
+
+    await expect(getEventWeather(location, date, '20:00', new AbortController().signal)).rejects.toThrow(
+      'Informe uma cidade válida.',
+    )
+  })
+
+  it('exibe mensagens de validação 4xx recebidas do backend', async () => {
     mockFetch(jsonResponse({ latitude: ['Latitude inválida.'] }, 400))
 
     await expect(getEventWeather(location, date, '20:00', new AbortController().signal)).rejects.toThrow(
-      'Não foi possível consultar a previsão do tempo.',
+      'Latitude inválida.',
     )
   })
 })

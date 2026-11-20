@@ -7,6 +7,7 @@ export interface EventTiming {
   endTime?: string | null
   endsAt?: string | null
   timeZone?: string
+  forecastTimeZone?: string
 }
 
 interface Locality {
@@ -16,6 +17,7 @@ interface Locality {
 }
 
 interface ForecastResponse {
+  timezone?: string
   hourly?: {
     time: string[]
     temperature_2m: number[]
@@ -42,8 +44,7 @@ interface LocalitiesResponse {
 function get<T>(path: string, signal: AbortSignal): Promise<T> {
   return apiGet<T>(path, {
     signal,
-    describe: (status, detail) => {
-      if (status >= 400 && status < 500) return 'Não foi possível consultar a previsão do tempo.'
+    describe: (_status, detail) => {
       return detail ?? 'Não foi possível consultar a previsão do tempo.'
     },
   })
@@ -71,17 +72,18 @@ export function getEventWeatherContext(
   timing: EventTiming = {},
   now = new Date(),
 ): { date: string; time: string | null | undefined; inProgress: boolean; ended: boolean } {
-  const timeZone = timing.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
-  const nowLocal = dateTimeInTimeZone(now, timeZone)
+  const eventTimeZone = timing.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  const nowEventLocal = dateTimeInTimeZone(now, eventTimeZone)
+  const nowForecastLocal = dateTimeInTimeZone(now, timing.forecastTimeZone || eventTimeZone)
   const startedAt = instanteAtingido(timing.startsAt, now)
   const endedAt = instanteAtingido(timing.endsAt, now)
-  const started = startedAt ?? dataHoraAtingida(date, time, nowLocal)
-  const ended = endedAt ?? dataHoraAtingida(timing.endDate ?? date, timing.endTime, nowLocal)
+  const started = startedAt ?? dataHoraAtingida(date, time, nowEventLocal)
+  const ended = endedAt ?? dataHoraAtingida(timing.endDate ?? date, timing.endTime, nowEventLocal)
   const inProgress = started && !ended
 
   return {
-    date: inProgress ? nowLocal.date : date,
-    time: inProgress ? (time ? nowLocal.time : null) : time,
+    date: inProgress ? nowForecastLocal.date : date,
+    time: inProgress ? (time ? nowForecastLocal.time : null) : time,
     inProgress,
     ended,
   }
@@ -193,10 +195,10 @@ export async function getEventWeather(
   time: string | null | undefined,
   signal: AbortSignal,
   timing: EventTiming = {},
+  now = new Date(),
 ): Promise<Weather> {
   if (!date) throw new Error('A data deste evento não está disponível para consultar a previsão.')
 
-  const now = new Date()
   const eventForecast = getEventWeatherContext(date, time, timing, now)
   if (eventForecast.ended) {
     throw new Error('Este evento já aconteceu; a previsão do tempo não está mais disponível.')
@@ -208,10 +210,22 @@ export async function getEventWeather(
     dias: '16',
   })
   const forecast = await get<ForecastResponse>(`/clima/previsao/?${params}`, signal)
+  const forecastContext = getEventWeatherContext(
+    date,
+    time,
+    { ...timing, forecastTimeZone: forecast.timezone },
+    now,
+  )
   const weather =
-    (eventForecast.time && hourlyWeather(forecast, eventForecast.date, eventForecast.time)) ||
-    dailyWeather(forecast, eventForecast.date)
-  if (weather) return { ...weather, eventInProgress: eventForecast.inProgress }
+    (forecastContext.time && hourlyWeather(forecast, forecastContext.date, forecastContext.time)) ||
+    dailyWeather(forecast, forecastContext.date)
+  if (weather) {
+    return {
+      ...weather,
+      eventInProgress: forecastContext.inProgress,
+      forecastTimeZone: forecast.timezone,
+    }
+  }
   throw new Error(
     'A previsão para esse dia ainda não está disponível. O serviço oferece previsão para até 16 dias a partir de hoje.',
   )
