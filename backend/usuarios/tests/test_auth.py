@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.test import override_settings
 from django.utils.encoding import force_bytes
@@ -7,6 +8,7 @@ from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient, APITestCase
 
 from usuarios.models import Usuario
+from usuarios.serializers import CadastroSerializer
 
 CADASTRO = {
     "nome": "Lívia Costa",
@@ -79,6 +81,44 @@ class CadastroTest(APITestCase):
         resposta = self.cadastrar(nome="   ")
         self.assertEqual(resposta.status_code, 400)
         self.assertIn("nome", resposta.json())
+
+    def test_cadastro_guarda_a_senha_com_os_espacos_das_pontas(self):
+        self.assertEqual(self.cadastrar(senha="  abcdefg  ").status_code, 201)
+        self.client.post("/api/auth/sair/")
+
+        def entrar(senha):
+            return self.client.post(
+                "/api/auth/entrar/",
+                {"email": CADASTRO["email"], "senha": senha},
+                format="json",
+            ).status_code
+
+        self.assertEqual(entrar("abcdefg"), 400)
+        self.assertEqual(entrar("  abcdefg  "), 200)
+
+    def test_cadastro_recusa_email_maior_que_o_campo(self):
+        resposta = self.cadastrar(email=f"{'a' * 64}@{'b' * 186}.com")
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("email", resposta.json())
+        self.assertEqual(Usuario.objects.count(), 0)
+
+    def test_cadastro_simultaneo_com_o_mesmo_email_da_erro_do_campo(self):
+        # Simula o segundo pedido passando pela checagem antes de o primeiro
+        # gravar: a checagem não vê ninguém, mas o banco já tem o e-mail.
+        Usuario.objects.create_user(CADASTRO["email"], "x", nome="Outra")
+        with patch.object(
+            CadastroSerializer,
+            "validate_email",
+            lambda self, email: Usuario.normalize_username(email),
+        ):
+            resposta = self.cadastrar()
+
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(
+            resposta.json(),
+            {"email": ["Já existe uma conta com este e-mail."]},
+        )
+        self.assertEqual(Usuario.objects.count(), 1)
 
 
 class EntrarSairTest(APITestCase):
@@ -217,6 +257,19 @@ class RecuperacaoSenhaTest(APITestCase):
             ),
         )
         self.assertEqual(mail.outbox, [])
+
+    def test_redefinir_guarda_a_senha_com_os_espacos_das_pontas(self):
+        uid = urlsafe_base64_encode(force_bytes(self.usuario.pk))
+        token = default_token_generator.make_token(self.usuario)
+        resposta = self.client.post(
+            self.redefinir_url,
+            {"uid": uid, "token": token, "senha": " nova-senha-5678 "},
+            format="json",
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password(" nova-senha-5678 "))
+        self.assertFalse(self.usuario.check_password("nova-senha-5678"))
 
     def test_token_invalido_e_senha_curta_sao_rejeitados(self):
         uid = urlsafe_base64_encode(force_bytes(self.usuario.pk))
