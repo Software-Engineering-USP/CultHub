@@ -3,7 +3,7 @@
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, time
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
@@ -72,6 +72,34 @@ def _decimal(valor):
     return None if valor in (None, "") else Decimal(str(valor))
 
 
+CENTAVO = Decimal("0.01")
+GRAU = Decimal("0.000001")
+# Limite do campo de preço (10 dígitos, 2 decimais). O SQLite grava valores
+# maiores, mas o Django falha ao lê-los, e um evento só derrubava a listagem.
+PRECO_MAXIMO = Decimal("99999999.99")
+
+
+def _numero(valor, casas, minimo, maximo):
+    """Número arredondado para `casas`; fora de [minimo, maximo] é erro.
+
+    Arredonda antes de conferir o limite: 99999999.994 vira 99999999.99, que
+    cabe no campo.
+    """
+    numero = _decimal(valor)
+    if numero is None:
+        return None
+    if not numero.is_finite():
+        raise ValueError(f"número inválido: {valor}")
+    numero = numero.quantize(casas, rounding=ROUND_HALF_UP)
+    if not minimo <= numero <= maximo:
+        raise ValueError(f"fora da faixa: {valor}")
+    return numero
+
+
+def _preco(valor):
+    return _numero(valor, CENTAVO, 0, PRECO_MAXIMO)
+
+
 def _salvar_local(venue):
     if venue is None:
         return None
@@ -85,8 +113,10 @@ def _salvar_local(venue):
             "cidade": _texto(_objeto(venue, "city"), "name"),
             "estado": _texto(_objeto(venue, "state"), "stateCode"),
             "pais": _texto(_objeto(venue, "country"), "countryCode"),
-            "latitude": _decimal(coordenadas.get("latitude")),
-            "longitude": _decimal(coordenadas.get("longitude")),
+            "latitude": _numero(coordenadas.get("latitude"), GRAU, -90, 90),
+            "longitude": _numero(
+                coordenadas.get("longitude"), GRAU, -180, 180
+            ),
         },
     )
     return local
@@ -157,8 +187,8 @@ def _salvar_evento(dados, agora):
             evento=evento,
             tipo=_texto(faixa, "type"),
             moeda=faixa.get("currency") or "BRL",
-            minimo=_decimal(faixa.get("min")),
-            maximo=_decimal(faixa.get("max")),
+            minimo=_preco(faixa.get("min")),
+            maximo=_preco(faixa.get("max")),
         )
         for faixa in dados.get("priceRanges") or []
     )

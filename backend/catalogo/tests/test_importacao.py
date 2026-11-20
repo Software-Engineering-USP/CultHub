@@ -543,6 +543,17 @@ class ImportarTest(TestCase):
                 longitude="Infinity"
             ),
             "preço NaN": lambda e: e.update(priceRanges=[{"min": "NaN"}]),
+            # Acima do limite do campo: o SQLite gravava e a listagem caía.
+            "preço gigante": lambda e: e.update(
+                priceRanges=[{"min": 100000000}]
+            ),
+            "preço negativo": lambda e: e.update(priceRanges=[{"max": -5}]),
+            "latitude impossível": lambda e: venue(e)["location"].update(
+                latitude="-123.45"
+            ),
+            "longitude impossível": lambda e: venue(e)["location"].update(
+                longitude="500"
+            ),
         }
         for nome, alterar in casos.items():
             with self.subTest(caso=nome):
@@ -558,6 +569,26 @@ class ImportarTest(TestCase):
                         titulo="BTS WORLD TOUR ARIRANG"
                     ).exists()
                 )
+
+    def test_precos_e_coordenadas_sao_arredondados(self):
+        dados = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")
+        # Arredonda antes de conferir o limite: os extremos cabem no campo.
+        dados["priceRanges"] = [{"min": 0.004, "max": "99999999.994"}]
+        dados["_embedded"]["venues"][0]["location"] = {
+            "latitude": "-23.56141449",
+            "longitude": "180.0000001",
+        }
+
+        importar([dados], AGORA)
+
+        evento = tm(id_externo=dados["id"])
+        faixa = evento.faixas_preco.get()
+        self.assertEqual(
+            (faixa.minimo, faixa.maximo),
+            (Decimal("0.00"), Decimal("99999999.99")),
+        )
+        self.assertEqual(evento.local.latitude, Decimal("-23.561414"))
+        self.assertEqual(evento.local.longitude, Decimal(180))
 
     def test_problema_do_banco_interrompe_a_importacao(self):
         with (
