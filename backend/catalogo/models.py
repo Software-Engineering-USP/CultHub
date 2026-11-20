@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 
@@ -41,10 +42,18 @@ class Local(models.Model):
     estado = models.CharField(max_length=2, blank=True)
     pais = models.CharField(max_length=2, default="BR")
     latitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
     )
     longitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
     )
 
     class Meta:
@@ -151,6 +160,8 @@ class Evento(models.Model):
             ZoneInfo(self.fuso)
         except (ZoneInfoNotFoundError, ValueError, TypeError):
             erros["fuso"] = "Fuso horário inválido."
+        else:
+            erros.update(self._datas_fora_do_intervalo())
         if self.data_fim is None and self.hora_fim is not None:
             erros["data_fim"] = "Informe a data de fim junto com a hora."
         elif (
@@ -172,6 +183,22 @@ class Evento(models.Model):
             )
         if erros:
             raise ValidationError(erros)
+
+    def _datas_fora_do_intervalo(self):
+        """Datas que não cabem em UTC (ex.: 31/12/9999 às 23h em SP)."""
+        erros = {}
+        campos = (
+            ("data_inicio", self.data_inicio, self.hora_inicio),
+            ("data_fim", self.data_fim, self.hora_fim),
+        )
+        for campo, dia, hora in campos:
+            try:
+                momento = self._momento(dia, hora)
+                if momento is not None:
+                    momento.astimezone(UTC)
+            except OverflowError:
+                erros[campo] = "Data fora do intervalo aceito."
+        return erros
 
     def _momento(self, dia, hora):
         if dia is None or hora is None:

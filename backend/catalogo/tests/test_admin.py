@@ -108,3 +108,29 @@ class CatalogoAdminTest(TestCase):
         )
         self.assertEqual(resposta.status_code, 302)
         self.assertEqual(Local.objects.get().nome, "Sesc")
+
+    def test_local_com_coordenada_impossivel_mostra_erro(self):
+        resposta = self.client.post(
+            "/admin/catalogo/local/add/",
+            {
+                "provedor": Provedor.MANUAL,
+                "nome": "Teatro",
+                "pais": "BR",
+                "latitude": "-123.45",
+                "longitude": "500",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Local.objects.exists())
+        erros = resposta.context["adminform"].form.errors
+        self.assertIn("latitude", erros)
+        self.assertIn("longitude", erros)
+
+    def test_data_que_nao_cabe_em_utc_mostra_erro(self):
+        resposta = self.client.post(
+            "/admin/catalogo/evento/add/",
+            self._formulario(data_inicio="9999-12-31", hora_inicio="23:00"),
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("data_inicio", resposta.context["adminform"].form.errors)
+        self.assertFalse(Evento.objects.exists())
