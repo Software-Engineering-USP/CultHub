@@ -67,6 +67,7 @@ export default function Home() {
 
   // Com a posição já conhecida, só centraliza de novo; sem ela, pede a permissão.
   function locate() {
+    if (myLocation.status === 'locating') return
     if (myLocation.position) setRecenter((value) => value + 1)
     else myLocation.request()
   }
@@ -83,14 +84,16 @@ export default function Home() {
           <div className="max-w-61 text-right max-sm:max-w-none max-sm:text-left">
             <Button
               variant="outline"
-              disabled={myLocation.status === 'locating'}
+              // aria-disabled, e não disabled: o botão continua com o foco de quem usa teclado.
+              aria-disabled={myLocation.status === 'locating'}
+              aria-describedby="localizacao-aviso"
               onClick={locate}
               className="max-sm:min-h-10 max-sm:px-3.5 max-sm:py-2"
             >
               <LocateFixed />
               Minha Localização
             </Button>
-            <p aria-live="polite" className="mt-1 text-2xs text-muted-foreground">
+            <p id="localizacao-aviso" aria-live="polite" className="mt-1 text-2xs text-muted-foreground">
               {locationMessages[myLocation.status]}
             </p>
           </div>

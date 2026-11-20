@@ -77,6 +77,36 @@ function eventChoices(events: CultEvent[], onSelect: (id: string) => void) {
   return list
 }
 
+function placeMarker(group: CultEvent[], onSelect: (id: string) => void) {
+  const first = group[0]!
+  const labels = group.map(eventLabel)
+  const colorCategories = [...new Set(group.map(eventMapCategory))]
+  const firstCategory = eventMapCategory(first)
+  const orderedColorCategories = [
+    ...colorCategories.filter((category) => category !== firstCategory),
+    firstCategory,
+  ]
+  const stackColors = orderedColorCategories.map((category) => categories[category].pin)
+  const label = group.length === 1 ? first.title : `${group.length} eventos neste local: ${labels.join(', ')}`
+  // Só o tooltip: com `title` também, o navegador mostrava uma segunda dica igual.
+  const marker = L.marker(toLatLng(first.location!), {
+    icon: markerPin(categories[firstCategory].pin, label, group.length, stackColors),
+  }).bindTooltip(tooltip(labels))
+
+  if (group.length === 1) {
+    marker.on('click', () => onSelect(first.id))
+  } else {
+    marker.bindPopup(() => eventChoices(group, onSelect))
+  }
+  // Enter abre o evento individual ou a lista de opções do local agrupado.
+  marker.on('keypress', ({ originalEvent }: L.LeafletKeyboardEvent) => {
+    if (originalEvent.key !== 'Enter') return
+    if (group.length === 1) onSelect(first.id)
+    else marker.openPopup()
+  })
+  return marker
+}
+
 /** Mapa da Home com pinos agrupados por local e a posição da pessoa. */
 export default function EventsMap({
   events,
@@ -88,6 +118,11 @@ export default function EventsMap({
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const select = useRef(onSelect)
+  // Um marcador por local, guardado com os eventos dele: "carregar mais" só cria os novos.
+  const markers = useRef(new Map<string, { ids: string; marker: L.Marker }>())
+  const userMarker = useRef<L.Marker | null>(null)
+  const centered = useRef(false)
+  const lastRecenter = useRef(recenter)
 
   useEffect(() => {
     select.current = onSelect
@@ -100,9 +135,14 @@ export default function EventsMap({
       12,
     )
     map.current = instance
+    const placed = markers.current
     return () => {
+      // Os marcadores saem com o mapa; as referências precisam sair junto (o StrictMode monta duas vezes).
       instance.remove()
       map.current = null
+      placed.clear()
+      userMarker.current = null
+      centered.current = false
     }
   }, [])
 
@@ -117,40 +157,22 @@ export default function EventsMap({
       group.push(event)
       byLocation.set(key, group)
     }
-    const markers = [...byLocation.values()].map((eventsAtPlace) => {
-      const group = uniqueOccurrences(eventsAtPlace)
-      const first = group[0]!
-      const labels = group.map(eventLabel)
-      const colorCategories = [...new Set(group.map(eventMapCategory))]
-      const firstCategory = eventMapCategory(first)
-      const orderedColorCategories = [
-        ...colorCategories.filter((category) => category !== firstCategory),
-        firstCategory,
-      ]
-      const stackColors = orderedColorCategories.map((category) => categories[category].pin)
-      const label =
-        group.length === 1 ? first.title : `${group.length} eventos neste local: ${labels.join(', ')}`
-      const marker = L.marker(toLatLng(first.location!), {
-        icon: markerPin(categories[firstCategory].pin, label, group.length, stackColors),
-        title: label,
-      }).bindTooltip(tooltip(labels))
-
-      if (group.length === 1) {
-        marker.on('click', () => select.current(first.id))
-      } else {
-        marker.bindPopup(() => eventChoices(group, (id) => select.current(id)))
+    for (const [key, { marker }] of markers.current) {
+      if (!byLocation.has(key)) {
+        marker.remove()
+        markers.current.delete(key)
       }
-      // Enter abre o evento individual ou a lista de opções do local agrupado.
-      marker.on('keypress', ({ originalEvent }: L.LeafletKeyboardEvent) => {
-        if (originalEvent.key !== 'Enter') return
-        if (group.length === 1) select.current(first.id)
-        else marker.openPopup()
+    }
+    for (const [key, eventsAtPlace] of byLocation) {
+      const group = uniqueOccurrences(eventsAtPlace)
+      const ids = group.map((event) => event.id).join(',')
+      const existing = markers.current.get(key)
+      if (existing?.ids === ids) continue
+      existing?.marker.remove()
+      markers.current.set(key, {
+        ids,
+        marker: placeMarker(group, (id) => select.current(id)).addTo(instance),
       })
-      return marker
-    })
-    const group = L.layerGroup(markers).addTo(instance)
-    return () => {
-      group.remove()
     }
   }, [events])
 
@@ -159,17 +181,36 @@ export default function EventsMap({
 
   useEffect(() => {
     const instance = map.current
-    if (!instance || latitude === undefined || longitude === undefined) return
-    const marker = L.marker([latitude, longitude], {
-      icon: pin('bg-sun', 'Você está aqui'),
-      title: 'Você está aqui',
-      keyboard: false,
-      zIndexOffset: 1000,
-    }).addTo(instance)
-    instance.setView([latitude, longitude], 13)
-    return () => {
-      marker.remove()
+    if (!instance) return
+    if (latitude === undefined || longitude === undefined) {
+      // Perdeu a posição (ex.: permissão revogada): volta ao centro de SP, como diz o aviso, e a próxima
+      // posição que chegar centraliza de novo. Ao abrir a página, sem posição ainda, nada muda.
+      if (userMarker.current) instance.setView(toLatLng(CENTRO_PADRAO), 12)
+      userMarker.current?.remove()
+      userMarker.current = null
+      centered.current = false
+      return
     }
+    if (userMarker.current) userMarker.current.setLatLng([latitude, longitude])
+    else
+      userMarker.current = L.marker([latitude, longitude], {
+        icon: pin('bg-sun', 'Você está aqui'),
+        title: 'Você está aqui',
+        keyboard: false,
+        zIndexOffset: 1000,
+      }).addTo(instance)
+  }, [latitude, longitude])
+
+  // Centraliza na primeira posição e a cada clique em "Minha localização", não quando a posição só se atualiza:
+  // a pessoa pode ter arrastado o mapa enquanto isso.
+  useEffect(() => {
+    const instance = map.current
+    if (!instance || latitude === undefined || longitude === undefined) return
+    const clicked = recenter !== lastRecenter.current
+    lastRecenter.current = recenter
+    if (centered.current && !clicked) return
+    centered.current = true
+    instance.setView([latitude, longitude], 13)
   }, [latitude, longitude, recenter])
 
   return (
