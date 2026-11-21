@@ -23,8 +23,32 @@ function dateLabel(notification: ApiNotification): string {
   return notification.hora_inicio ? `${label} às ${notification.hora_inicio.slice(0, 5)}` : label
 }
 
-function notificationTypeLabel(type: ApiNotification['tipo']): string {
-  return type === 'evento_novo' ? 'Evento novo' : 'Lembrete'
+function notificationTypeLabel(type: string | undefined): string {
+  switch (type) {
+    case 'evento_novo':
+      return 'Evento novo'
+    case 'lembrete':
+      return 'Lembrete'
+    default:
+      return 'Notificação'
+  }
+}
+
+function notificationTypeClass(type: string | undefined): string {
+  switch (type) {
+    case 'evento_novo':
+      return 'bg-maroon/10 text-maroon'
+    case 'lembrete':
+      return 'bg-muted text-muted-foreground'
+    default:
+      return 'border border-border bg-background text-muted-foreground'
+  }
+}
+
+function NotificationIcon({ type }: Readonly<{ type: string | undefined }>) {
+  if (type === 'evento_novo') return <Sparkles aria-hidden="true" className="size-4.5" />
+  if (type === 'lembrete') return <CalendarDays aria-hidden="true" className="size-4.5" />
+  return <Bell aria-hidden="true" className="size-4.5" />
 }
 
 function errorMessage(error: unknown, fallback = 'Não foi possível carregar as notificações.'): string {
@@ -48,8 +72,11 @@ export default function NotificationsMenu() {
       const response = await api.notifications.list()
       setNotifications(response.resultados)
       setUnreadCount(response.nao_lidas)
-      const eventNotification = response.resultados.find((notification) => notification.evento_id === eventId)
-      if (eventId && eventNotification && !eventNotification.lida_em) {
+      const unreadReminder = response.resultados.find(
+        (notification) =>
+          notification.evento_id === eventId && notification.tipo === 'lembrete' && !notification.lida_em,
+      )
+      if (eventId && unreadReminder) {
         setOpen(true)
       }
     } catch (cause) {
@@ -197,11 +224,7 @@ export default function NotificationsMenu() {
                   className="flex gap-3 px-5 py-4 text-inherit no-underline transition-colors hover:bg-accent"
                 >
                   <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-maroon/10 text-maroon">
-                    {notification.tipo === 'evento_novo' ? (
-                      <Sparkles aria-hidden="true" className="size-4.5" />
-                    ) : (
-                      <CalendarDays aria-hidden="true" className="size-4.5" />
-                    )}
+                    <NotificationIcon type={notification.tipo} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
@@ -217,11 +240,7 @@ export default function NotificationsMenu() {
                       )}
                     </span>
                     <span
-                      className={`mt-1 inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        notification.tipo === 'evento_novo'
-                          ? 'bg-maroon/10 text-maroon'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
+                      className={`mt-1 inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${notificationTypeClass(notification.tipo)}`}
                     >
                       {notificationTypeLabel(notification.tipo)}
                     </span>

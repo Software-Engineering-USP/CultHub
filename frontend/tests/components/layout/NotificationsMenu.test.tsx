@@ -106,6 +106,18 @@ describe('NotificationsMenu', () => {
     expect(within(dialog).getByText('Festival recém-adicionado')).toBeInTheDocument()
   })
 
+  it('usa apresentação neutra para tipos de notificação desconhecidos', async () => {
+    vi.spyOn(api.notifications, 'list').mockResolvedValue(
+      notificationsResponse([notification({ tipo: 'novo_tipo' as ApiNotification['tipo'] })]),
+    )
+    const { user } = renderWithRouter(<NotificationsMenu />)
+    const dialog = await openMenu(user)
+
+    const label = within(dialog).getByText('Notificação')
+    expect(label).toBeInTheDocument()
+    expect(label).toHaveClass('border', 'bg-background')
+  })
+
   it('mostra 9+ para mais de nove lembretes não lidos', async () => {
     vi.spyOn(api.notifications, 'list').mockResolvedValue({
       nao_lidas: 12,
@@ -146,6 +158,20 @@ describe('NotificationsMenu', () => {
     const list = vi
       .spyOn(api.notifications, 'list')
       .mockResolvedValue(notificationsResponse([notification({ lida_em: new Date().toISOString() })]))
+    renderWithRouter(<NotificationsMenu />)
+
+    window.dispatchEvent(
+      new CustomEvent('culthub:notifications-updated', { detail: { eventId: 'evento-1' } }),
+    )
+
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2))
+    expect(screen.queryByRole('dialog', { name: 'Notificações' })).not.toBeInTheDocument()
+  })
+
+  it('não abre automaticamente para um aviso de evento novo não lido', async () => {
+    const list = vi
+      .spyOn(api.notifications, 'list')
+      .mockResolvedValue(notificationsResponse([notification({ tipo: 'evento_novo' })]))
     renderWithRouter(<NotificationsMenu />)
 
     window.dispatchEvent(
