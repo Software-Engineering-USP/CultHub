@@ -1,4 +1,5 @@
 import type { CategoryId, EventAvailability, EventWithDetails } from '@/types'
+import { AUTHENTICATION_FAILURE_EVENT } from './api'
 
 const knownCategories = new Set<CategoryId>(['music', 'festival', 'theater', 'sport', 'art'])
 
@@ -91,6 +92,9 @@ export async function apiGet<T>(
 ): Promise<T> {
   const response = await fetch(`/api${path}`, { credentials: 'include', signal })
   if (!response.ok) {
+    if ((response.status === 401 || response.status === 403) && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(AUTHENTICATION_FAILURE_EVENT))
+    }
     throw new ApiError(describe(response.status, await errorDetail(response)), response.status)
   }
   return response.json() as Promise<T>
