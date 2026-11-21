@@ -36,6 +36,7 @@ export default function NotificationsMenu() {
   const [open, setOpen] = useState(false)
 
   const load = useCallback(async (eventId?: string, showLoading = true) => {
+    setActionError('')
     if (showLoading) {
       setLoading(true)
       setError('')
@@ -188,9 +189,8 @@ export default function NotificationsMenu() {
                       setOpen(false)
                       return
                     }
-                    void markRead(notification.id).then((marcada) => {
-                      if (marcada) setOpen(false)
-                    })
+                    setOpen(false)
+                    void markRead(notification.id)
                   }}
                   className="flex gap-3 px-5 py-4 text-inherit no-underline transition-colors hover:bg-accent"
                 >
