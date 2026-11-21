@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -66,7 +66,7 @@ describe('UserProfile', () => {
     const preferences = screen.getByRole('region', { name: 'Preferências culturais' })
     // Na ordem da legenda do mapa, não na ordem em que vieram.
     expect(preferences).toHaveTextContent(/Música.*Teatro/)
-    expect(document.title).toBe('Caio Prado | CultHub')
+    await waitFor(() => expect(document.title).toBe('Caio Prado | CultHub'))
   })
 
   it('não mostra o aviso de perfil próprio para outra pessoa', async () => {
@@ -101,7 +101,7 @@ describe('UserProfile', () => {
       await screen.findByRole('heading', { level: 1, name: 'Página não encontrada' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Este perfil não existe ou a conta foi desativada.')).toBeInTheDocument()
-    expect(document.title).toBe('Perfil não encontrado | CultHub')
+    await waitFor(() => expect(document.title).toBe('Perfil não encontrado | CultHub'))
   })
 
   it('outros erros mostram a mensagem da API', async () => {
