@@ -47,7 +47,6 @@ export function AuthTestProvider({
     await api.auth.signOut()
     setUser(null)
   }, [])
-
   const clearSession = useCallback(() => setUser(null), [])
 
   const value = useMemo(

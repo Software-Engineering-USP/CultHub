@@ -1,10 +1,12 @@
-import { act, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { useAuth } from '@/hooks/useAuth'
+import { paths } from '@/lib/paths'
 import type { ProfileResponse } from '@/services/api'
-import { api, ApiError } from '@/services/api'
-import { renderWithRouter } from '@tests/render'
+import { api, ApiError, AUTHENTICATION_FAILURE_EVENT } from '@/services/api'
 
 const profile: ProfileResponse = {
   id: 'user-1',
@@ -35,16 +37,32 @@ function Probe() {
       </button>
       <button onClick={() => void signOut()}>logout</button>
       <button onClick={() => updateUser(profile)}>update</button>
+      <button onClick={() => window.dispatchEvent(new Event(AUTHENTICATION_FAILURE_EVENT))}>
+        authentication failure
+      </button>
     </main>
   )
 }
 
-function renderProvider() {
-  return renderWithRouter(
-    <AuthProvider>
-      <Probe />
-    </AuthProvider>,
-  )
+function SignInProbe() {
+  const state = useLocation().state as { from?: string } | null
+  return <p data-testid="sign-in-from">{state?.from}</p>
+}
+
+function renderProvider(route = '/') {
+  return {
+    user: userEvent.setup(),
+    ...render(
+      <MemoryRouter initialEntries={[route]}>
+        <AuthProvider>
+          <Routes>
+            <Route path={paths.signIn} element={<SignInProbe />} />
+            <Route path="*" element={<Probe />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    ),
+  }
 }
 
 describe('AuthProvider', () => {
@@ -89,6 +107,38 @@ describe('AuthProvider', () => {
 
     expect(await screen.findByText('visitor')).toBeInTheDocument()
     expect(error).not.toHaveBeenCalled()
+  })
+
+  it('limpa a sessão e volta ao login preservando caminho, query e hash se GET /eu/ confirmar expiração', async () => {
+    const currentUser = vi
+      .spyOn(api.auth, 'currentUser')
+      .mockResolvedValueOnce(profile)
+      .mockRejectedValueOnce(new ApiError('Sessão expirada.', 403))
+    const { user } = renderProvider('/eventos/jazz?aba=comentarios#resposta-1')
+
+    expect(await screen.findByText('Rita Silva')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'authentication failure' }))
+
+    expect(await screen.findByTestId('sign-in-from')).toHaveTextContent(
+      '/eventos/jazz?aba=comentarios#resposta-1',
+    )
+    expect(currentUser).toHaveBeenCalledTimes(2)
+  })
+
+  it('mantém a sessão se GET /eu/ confirmar que um 403 era apenas de permissão', async () => {
+    const currentUser = vi
+      .spyOn(api.auth, 'currentUser')
+      .mockResolvedValueOnce(profile)
+      .mockResolvedValueOnce({ ...profile, nome: 'Perfil atualizado' })
+    const { user } = renderProvider('/conta?aba=agenda#salvos')
+
+    expect(await screen.findByText('Rita Silva')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'authentication failure' }))
+    await user.click(screen.getByRole('button', { name: 'authentication failure' }))
+    await waitFor(() => expect(currentUser).toHaveBeenCalledTimes(2))
+
+    expect(await screen.findByText('Perfil atualizado')).toBeInTheDocument()
+    expect(screen.queryByTestId('sign-in-from')).not.toBeInTheDocument()
   })
 
   it('logs unexpected API errors while leaving the app usable as a visitor', async () => {

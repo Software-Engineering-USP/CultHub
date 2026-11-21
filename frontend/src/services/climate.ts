@@ -7,6 +7,7 @@ export interface EventTiming {
   endTime?: string | null
   endsAt?: string | null
   timeZone?: string
+  forecastTimeZone?: string
 }
 
 interface Locality {
@@ -16,6 +17,7 @@ interface Locality {
 }
 
 interface ForecastResponse {
+  timezone?: string
   hourly?: {
     time: string[]
     temperature_2m: number[]
@@ -65,23 +67,65 @@ function dataHoraAtingida(
   return time.slice(0, 5) <= now.time
 }
 
+function instanteDeHorarioLocal(date: string, time: string, timeZone: string): Date {
+  const [year, month, day] = date.split('-').map(Number)
+  const [hour, minute] = time.slice(0, 5).split(':').map(Number)
+  const desiredLocalTime = Date.UTC(year, month - 1, day, hour, minute)
+  let timestamp = desiredLocalTime
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const local = dateTimeInTimeZone(new Date(timestamp), timeZone)
+    const [localYear, localMonth, localDay] = local.date.split('-').map(Number)
+    const [localHour, localMinute] = local.time.split(':').map(Number)
+    const displayedAsUtc = Date.UTC(localYear, localMonth - 1, localDay, localHour, localMinute)
+    const adjustment = desiredLocalTime - displayedAsUtc
+    if (adjustment === 0) break
+    timestamp += adjustment
+  }
+
+  return new Date(timestamp)
+}
+
+function eventDateTimeInTimeZone(
+  date: string,
+  time: string,
+  timing: EventTiming,
+  targetTimeZone: string,
+): { date: string; time: string } {
+  const startTimestamp = timing.startsAt ? Date.parse(timing.startsAt) : Number.NaN
+  const startInstant = Number.isFinite(startTimestamp)
+    ? new Date(startTimestamp)
+    : instanteDeHorarioLocal(date, time, timing.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone)
+  return dateTimeInTimeZone(startInstant, targetTimeZone)
+}
+
 export function getEventWeatherContext(
   date: string,
   time: string | null | undefined,
   timing: EventTiming = {},
   now = new Date(),
 ): { date: string; time: string | null | undefined; inProgress: boolean; ended: boolean } {
-  const timeZone = timing.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
-  const nowLocal = dateTimeInTimeZone(now, timeZone)
+  const eventTimeZone = timing.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  const nowEventLocal = dateTimeInTimeZone(now, eventTimeZone)
+  const nowForecastLocal = dateTimeInTimeZone(now, timing.forecastTimeZone || eventTimeZone)
   const startedAt = instanteAtingido(timing.startsAt, now)
   const endedAt = instanteAtingido(timing.endsAt, now)
-  const started = startedAt ?? dataHoraAtingida(date, time, nowLocal)
-  const ended = endedAt ?? dataHoraAtingida(timing.endDate ?? date, timing.endTime, nowLocal)
+  const started = startedAt ?? dataHoraAtingida(date, time, nowEventLocal)
+  const ended = endedAt ?? dataHoraAtingida(timing.endDate ?? date, timing.endTime, nowEventLocal)
   const inProgress = started && !ended
+  const eventStartInForecastTimeZone = time
+    ? eventDateTimeInTimeZone(date, time, timing, timing.forecastTimeZone || eventTimeZone)
+    : { date, time: null }
+  let forecastDate = eventStartInForecastTimeZone.date
+  let forecastTime = eventStartInForecastTimeZone.time
+  if (inProgress) {
+    forecastDate = nowForecastLocal.date
+    forecastTime = time ? nowForecastLocal.time : null
+  }
 
   return {
-    date: inProgress ? nowLocal.date : date,
-    time: inProgress ? (time ? nowLocal.time : null) : time,
+    date: forecastDate,
+    time: forecastTime,
     inProgress,
     ended,
   }
@@ -193,10 +237,10 @@ export async function getEventWeather(
   time: string | null | undefined,
   signal: AbortSignal,
   timing: EventTiming = {},
+  now = new Date(),
 ): Promise<Weather> {
   if (!date) throw new Error('A data deste evento não está disponível para consultar a previsão.')
 
-  const now = new Date()
   const eventForecast = getEventWeatherContext(date, time, timing, now)
   if (eventForecast.ended) {
     throw new Error('Este evento já aconteceu; a previsão do tempo não está mais disponível.')
@@ -208,10 +252,22 @@ export async function getEventWeather(
     dias: '16',
   })
   const forecast = await get<ForecastResponse>(`/clima/previsao/?${params}`, signal)
+  const forecastContext = getEventWeatherContext(
+    date,
+    time,
+    { ...timing, forecastTimeZone: forecast.timezone },
+    now,
+  )
   const weather =
-    (eventForecast.time && hourlyWeather(forecast, eventForecast.date, eventForecast.time)) ||
-    dailyWeather(forecast, eventForecast.date)
-  if (weather) return { ...weather, eventInProgress: eventForecast.inProgress }
+    (forecastContext.time && hourlyWeather(forecast, forecastContext.date, forecastContext.time)) ||
+    dailyWeather(forecast, forecastContext.date)
+  if (weather) {
+    return {
+      ...weather,
+      eventInProgress: forecastContext.inProgress,
+      forecastTimeZone: forecast.timezone,
+    }
+  }
   throw new Error(
     'A previsão para esse dia ainda não está disponível. O serviço oferece previsão para até 16 dias a partir de hoje.',
   )

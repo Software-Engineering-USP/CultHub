@@ -3,6 +3,8 @@ import type { CategoryId } from '@/types'
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
+export const AUTHENTICATION_FAILURE_EVENT = 'culthub:authentication-failure'
+
 export interface ProfileResponse {
   id: string
   nome: string
@@ -118,7 +120,20 @@ async function apiRequest<T>(path: string, method: Method = 'GET', body?: object
     ...(body && { body: JSON.stringify(body) }),
   })
   const data: unknown = response.status === 204 ? undefined : await response.json().catch(() => undefined)
-  if (!response.ok) throw new ApiError(errorMessage(data), response.status)
+  if (!response.ok) {
+    const isAuthenticationError = response.status === 401 || response.status === 403
+    const isSessionLookup = path === '/eu/' && method === 'GET'
+    const isAuthenticationEndpoint = path.startsWith('/auth/')
+    if (
+      isAuthenticationError &&
+      !isSessionLookup &&
+      !isAuthenticationEndpoint &&
+      typeof window !== 'undefined'
+    ) {
+      window.dispatchEvent(new Event(AUTHENTICATION_FAILURE_EVENT))
+    }
+    throw new ApiError(errorMessage(data), response.status)
+  }
   return data as T
 }
 

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AUTHENTICATION_FAILURE_EVENT } from '@/services/api'
 import { catalogApi, toCultEvent } from '@/services/catalog'
 import { apiEvent } from '@tests/fixtures/catalog'
 
@@ -89,6 +90,15 @@ describe('catalogApi', () => {
     )
 
     await expect(catalogApi.categories()).rejects.toThrow('Falha ao carregar o catálogo. (503)')
+  })
+
+  it('notifica o contexto de autenticação quando um GET retorna 401 ou 403', async () => {
+    const dispatch = vi.spyOn(window, 'dispatchEvent')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ detail: 'Sessão expirada.' }, 401)))
+
+    await expect(catalogApi.events()).rejects.toMatchObject({ status: 401 })
+
+    expect(dispatch.mock.calls.some(([event]) => event.type === AUTHENTICATION_FAILURE_EVENT)).toBe(true)
   })
 
   it('propaga falhas de rede', async () => {
