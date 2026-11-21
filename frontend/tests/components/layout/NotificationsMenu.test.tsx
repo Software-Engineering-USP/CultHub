@@ -161,7 +161,7 @@ describe('NotificationsMenu', () => {
     expect(within(dialog).getByRole('link', { name: /Show de hoje/ })).toBeInTheDocument()
   })
 
-  it('mantém o contador quando falha ao marcar uma notificação como lida', async () => {
+  it('fecha o menu e mantém o contador quando falha ao marcar como lida', async () => {
     const markRead = vi.spyOn(api.notifications, 'markRead').mockRejectedValue(new Error('Falha.'))
     vi.spyOn(api.notifications, 'list').mockResolvedValue(notificationsResponse([notification()]))
     const { user } = renderWithRouter(<NotificationsMenu />)
@@ -170,11 +170,30 @@ describe('NotificationsMenu', () => {
     await user.click(within(dialog).getByRole('link', { name: /Show de hoje/ }))
 
     expect(markRead).toHaveBeenCalledWith('notificacao-1')
-    expect(
-      await within(dialog).findByText('Não foi possível marcar esta notificação como lida.'),
-    ).toBeInTheDocument()
-    expect(within(dialog).getByRole('link', { name: /Show de hoje/ })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Notificações' })).not.toBeInTheDocument()
+    })
     expect(screen.getByRole('button', { name: 'Notificações, 1 não lida' })).toBeInTheDocument()
+  })
+
+  it('limpa o erro da ação ao reabrir o menu', async () => {
+    vi.spyOn(api.notifications, 'markRead').mockRejectedValue(new Error('Falha.'))
+    vi.spyOn(api.notifications, 'list').mockResolvedValue(notificationsResponse([notification()]))
+    const { user } = renderWithRouter(<NotificationsMenu />)
+    let dialog = await openMenu(user)
+
+    await user.click(within(dialog).getByRole('link', { name: /Show de hoje/ }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Notificações' })).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Notificações, 1 não lida' }))
+    dialog = await screen.findByRole('dialog', { name: 'Notificações' })
+
+    expect(
+      within(dialog).queryByText('Não foi possível marcar esta notificação como lida.'),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: /Show de hoje/ })).toBeInTheDocument()
   })
 
   it('exibe o erro devolvido pela API ao carregar notificações', async () => {
