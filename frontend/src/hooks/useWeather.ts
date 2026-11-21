@@ -4,7 +4,7 @@ import type { CultEvent, Weather } from '@/types'
 
 type WeatherState =
   | { eventKey: string; key: string; status: 'loading' }
-  | { eventKey: string; key: string; status: 'ready'; weather: Weather }
+  | { eventKey: string; key: string; status: 'ready'; weather: Weather; inProgress: boolean }
   | { eventKey: string; key: string; status: 'unavailable'; message: string }
 
 export type WeatherResult =
@@ -32,12 +32,6 @@ export function useWeather(event: CultEvent): WeatherResult {
     event.eventEndsAt,
     event.eventTimezone,
   ].join(':')
-  const [forecastTimeZone, setForecastTimeZone] = useState<{
-    eventKey: string
-    timeZone?: string
-  }>({ eventKey, timeZone: undefined })
-  const effectiveForecastTimeZone =
-    forecastTimeZone.eventKey === eventKey ? forecastTimeZone.timeZone : undefined
   const eventTiming = useMemo(
     () => ({
       startsAt: event.eventStartsAt,
@@ -45,16 +39,8 @@ export function useWeather(event: CultEvent): WeatherResult {
       endTime: event.eventEndTime,
       endsAt: event.eventEndsAt,
       timeZone: event.eventTimezone,
-      forecastTimeZone: effectiveForecastTimeZone,
     }),
-    [
-      effectiveForecastTimeZone,
-      event.eventEndDate,
-      event.eventEndTime,
-      event.eventEndsAt,
-      event.eventStartsAt,
-      event.eventTimezone,
-    ],
+    [event.eventEndDate, event.eventEndTime, event.eventEndsAt, event.eventStartsAt, event.eventTimezone],
   )
   const eventContext = event.eventDate
     ? getEventWeatherContext(event.eventDate, event.eventTime, eventTiming, new Date(clock))
@@ -63,8 +49,7 @@ export function useWeather(event: CultEvent): WeatherResult {
     eventKey,
     eventContext.ended,
     eventContext.inProgress,
-    eventContext.inProgress ? eventContext.date : '',
-    eventContext.inProgress && event.eventTime ? eventContext.time?.slice(0, 2) : '',
+    eventContext.inProgress ? new Date(clock).toISOString().slice(0, 13) : '',
   ].join(':')
   const [state, setState] = useState<WeatherState>({ eventKey, key, status: 'loading' })
 
@@ -110,12 +95,17 @@ export function useWeather(event: CultEvent): WeatherResult {
       event.eventTime,
       controller.signal,
       eventTiming,
-      new Date(clock),
+      new Date(),
     )
       .then((weather) => {
         if (!controller.signal.aborted) {
-          setState({ eventKey, key, status: 'ready', weather })
-          setForecastTimeZone({ eventKey, timeZone: weather.forecastTimeZone })
+          setState({
+            eventKey,
+            key,
+            status: 'ready',
+            weather,
+            inProgress: weather.eventInProgress ?? eventContext.inProgress,
+          })
         }
       })
       .catch((error: unknown) => {
@@ -140,8 +130,8 @@ export function useWeather(event: CultEvent): WeatherResult {
     event.eventTimezone,
     eventTiming,
     eventKey,
+    eventContext.inProgress,
     hasLocation,
-    clock,
     key,
     latitude,
     longitude,
@@ -163,7 +153,11 @@ export function useWeather(event: CultEvent): WeatherResult {
       weather: { ...currentState.weather, eventInProgress: eventContext.inProgress },
     }
   }
-  if (state.eventKey === eventKey && state.status === 'ready') {
+  if (
+    state.eventKey === eventKey &&
+    state.status === 'ready' &&
+    state.inProgress === eventContext.inProgress
+  ) {
     return {
       status: 'ready',
       weather: { ...state.weather, eventInProgress: eventContext.inProgress },
@@ -174,7 +168,6 @@ export function useWeather(event: CultEvent): WeatherResult {
       status: 'unavailable',
       message: currentState.message,
       eventInProgress: eventContext.inProgress,
-      eventEnded: eventContext.ended,
     }
   }
   return { status: 'loading', eventInProgress: eventContext.inProgress }

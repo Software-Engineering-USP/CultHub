@@ -44,7 +44,8 @@ interface LocalitiesResponse {
 function get<T>(path: string, signal: AbortSignal): Promise<T> {
   return apiGet<T>(path, {
     signal,
-    describe: (_status, detail) => {
+    describe: (status, detail) => {
+      if (status >= 400 && status < 500) return 'Não foi possível consultar a previsão do tempo.'
       return detail ?? 'Não foi possível consultar a previsão do tempo.'
     },
   })
@@ -66,6 +67,38 @@ function dataHoraAtingida(
   return time.slice(0, 5) <= now.time
 }
 
+function instanteDeHorarioLocal(date: string, time: string, timeZone: string): Date {
+  const [year, month, day] = date.split('-').map(Number)
+  const [hour, minute] = time.slice(0, 5).split(':').map(Number)
+  const desiredLocalTime = Date.UTC(year, month - 1, day, hour, minute)
+  let timestamp = desiredLocalTime
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const local = dateTimeInTimeZone(new Date(timestamp), timeZone)
+    const [localYear, localMonth, localDay] = local.date.split('-').map(Number)
+    const [localHour, localMinute] = local.time.split(':').map(Number)
+    const displayedAsUtc = Date.UTC(localYear, localMonth - 1, localDay, localHour, localMinute)
+    const adjustment = desiredLocalTime - displayedAsUtc
+    if (adjustment === 0) break
+    timestamp += adjustment
+  }
+
+  return new Date(timestamp)
+}
+
+function eventDateTimeInTimeZone(
+  date: string,
+  time: string,
+  timing: EventTiming,
+  targetTimeZone: string,
+): { date: string; time: string } {
+  const startTimestamp = timing.startsAt ? Date.parse(timing.startsAt) : Number.NaN
+  const startInstant = Number.isFinite(startTimestamp)
+    ? new Date(startTimestamp)
+    : instanteDeHorarioLocal(date, time, timing.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone)
+  return dateTimeInTimeZone(startInstant, targetTimeZone)
+}
+
 export function getEventWeatherContext(
   date: string,
   time: string | null | undefined,
@@ -80,12 +113,13 @@ export function getEventWeatherContext(
   const started = startedAt ?? dataHoraAtingida(date, time, nowEventLocal)
   const ended = endedAt ?? dataHoraAtingida(timing.endDate ?? date, timing.endTime, nowEventLocal)
   const inProgress = started && !ended
-  let forecastTime = time
-  if (inProgress) forecastTime = time ? nowForecastLocal.time : null
+  const eventStartInForecastTimeZone = time
+    ? eventDateTimeInTimeZone(date, time, timing, timing.forecastTimeZone || eventTimeZone)
+    : { date, time: null }
 
   return {
-    date: inProgress ? nowForecastLocal.date : date,
-    time: forecastTime,
+    date: inProgress ? nowForecastLocal.date : eventStartInForecastTimeZone.date,
+    time: inProgress ? (time ? nowForecastLocal.time : null) : eventStartInForecastTimeZone.time,
     inProgress,
     ended,
   }

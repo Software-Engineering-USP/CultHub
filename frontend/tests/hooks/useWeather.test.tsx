@@ -78,6 +78,44 @@ describe('useWeather', () => {
     expect(getEventWeatherMock.mock.calls[0][5]).toEqual(requestTime)
   })
 
+  it('não repete a consulta quando recebe o fuso da previsão', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2040-03-10T18:00:00Z'))
+    getEventWeatherMock.mockResolvedValue({ ...weather, forecastTimeZone: 'America/Rio_Branco' })
+
+    renderHook(() => useWeather(event))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(getEventWeatherMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('usa o horário atual quando uma mudança do evento dispara outra consulta', async () => {
+    vi.useFakeTimers()
+    const firstRequestTime = new Date('2040-03-10T18:00:00Z')
+    const secondRequestTime = new Date('2040-03-10T20:00:00Z')
+    vi.setSystemTime(firstRequestTime)
+    getEventWeatherMock.mockResolvedValue(weather)
+    const { rerender } = renderHook(({ currentEvent }) => useWeather(currentEvent), {
+      initialProps: { currentEvent: event },
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    vi.setSystemTime(secondRequestTime)
+    await act(async () => {
+      rerender({
+        currentEvent: { ...event, weatherLocation: { ...event.weatherLocation!, city: 'Campinas' } },
+      })
+      await Promise.resolve()
+    })
+
+    expect(getEventWeatherMock).toHaveBeenCalledTimes(2)
+    expect(getEventWeatherMock.mock.calls[1][5]).toEqual(secondRequestTime)
+  })
+
   it('devolve mensagem se a consulta da previsão falhar', async () => {
     getEventWeatherMock.mockRejectedValue(new Error('Serviço indisponível.'))
     const { result } = renderHook(() => useWeather(event))
@@ -130,6 +168,36 @@ describe('useWeather', () => {
       status: 'unavailable',
       message: 'Este evento já aconteceu; a previsão do tempo não está mais disponível.',
     })
+  })
+
+  it('não mostra previsão de antes do evento como clima atual ao começar', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2040-03-10T19:30:00Z'))
+    const eventoPrestesaComecar = {
+      ...event,
+      eventStartsAt: '2040-03-10T20:00:00Z',
+      eventEndDate: '2040-03-10',
+      eventEndTime: '23:00:00',
+      eventEndsAt: '2040-03-10T23:00:00Z',
+      eventTimezone: 'UTC',
+    }
+    let completeRefresh: ((value: Weather) => void) | undefined
+    getEventWeatherMock.mockResolvedValueOnce({ ...weather, eventInProgress: false })
+    getEventWeatherMock.mockImplementationOnce(() => new Promise((resolve) => (completeRefresh = resolve)))
+
+    const { result } = renderHook(() => useWeather(eventoPrestesaComecar))
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(result.current).toMatchObject({ status: 'ready', weather: { temperature: '22°C' } })
+
+    await act(async () => {
+      vi.advanceTimersByTime(30 * 60_000)
+    })
+
+    expect(getEventWeatherMock).toHaveBeenCalledTimes(2)
+    expect(result.current).toMatchObject({ status: 'loading', eventInProgress: true })
+    await act(async () => completeRefresh?.({ ...weather, eventInProgress: true }))
   })
 
   it('mantém a última previsão visível enquanto atualiza a hora do clima atual', async () => {

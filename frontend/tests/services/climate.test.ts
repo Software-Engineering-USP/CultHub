@@ -206,6 +206,22 @@ describe('getEventWeather', () => {
     expect(weather).toMatchObject({ forecastType: 'hourly', eventInProgress: true })
   })
 
+  it('converte o horário de início para o fuso da previsão antes do evento', async () => {
+    vi.setSystemTime(new Date('2040-03-07T00:00:00Z'))
+    const fetchMock = mockFetch(jsonResponse(forecast(0, 1, '2040-03-06', '21:00', 'America/Rio_Branco')))
+
+    const weather = await getEventWeather(location, '2040-03-06', '23:00', new AbortController().signal, {
+      startsAt: '2040-03-07T02:00:00Z',
+      endDate: '2040-03-07',
+      endTime: '02:00',
+      endsAt: '2040-03-07T05:00:00Z',
+      timeZone: 'America/Sao_Paulo',
+    })
+
+    expect(weather).toMatchObject({ forecastType: 'hourly', temperature: '22°C' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('usa a hora local do fuso devolvido pela previsão durante o evento', async () => {
     vi.setSystemTime(new Date('2040-03-07T03:30:00Z'))
     const fetchMock = mockFetch(jsonResponse(forecast(0, 1, '2040-03-06', '22:00', 'America/Rio_Branco')))
@@ -249,19 +265,27 @@ describe('getEventWeather', () => {
     )
   })
 
-  it('exibe o detail enviado pelo backend para erros 4xx', async () => {
+  it('usa uma mensagem amigável para erros 4xx do backend', async () => {
     mockFetch(jsonResponse({ detail: 'Informe uma cidade válida.' }, 400))
 
     await expect(getEventWeather(location, date, '20:00', new AbortController().signal)).rejects.toThrow(
-      'Informe uma cidade válida.',
+      'Não foi possível consultar a previsão do tempo.',
     )
   })
 
-  it('exibe mensagens de validação 4xx recebidas do backend', async () => {
+  it('não exibe os detalhes de validação devolvidos pelo backend', async () => {
     mockFetch(jsonResponse({ latitude: ['Latitude inválida.'] }, 400))
 
     await expect(getEventWeather(location, date, '20:00', new AbortController().signal)).rejects.toThrow(
-      'Latitude inválida.',
+      'Não foi possível consultar a previsão do tempo.',
+    )
+  })
+
+  it('não exibe a mensagem crua de limite de requisições', async () => {
+    mockFetch(jsonResponse({ detail: 'Request was throttled.' }, 429))
+
+    await expect(getEventWeather(location, date, '20:00', new AbortController().signal)).rejects.toThrow(
+      'Não foi possível consultar a previsão do tempo.',
     )
   })
 })
