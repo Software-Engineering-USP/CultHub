@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import AgendaSection from '@/components/account/AgendaSection'
 import AttendanceSection from '@/components/account/AttendanceSection'
 import EventGrid from '@/components/account/EventGrid'
@@ -47,9 +47,18 @@ const panelEyebrow = 'text-[9px] text-muted-foreground max-sm:max-w-[90px] max-s
 export default function Account() {
   useDocumentTitle('Minha conta | CultHub')
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) return <output className="block">Carregando sua conta...</output>
-  if (!user) return <Navigate to={paths.signIn} replace />
+  if (!user) {
+    return (
+      <Navigate
+        to={paths.signIn}
+        replace
+        state={{ from: location.pathname + location.search + location.hash }}
+      />
+    )
+  }
   return <AccountContent key={user.id} user={user} />
 }
 

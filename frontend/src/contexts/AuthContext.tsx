@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { AuthContext } from '@/contexts/auth-context'
 import type { AuthContextValue } from '@/contexts/auth-context'
-import { api, ApiError } from '@/services/api'
+import { paths } from '@/lib/paths'
+import { api, ApiError, AUTHENTICATION_FAILURE_EVENT } from '@/services/api'
 import type { ProfileResponse } from '@/services/api'
 import type { User } from '@/types'
 
@@ -24,6 +26,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const authVersion = useRef(0)
+  const sessionCheckInProgress = useRef(false)
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const updateUser = useCallback((profile: ProfileResponse) => setUser(toUser(profile)), [])
 
@@ -51,6 +56,42 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       active = false
     }
   }, [updateUser])
+
+  const verifySessionAfterAuthenticationError = useCallback(() => {
+    if (!user || sessionCheckInProgress.current) return
+    sessionCheckInProgress.current = true
+    const requestVersion = authVersion.current
+
+    void api.auth
+      .currentUser()
+      .catch((error: unknown) => {
+        if (
+          requestVersion !== authVersion.current ||
+          !(error instanceof ApiError) ||
+          (error.status !== 401 && error.status !== 403)
+        ) {
+          return
+        }
+
+        authVersion.current += 1
+        setUser(null)
+        setLoading(false)
+        navigate(paths.signIn, {
+          replace: true,
+          state: { from: location.pathname + location.search + location.hash },
+        })
+      })
+      .finally(() => {
+        sessionCheckInProgress.current = false
+      })
+  }, [location.hash, location.pathname, location.search, navigate, user])
+
+  useEffect(() => {
+    window.addEventListener(AUTHENTICATION_FAILURE_EVENT, verifySessionAfterAuthenticationError)
+    return () => {
+      window.removeEventListener(AUTHENTICATION_FAILURE_EVENT, verifySessionAfterAuthenticationError)
+    }
+  }, [verifySessionAfterAuthenticationError])
 
   const signUp = useCallback<AuthContextValue['signUp']>(
     async (data) => {
@@ -81,15 +122,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     setLoading(false)
   }, [])
 
-  const clearSession = useCallback(() => {
-    authVersion.current += 1
-    setUser(null)
-    setLoading(false)
-  }, [])
-
   const value = useMemo(
-    () => ({ user, loading, signUp, signIn, signOut, updateUser, clearSession }),
-    [user, loading, signUp, signIn, signOut, updateUser, clearSession],
+    () => ({ user, loading, signUp, signIn, signOut, updateUser }),
+    [user, loading, signUp, signIn, signOut, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

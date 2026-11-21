@@ -1,6 +1,6 @@
 import type { MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { api } from '@/services/api'
+import { api, AUTHENTICATION_FAILURE_EVENT } from '@/services/api'
 
 const profile = {
   id: 'user-1',
@@ -164,6 +164,36 @@ describe('api', () => {
       message: 'Muitas requisições.',
       status: 429,
     })
+  })
+
+  it.each([401, 403])('notifica o AuthContext de uma resposta HTTP %s em rota protegida', async (status) => {
+    const dispatchEvent = vi.spyOn(window, 'dispatchEvent')
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: 'Sessão inválida.' }), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(api.comments.create('evento', 'Oi')).rejects.toMatchObject({ status })
+
+    expect(dispatchEvent.mock.calls.some(([event]) => event.type === AUTHENTICATION_FAILURE_EVENT)).toBe(true)
+  })
+
+  it('não emite sinal de expiração na própria consulta que verifica a sessão', async () => {
+    const dispatchEvent = vi.spyOn(window, 'dispatchEvent')
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: 'Sessão inválida.' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(api.auth.currentUser()).rejects.toMatchObject({ status: 403 })
+
+    expect(dispatchEvent.mock.calls.some(([event]) => event.type === AUTHENTICATION_FAILURE_EVENT)).toBe(
+      false,
+    )
   })
 
   it('envia e-mail e senha ao backend sem registrá-los no console', async () => {

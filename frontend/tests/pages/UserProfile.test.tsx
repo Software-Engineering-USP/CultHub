@@ -162,14 +162,13 @@ describe('UserProfile', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Página do evento' })).toBeInTheDocument()
   })
 
-  it('sessão expirada (403) pede para entrar de novo em vez de mostrar erro', async () => {
+  it('um 403 de permissão mostra a mensagem da API sem limpar a sessão nesta página', async () => {
     profile.mockRejectedValue(new ApiError('As credenciais de autenticação não foram fornecidas.', 403))
     renderProfile()
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Entre para ver este perfil' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'As credenciais de autenticação não foram fornecidas.',
+    )
   })
 
   it('enquanto carrega, a aba já mostra o título do perfil', () => {
