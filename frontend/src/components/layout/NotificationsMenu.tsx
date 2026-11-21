@@ -79,11 +79,11 @@ export default function NotificationsMenu() {
       notificationsRef.current = response.resultados
       setNotifications(response.resultados)
       setUnreadCount(response.nao_lidas)
-      const unreadReminder = response.resultados.find(
+      const hasUnreadReminder = response.resultados.some(
         (notification) =>
           notification.evento_id === eventId && notification.tipo === 'lembrete' && !notification.lida_em,
       )
-      if (eventId && unreadReminder) {
+      if (eventId && hasUnreadReminder) {
         setOpen(true)
       }
     } catch (cause) {
