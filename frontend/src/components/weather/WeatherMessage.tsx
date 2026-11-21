@@ -4,6 +4,7 @@ import type { CultEvent, Weather } from '@/types'
 interface WeatherTitleProps {
   eventTime: CultEvent['eventTime']
   eventInProgress?: boolean
+  eventEnded?: boolean
   forecastType?: Weather['forecastType']
   level: 'h2' | 'h3'
 }
@@ -11,11 +12,14 @@ interface WeatherTitleProps {
 export function WeatherTitle({
   eventTime,
   eventInProgress,
+  eventEnded,
   forecastType,
   level,
 }: Readonly<WeatherTitleProps>) {
   let title = 'Previsão para o dia do evento'
-  if (eventInProgress) {
+  if (eventEnded) {
+    title = 'Previsão do tempo'
+  } else if (eventInProgress) {
     title = forecastType === 'daily' || (!forecastType && !eventTime) ? 'Previsão para hoje' : 'Clima agora'
   } else if (forecastType === 'hourly' || (!forecastType && eventTime)) {
     title = 'Clima no horário do evento'
@@ -41,7 +45,12 @@ export function WeatherMessage({
 }>) {
   return (
     <div>
-      <WeatherTitle eventTime={event.eventTime} eventInProgress={result.eventInProgress} level={level} />
+      <WeatherTitle
+        eventTime={event.eventTime}
+        eventInProgress={result.eventInProgress}
+        eventEnded={result.status === 'unavailable' ? result.eventEnded : false}
+        level={level}
+      />
       <p
         aria-live="polite"
         aria-atomic="true"

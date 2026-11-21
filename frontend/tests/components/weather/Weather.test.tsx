@@ -89,6 +89,20 @@ describe('WeatherCard', () => {
     render(<WeatherCard event={event} />)
     expect(screen.getByText('Previsão indisponível.')).toHaveAttribute('aria-live', 'polite')
   })
+
+  it('usa um título neutro quando o evento já terminou', () => {
+    useWeatherMock.mockReturnValue({
+      status: 'unavailable',
+      message: 'Este evento já aconteceu; a previsão do tempo não está mais disponível.',
+      eventEnded: true,
+    })
+    render(<WeatherCard event={event} />)
+
+    expect(screen.getByRole('heading', { name: 'Previsão do tempo' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Este evento já aconteceu; a previsão do tempo não está mais disponível.'),
+    ).toBeInTheDocument()
+  })
 })
 
 describe('WeatherStrip', () => {
