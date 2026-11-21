@@ -126,14 +126,18 @@ describe('AuthProvider', () => {
   })
 
   it('mantém a sessão se GET /eu/ confirmar que um 403 era apenas de permissão', async () => {
-    const currentUser = vi.spyOn(api.auth, 'currentUser').mockResolvedValue(profile)
+    const currentUser = vi
+      .spyOn(api.auth, 'currentUser')
+      .mockResolvedValueOnce(profile)
+      .mockResolvedValueOnce({ ...profile, nome: 'Perfil atualizado' })
     const { user } = renderProvider('/conta?aba=agenda#salvos')
 
     expect(await screen.findByText('Rita Silva')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'authentication failure' }))
+    await user.click(screen.getByRole('button', { name: 'authentication failure' }))
     await waitFor(() => expect(currentUser).toHaveBeenCalledTimes(2))
 
-    expect(screen.getByText('Rita Silva')).toBeInTheDocument()
+    expect(await screen.findByText('Perfil atualizado')).toBeInTheDocument()
     expect(screen.queryByTestId('sign-in-from')).not.toBeInTheDocument()
   })
 

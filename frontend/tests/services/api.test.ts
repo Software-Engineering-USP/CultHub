@@ -196,6 +196,22 @@ describe('api', () => {
     )
   })
 
+  it('emite sinal de expiração para PATCH do perfil em /eu/', async () => {
+    const dispatchEvent = vi.spyOn(window, 'dispatchEvent')
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: 'Sessão expirada.' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(
+      api.profile.update({ name: 'Lívia', city: 'São Paulo', district: 'Centro' }),
+    ).rejects.toMatchObject({ status: 403 })
+
+    expect(dispatchEvent.mock.calls.some(([event]) => event.type === AUTHENTICATION_FAILURE_EVENT)).toBe(true)
+  })
+
   it('envia e-mail e senha ao backend sem registrá-los no console', async () => {
     await api.auth.signIn({ email: 'voce@exemplo.com', password: 'segredo123', remember: true })
     await api.auth.signUp({

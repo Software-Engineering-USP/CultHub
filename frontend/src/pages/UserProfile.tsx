@@ -1,4 +1,5 @@
 import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react'
+import { useEffect } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import CategoryDot from '@/components/common/CategoryDot'
 import Eyebrow from '@/components/common/Eyebrow'
@@ -18,10 +19,15 @@ import type { PublicProfile } from '@/types'
 
 export default function UserProfile() {
   const { id } = useParams()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, clearSession } = useAuth()
   const { profile, loading, error, retry } = usePublicProfile(id, Boolean(user))
+  const sessionExpired = error instanceof ApiError && (error.status === 401 || error.status === 403)
 
-  if (authLoading || loading) return <ProfileLoading />
+  useEffect(() => {
+    if (sessionExpired) clearSession()
+  }, [sessionExpired, clearSession])
+
+  if (authLoading || loading || sessionExpired) return <ProfileLoading />
   if (!user) return <SignInRequired />
   if (!profile) {
     if (error instanceof ApiError && error.status === 404) return <ProfileNotFound />

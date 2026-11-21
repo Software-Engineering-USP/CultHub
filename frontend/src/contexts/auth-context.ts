@@ -9,6 +9,7 @@ export interface AuthContextValue {
   signIn: typeof api.auth.signIn
   signOut: () => Promise<void>
   updateUser: (profile: ProfileResponse) => void
+  clearSession: () => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

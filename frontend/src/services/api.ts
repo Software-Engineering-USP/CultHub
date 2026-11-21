@@ -119,7 +119,7 @@ async function apiRequest<T>(path: string, method: Method = 'GET', body?: object
   const data: unknown = response.status === 204 ? undefined : await response.json().catch(() => undefined)
   if (!response.ok) {
     const isAuthenticationError = response.status === 401 || response.status === 403
-    const isSessionLookup = path === '/eu/'
+    const isSessionLookup = path === '/eu/' && method === 'GET'
     const isAuthenticationEndpoint = path.startsWith('/auth/')
     if (
       isAuthenticationError &&
