@@ -116,10 +116,16 @@ export function getEventWeatherContext(
   const eventStartInForecastTimeZone = time
     ? eventDateTimeInTimeZone(date, time, timing, timing.forecastTimeZone || eventTimeZone)
     : { date, time: null }
+  let forecastDate = eventStartInForecastTimeZone.date
+  let forecastTime = eventStartInForecastTimeZone.time
+  if (inProgress) {
+    forecastDate = nowForecastLocal.date
+    forecastTime = time ? nowForecastLocal.time : null
+  }
 
   return {
-    date: inProgress ? nowForecastLocal.date : eventStartInForecastTimeZone.date,
-    time: inProgress ? (time ? nowForecastLocal.time : null) : eventStartInForecastTimeZone.time,
+    date: forecastDate,
+    time: forecastTime,
     inProgress,
     ended,
   }
