@@ -23,6 +23,7 @@ describe('Header', () => {
       resultados: [
         {
           id: 'notificacao-1',
+          tipo: 'lembrete',
           evento_id: 'evento-1',
           titulo_evento: 'Show salvo',
           data_inicio: '2026-11-18',
@@ -46,6 +47,7 @@ describe('Header', () => {
       resultados: [
         {
           id: 'notificacao-1',
+          tipo: 'lembrete',
           evento_id: 'evento-1',
           titulo_evento: 'Show salvo',
           data_inicio: '2026-11-18',
@@ -69,6 +71,7 @@ describe('Header', () => {
       resultados: [
         {
           id: 'notificacao-1',
+          tipo: 'lembrete',
           evento_id: 'evento-1',
           titulo_evento: 'Show salvo',
           data_inicio: '2026-11-18',

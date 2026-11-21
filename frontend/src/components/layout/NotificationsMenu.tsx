@@ -1,4 +1,4 @@
-import { Bell, CalendarDays, CheckCheck } from 'lucide-react'
+import { Bell, CalendarDays, CheckCheck, Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,34 @@ function dateLabel(notification: ApiNotification): string {
   if (sameDay(date, today)) label = 'Hoje'
   else if (sameDay(date, tomorrow)) label = 'Amanhã'
   return notification.hora_inicio ? `${label} às ${notification.hora_inicio.slice(0, 5)}` : label
+}
+
+function notificationTypeLabel(type: string | undefined): string {
+  switch (type) {
+    case 'evento_novo':
+      return 'Evento novo'
+    case 'lembrete':
+      return 'Lembrete'
+    default:
+      return 'Notificação'
+  }
+}
+
+function notificationTypeClass(type: string | undefined): string {
+  switch (type) {
+    case 'evento_novo':
+      return 'bg-maroon/10 text-maroon'
+    case 'lembrete':
+      return 'bg-muted text-muted-foreground'
+    default:
+      return 'border border-border bg-background text-muted-foreground'
+  }
+}
+
+function NotificationIcon({ type }: Readonly<{ type: string | undefined }>) {
+  if (type === 'evento_novo') return <Sparkles aria-hidden="true" className="size-4.5" />
+  if (type === 'lembrete') return <CalendarDays aria-hidden="true" className="size-4.5" />
+  return <Bell aria-hidden="true" className="size-4.5" />
 }
 
 function errorMessage(error: unknown, fallback = 'Não foi possível carregar as notificações.'): string {
@@ -51,8 +79,11 @@ export default function NotificationsMenu() {
       notificationsRef.current = response.resultados
       setNotifications(response.resultados)
       setUnreadCount(response.nao_lidas)
-      const eventNotification = response.resultados.find((notification) => notification.evento_id === eventId)
-      if (eventId && eventNotification && !eventNotification.lida_em) {
+      const hasUnreadReminder = response.resultados.some(
+        (notification) =>
+          notification.evento_id === eventId && notification.tipo === 'lembrete' && !notification.lida_em,
+      )
+      if (eventId && hasUnreadReminder) {
         setOpen(true)
       }
     } catch (cause) {
@@ -156,7 +187,7 @@ export default function NotificationsMenu() {
             <div>
               <h2 className="font-bold">Notificações</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Lembretes de eventos salvos ou confirmados.
+                Avisos de eventos novos e lembretes de eventos salvos ou confirmados.
               </p>
             </div>
             {unreadCount > 0 && (
@@ -183,9 +214,7 @@ export default function NotificationsMenu() {
             </output>
           )}
           {!loading && !error && notifications.length === 0 && (
-            <p className="px-5 py-6 text-sm text-muted-foreground">
-              Você não tem lembretes de eventos próximos.
-            </p>
+            <p className="px-5 py-6 text-sm text-muted-foreground">Você não tem notificações no momento.</p>
           )}
           {!loading && !error && notifications.length > 0 && (
             <ul className="max-h-105 divide-y divide-border overflow-y-auto">
@@ -204,11 +233,11 @@ export default function NotificationsMenu() {
                     className="flex gap-3 px-5 py-4 text-inherit no-underline transition-colors hover:bg-accent"
                   >
                     <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-maroon/10 text-maroon">
-                      <CalendarDays aria-hidden="true" className="size-4.5" />
+                      <NotificationIcon type={notification.tipo} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-3">
-                        <strong className="text-sm leading-snug">{notification.titulo_evento}</strong>
+                        <strong className="min-w-0 text-sm leading-snug">{notification.titulo_evento}</strong>
                         {!notification.lida_em && (
                           <>
                             <span
@@ -218,6 +247,11 @@ export default function NotificationsMenu() {
                             <span className="sr-only">Não lida</span>
                           </>
                         )}
+                      </span>
+                      <span
+                        className={`mt-1 inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${notificationTypeClass(notification.tipo)}`}
+                      >
+                        {notificationTypeLabel(notification.tipo)}
                       </span>
                       <span className="mt-1 block text-xs text-muted-foreground">
                         {dateLabel(notification)} · {notification.local}
