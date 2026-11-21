@@ -51,8 +51,11 @@ export interface ApiMyComment {
   editado_em: string | null
 }
 
+export type ApiNotificationType = 'lembrete' | 'evento_novo'
+
 export interface ApiNotification {
   id: string
+  tipo: ApiNotificationType
   evento_id: string
   titulo_evento: string
   data_inicio: string

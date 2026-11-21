@@ -17,6 +17,7 @@ function dateOffset(days: number): string {
 function notification(overrides: Partial<ApiNotification> = {}): ApiNotification {
   return {
     id: 'notificacao-1',
+    tipo: 'lembrete',
     evento_id: 'evento-1',
     titulo_evento: 'Show de hoje',
     data_inicio: dateOffset(0),
@@ -80,6 +81,29 @@ describe('NotificationsMenu', () => {
     expect(within(dialog).getByText('Amanhã às 19:30 · Teatro')).toBeInTheDocument()
     expect(within(dialog).getByText(`${futureLabel} · Auditório`)).toBeInTheDocument()
     expect(within(dialog).getAllByText('Não lida')).toHaveLength(3)
+  })
+
+  it('distingue eventos novos de lembretes e descreve os dois tipos', async () => {
+    vi.spyOn(api.notifications, 'list').mockResolvedValue(
+      notificationsResponse([
+        notification(),
+        notification({
+          id: 'notificacao-evento-novo',
+          evento_id: 'evento-novo',
+          titulo_evento: 'Festival recém-adicionado',
+          tipo: 'evento_novo',
+        }),
+      ]),
+    )
+    const { user } = renderWithRouter(<NotificationsMenu />)
+    const dialog = await openMenu(user)
+
+    expect(
+      within(dialog).getByText('Avisos de eventos novos e lembretes de eventos salvos ou confirmados.'),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText('Lembrete')).toBeInTheDocument()
+    expect(within(dialog).getByText('Evento novo')).toBeInTheDocument()
+    expect(within(dialog).getByText('Festival recém-adicionado')).toBeInTheDocument()
   })
 
   it('mostra 9+ para mais de nove lembretes não lidos', async () => {
@@ -198,6 +222,6 @@ describe('NotificationsMenu', () => {
     const { user } = renderWithRouter(<NotificationsMenu />)
     const dialog = await openMenu(user)
 
-    expect(within(dialog).getByText('Você não tem lembretes de eventos próximos.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Você não tem notificações no momento.')).toBeInTheDocument()
   })
 })
