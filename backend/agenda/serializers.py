@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from rest_framework import serializers
 
+from agenda.models import PresencaEmEvento
 from catalogo.serializers import EventoSerializer, MarcacoesMixin
 
 
@@ -19,6 +20,18 @@ class EventoDaAgendaSerializer(MarcacoesMixin, EventoSerializer):
             "salvo_em",
             "presenca_em",
         )
+
+
+class PessoaPresenteSerializer(serializers.ModelSerializer):
+    """Quem confirmou presença, sem e-mail nem bairro (como no perfil)."""
+
+    id = serializers.UUIDField(source="usuario.id", read_only=True)
+    nome = serializers.CharField(source="usuario.nome", read_only=True)
+    iniciais = serializers.CharField(source="usuario.iniciais", read_only=True)
+
+    class Meta:
+        model = PresencaEmEvento
+        fields = ("id", "nome", "iniciais")
 
 
 class QuandoSerializer(serializers.Serializer):
