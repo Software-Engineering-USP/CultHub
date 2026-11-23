@@ -1,5 +1,6 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import date, datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.core.exceptions import ValidationError
@@ -27,6 +28,23 @@ class CategoriaCultural(models.Model):
 class Provedor(models.TextChoices):
     TICKETMASTER = "ticketmaster", "Ticketmaster"
     MANUAL = "manual", "Manual"
+
+
+# Com o ano 1 ou 9999, converter o horário para outro fuso (UTC ao salvar, ou
+# São Paulo na API) passa do limite do Python e a listagem quebra. Qualquer
+# fuso cabe entre os anos 2 e 9998.
+DATA_MINIMA = date(2, 1, 1)
+DATA_MAXIMA = date(9998, 12, 31)
+_DATA_FORA = "Data fora do intervalo aceito (anos 2 a 9998)."
+VALIDAR_DATA = [
+    MinValueValidator(DATA_MINIMA, message=_DATA_FORA),
+    MaxValueValidator(DATA_MAXIMA, message=_DATA_FORA),
+]
+
+# Limite do campo de preço (10 dígitos, 2 decimais). O SQLite grava valores
+# maiores, mas o Django falha ao lê-los, e um evento só derrubava a listagem.
+PRECO_MAXIMO = Decimal("99999999.99")
+VALIDAR_PRECO = [MinValueValidator(0), MaxValueValidator(PRECO_MAXIMO)]
 
 
 # Local (casa de show, teatro...) de um evento, importado ou cadastrado.
@@ -106,11 +124,11 @@ class Evento(models.Model):
         on_delete=models.PROTECT,
         related_name="eventos",
     )
-    data_inicio = models.DateField()
+    data_inicio = models.DateField(validators=VALIDAR_DATA)
     hora_inicio = models.TimeField(null=True, blank=True)
     # Calculado em `save()` a partir de data/hora e `fuso`.
     inicio = models.DateTimeField(null=True, editable=False)
-    data_fim = models.DateField(null=True, blank=True)
+    data_fim = models.DateField(null=True, blank=True, validators=VALIDAR_DATA)
     hora_fim = models.TimeField(null=True, blank=True)
     fim = models.DateTimeField(null=True, editable=False)
     fuso = models.CharField(max_length=50, default="America/Sao_Paulo")
@@ -160,8 +178,6 @@ class Evento(models.Model):
             ZoneInfo(self.fuso)
         except (ZoneInfoNotFoundError, ValueError, TypeError):
             erros["fuso"] = "Fuso horário inválido."
-        else:
-            erros.update(self._datas_fora_do_intervalo())
         if self.data_fim is None and self.hora_fim is not None:
             erros["data_fim"] = "Informe a data de fim junto com a hora."
         elif (
@@ -184,22 +200,6 @@ class Evento(models.Model):
         if erros:
             raise ValidationError(erros)
 
-    def _datas_fora_do_intervalo(self):
-        """Datas que não cabem em UTC (ex.: 31/12/9999 às 23h em SP)."""
-        erros = {}
-        campos = (
-            ("data_inicio", self.data_inicio, self.hora_inicio),
-            ("data_fim", self.data_fim, self.hora_fim),
-        )
-        for campo, dia, hora in campos:
-            try:
-                momento = self._momento(dia, hora)
-                if momento is not None:
-                    momento.astimezone(UTC)
-            except OverflowError:
-                erros[campo] = "Data fora do intervalo aceito."
-        return erros
-
     def _momento(self, dia, hora):
         if dia is None or hora is None:
             return None
@@ -221,10 +221,18 @@ class FaixaPreco(models.Model):
     tipo = models.CharField(max_length=30, blank=True)
     moeda = models.CharField(max_length=3, default="BRL")
     minimo = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=VALIDAR_PRECO,
     )
     maximo = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=VALIDAR_PRECO,
     )
 
     class Meta:

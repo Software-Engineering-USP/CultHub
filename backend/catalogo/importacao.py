@@ -11,6 +11,9 @@ from django.utils import timezone
 
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
+    DATA_MAXIMA,
+    DATA_MINIMA,
+    PRECO_MAXIMO,
     CategoriaCultural,
     Evento,
     FaixaPreco,
@@ -74,9 +77,6 @@ def _decimal(valor):
 
 CENTAVO = Decimal("0.01")
 GRAU = Decimal("0.000001")
-# Limite do campo de preço (10 dígitos, 2 decimais). O SQLite grava valores
-# maiores, mas o Django falha ao lê-los, e um evento só derrubava a listagem.
-PRECO_MAXIMO = Decimal("99999999.99")
 
 
 def _numero(valor, casas, minimo, maximo):
@@ -94,6 +94,14 @@ def _numero(valor, casas, minimo, maximo):
     if not minimo <= numero <= maximo:
         raise ValueError(f"fora da faixa: {valor}")
     return numero
+
+
+def _data(valor):
+    """Data do evento; fora dos anos aceitos é erro (ver `DATA_MINIMA`)."""
+    dia = date.fromisoformat(valor)
+    if not DATA_MINIMA <= dia <= DATA_MAXIMA:
+        raise ValueError(f"data fora do intervalo: {valor}")
+    return dia
 
 
 def _preco(valor):
@@ -156,7 +164,7 @@ def _salvar_evento(dados, agora):
             "url_externa": _texto(dados, "url"),
             "situacao": _texto(_objeto(datas, "status"), "code"),
             "local": _salvar_local(venue),
-            "data_inicio": date.fromisoformat(inicio["localDate"]),
+            "data_inicio": _data(inicio["localDate"]),
             "hora_inicio": _hora(inicio),
             "fuso": datas.get("timezone")
             or (venue or {}).get("timezone")

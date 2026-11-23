@@ -554,6 +554,10 @@ class ImportarTest(TestCase):
             "longitude impossível": lambda e: venue(e)["location"].update(
                 longitude="500"
             ),
+            # Cabe em UTC, mas não no horário de São Paulo usado na API.
+            "data no ano 1": lambda e: e["dates"]["start"].update(
+                localDate="0001-01-01"
+            ),
         }
         for nome, alterar in casos.items():
             with self.subTest(caso=nome):
