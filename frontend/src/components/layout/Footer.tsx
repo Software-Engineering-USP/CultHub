@@ -5,7 +5,7 @@ export default function Footer() {
         <strong className="text-maroon">CultHub</strong> • Conteúdo demonstrativo. Eventos não representam uma
         agenda confirmada.
       </p>
-      <p>Feito para explorar São Paulo</p>
+      <p>Feito para explorar o Brasil</p>
     </footer>
   )
 }

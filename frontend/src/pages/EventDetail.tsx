@@ -7,6 +7,7 @@ import IconTile from '@/components/common/IconTile'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
 import CommentsSection from '@/components/events/CommentsSection'
+import EventPrice from '@/components/events/EventPrice'
 import RoutePreview from '@/components/events/RoutePreview'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -215,10 +216,16 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
 
           <Surface as="aside" aria-label="Preço e planejamento da visita" className="bg-cream">
             <Badge>{category.label}</Badge>
-            <p className="mt-5.5 text-4xl font-bold tracking-tighter text-maroon max-md:mt-3.5 max-sm:text-3xl">
-              {event.price}
+            <EventPrice
+              event={event}
+              block
+              className="mt-5.5 text-4xl font-bold tracking-tighter text-maroon max-md:mt-3.5 max-sm:text-3xl"
+            />
+            <p className="text-xs text-muted-foreground">
+              {event.price === 'Preço não informado' && event.officialUrl
+                ? 'Consulte o preço no site oficial.'
+                : 'Valor cadastrado no catálogo'}
             </p>
-            <p className="text-xs text-muted-foreground">Valor cadastrado no catálogo</p>
 
             <div className="my-6 grid gap-4 border-y border-maroon/10 py-6 text-sm max-md:my-4.5 max-md:flex max-md:flex-wrap max-md:gap-x-8 max-md:gap-y-4.5 max-md:py-4.5">
               <p className="flex items-start gap-2">

@@ -31,6 +31,14 @@ describe('SignIn', () => {
     )
   })
 
+  it('carrega a ilustração local do CultHub no painel de entrada', () => {
+    renderWithRouter(<SignIn />, { authUser: null })
+
+    expect(
+      screen.getByRole('img', { name: 'Ilustração CultHub para descoberta de eventos' }),
+    ).toHaveAttribute('src', '/assets/event-placeholder.svg')
+  })
+
   it('confirma que a senha foi alterada ao voltar para o login', () => {
     render(
       <AuthTestProvider initialUser={null}>

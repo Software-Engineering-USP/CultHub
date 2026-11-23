@@ -63,14 +63,14 @@ export default function SignIn() {
           className="overflow-hidden rounded-[25px] border border-line bg-[#ecdfca] max-md:grid max-md:grid-cols-2 max-sm:block"
         >
           <img
-            src="/assets/jazz-source.png"
-            alt="Palco de jazz com iluminação acolhedora"
+            src="/assets/event-placeholder.svg"
+            alt="Ilustração CultHub para descoberta de eventos"
             className="block h-[205px] w-full object-cover max-md:h-full max-md:min-h-[260px] max-sm:h-[210px] max-sm:min-h-0"
           />
           <div className="p-[26px] max-lg:p-[22px] max-md:p-[30px] max-sm:p-[26px]">
             <Eyebrow className="text-[10px]">SEU RADAR CULTURAL</Eyebrow>
             <h2 id="radar-titulo" className="my-4 text-[27px]">
-              São Paulo tem muito para descobrir.
+              O Brasil tem muito para descobrir.
             </h2>
             <p className="text-[13px]">Música, teatro, arte e encontros. Crie sua conta para começar.</p>
             <div aria-hidden="true" className="mt-[25px] flex gap-[9px]">

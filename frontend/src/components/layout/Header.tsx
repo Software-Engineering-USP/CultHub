@@ -22,13 +22,13 @@ export default function Header() {
     <header className="relative z-5 mt-8 flex min-h-20 items-center gap-8 rounded-full border border-border/60 bg-card py-3.5 pr-6 pl-7.5 shadow-soft max-lg:gap-5.5 max-md:flex-wrap max-md:gap-5 max-md:rounded-4xl max-md:px-5.5 max-md:py-4 max-sm:mt-4.5 max-sm:gap-4 max-sm:rounded-3xl max-sm:px-4 max-sm:py-4">
       <Link
         to={paths.home}
-        aria-label="CultHub São Paulo, início"
+        aria-label="CultHub Brasil, início"
         className="inline-flex shrink-0 items-center gap-2 text-maroon no-underline"
       >
         <MapPin strokeWidth={2.5} className="size-9 max-sm:size-7" />
         <span>
           <span className="block text-2xl leading-none font-extrabold tracking-tighter">CultHub</span>
-          <span className="mt-1 block text-2xs leading-tight font-bold tracking-wordmark">SÃO PAULO</span>
+          <span className="mt-1 block text-2xs leading-tight font-bold tracking-wordmark">BRASIL</span>
         </span>
       </Link>
 

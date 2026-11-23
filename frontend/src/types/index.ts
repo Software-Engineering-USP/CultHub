@@ -34,6 +34,8 @@ export interface CultEvent {
   /* Preço em texto para exibição na UI */
   price: string
   priceValue: number
+  /** Página oficial do evento no provedor, quando disponível. */
+  officialUrl?: string
   /** Caminho em public/assets */
   image: string
   imageAlt: string

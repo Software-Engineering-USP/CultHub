@@ -28,7 +28,7 @@ describe('Home', () => {
       paths.event('6f2da8a0-ccaa-4c27-a260-ec471e7c7ec1'),
     )
     expect(screen.getByText('Exibindo 2 de 2 evento(s)')).toBeInTheDocument()
-    expect(document.title).toBe('CultHub | Explore São Paulo')
+    expect(document.title).toBe('CultHub Brasil | Explore eventos culturais')
   })
 
   it('mantém o mapa e a legenda de categorias', async () => {

@@ -14,6 +14,7 @@ export interface ApiEvent {
   descricao: string
   genero: string
   categorias: CategoryId[]
+  url_externa?: string
   data_inicio: string
   hora_inicio: string | null
   inicio: string | null
@@ -220,6 +221,7 @@ export function toCultEvent(event: ApiEvent, preferredCategory?: CategoryId): Ev
     schedule: formatSchedule(event),
     price,
     priceValue,
+    officialUrl: event.url_externa || undefined,
     image: image?.url ?? '/assets/event-placeholder.svg',
     imageAlt: `Imagem do evento ${event.titulo}`,
     saved: event.salvo ?? false,
