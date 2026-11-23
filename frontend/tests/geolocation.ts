@@ -34,10 +34,16 @@ export function stubGeolocation(
 
 /** GPS falso que só responde quando o teste manda (`succeed`/`fail`), para testar respostas atrasadas. */
 export function pendingGps() {
-  const calls: { success: PositionCallback; failure?: PositionErrorCallback | null }[] = []
-  const getCurrentPosition = vi.fn((success: PositionCallback, failure?: PositionErrorCallback | null) => {
-    calls.push({ success, failure })
-  })
+  const calls: {
+    success: PositionCallback
+    failure?: PositionErrorCallback | null
+    options?: PositionOptions
+  }[] = []
+  const getCurrentPosition = vi.fn(
+    (success: PositionCallback, failure?: PositionErrorCallback | null, options?: PositionOptions) => {
+      calls.push({ success, failure, options })
+    },
+  )
   return {
     getCurrentPosition,
     succeed: (latitude: number, longitude: number, call = calls.length - 1) =>

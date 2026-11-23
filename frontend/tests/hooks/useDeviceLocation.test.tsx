@@ -179,4 +179,70 @@ describe('useDeviceLocation', () => {
       expect(gps.getCurrentPosition).not.toHaveBeenCalled()
     })
   })
+
+  describe('revisão da #101', () => {
+    it('clicar no botão durante a leitura silenciosa termina a checagem', async () => {
+      const gps = pendingGps()
+      stubGeolocation(fakePermission('granted'), gps.getCurrentPosition)
+      const { result } = renderHook(() => useDeviceLocation())
+      await waitFor(() => expect(gps.getCurrentPosition).toHaveBeenCalledOnce())
+      expect(result.current.checking).toBe(true)
+
+      act(() => result.current.request())
+      expect(result.current.checking).toBe(false)
+      // A leitura silenciosa, agora superada, termina sem voltar a "conferindo".
+      await act(async () => gps.succeed(1, 2, 0))
+      expect(result.current.checking).toBe(false)
+    })
+
+    it('no StrictMode, registra um listener só e lê o GPS uma vez', async () => {
+      const permission = fakePermission('granted')
+      const listen = vi.spyOn(permission, 'addEventListener')
+      let answer!: (status: PermissionStatus) => void
+      const gps = pendingGps()
+      stubGeolocation(fakePermission('prompt'), gps.getCurrentPosition)
+      vi.mocked(navigator.permissions.query).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            answer = resolve
+          }),
+      )
+      renderHook(() => useDeviceLocation(), { reactStrictMode: true })
+
+      await act(async () => answer(permission))
+
+      expect(listen).toHaveBeenCalledOnce()
+      expect(gps.getCurrentPosition).toHaveBeenCalledOnce()
+    })
+
+    it('a leitura silenciosa é rápida e a do botão é precisa', async () => {
+      const gps = pendingGps()
+      stubGeolocation(fakePermission('granted'), gps.getCurrentPosition)
+      const { result } = renderHook(() => useDeviceLocation())
+      await waitFor(() => expect(gps.getCurrentPosition).toHaveBeenCalledOnce())
+      act(() => result.current.request())
+
+      const [silenciosa, botao] = gps.getCurrentPosition.mock.calls.map((call) => call[2])
+      expect(silenciosa).toMatchObject({ enableHighAccuracy: false, maximumAge: 300_000 })
+      expect(botao).toMatchObject({ enableHighAccuracy: true })
+    })
+
+    it('um pedido superado não libera a vez do pedido mais novo', async () => {
+      const permission = fakePermission('prompt')
+      const gps = pendingGps()
+      stubGeolocation(permission, gps.getCurrentPosition)
+      const { result } = renderHook(() => useDeviceLocation())
+      await waitFor(() => expect(result.current.checking).toBe(false))
+
+      act(() => result.current.request())
+      act(() => result.current.request())
+      await act(async () => gps.succeed(1, 1, 0))
+      // Se o primeiro tivesse liberado a vez, esta mudança iniciaria outra leitura e descartaria a segunda.
+      act(() => permission.change('granted'))
+      await act(async () => gps.succeed(2, 2, 1))
+
+      expect(result.current.position).toEqual({ latitude: 2, longitude: 2 })
+      expect(gps.getCurrentPosition).toHaveBeenCalledTimes(2)
+    })
+  })
 })

@@ -147,4 +147,14 @@ describe('EventsMap', () => {
     expect(screen.queryByRole('img', { name: 'Você está aqui' })).not.toBeInTheDocument()
     setView.mockRestore()
   })
+
+  it('atualiza o pino quando o evento muda sem mudar o id', () => {
+    const props = { userPosition: null, recenter: 0, onSelect: vi.fn() }
+    const { rerender } = render(<EventsMap {...props} events={[evento]} />)
+
+    rerender(<EventsMap {...props} events={[{ ...evento, title: 'Título novo' }]} />)
+
+    expect(screen.queryByRole('img', { name: evento.title })).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Título novo' })).toBeInTheDocument()
+  })
 })

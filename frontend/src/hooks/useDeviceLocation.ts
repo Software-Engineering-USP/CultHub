@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { PERMISSION_DENIED, readPosition } from '@/lib/geolocation'
+import { PERMISSION_DENIED, PRECISE, QUICK, readPosition } from '@/lib/geolocation'
 import type { Coordinates } from '@/types'
 
 export type LocationStatus = 'idle' | 'locating' | 'denied' | 'unavailable'
@@ -39,7 +39,7 @@ export function useDeviceLocation(): DeviceLocation {
       setChecking(false)
       return
     }
-    readPosition()
+    readPosition(QUICK)
       .then((next) => {
         if (!mounted.current || current !== generation.current) return
         setPosition(next)
@@ -55,6 +55,9 @@ export function useDeviceLocation(): DeviceLocation {
 
   useEffect(() => {
     mounted.current = true
+    // Local a cada execução, e não o ref: no StrictMode (montar, limpar, montar) o ref volta a ser true
+    // antes de a primeira consulta responder, e ela registraria um listener que ninguém remove.
+    let active = true
     let permission: PermissionStatus | undefined
     const onChange = () => {
       if (permission) onPermission(permission.state)
@@ -64,16 +67,17 @@ export function useDeviceLocation(): DeviceLocation {
         .query({ name: 'geolocation' })
         .then((status) => {
           // Desmontou antes da resposta: não registra nada que depois não seria removido.
-          if (!mounted.current) return
+          if (!active) return
           permission = status
           status.addEventListener('change', onChange)
           onPermission(status.state)
         })
         .catch(() => {
-          if (mounted.current) setChecking(false)
+          if (active) setChecking(false)
         })
     }
     return () => {
+      active = false
       mounted.current = false
       permission?.removeEventListener('change', onChange)
     }
@@ -88,7 +92,9 @@ export function useDeviceLocation(): DeviceLocation {
     const current = generation.current
     requesting.current = true
     setStatus('locating')
-    readPosition()
+    // O pedido invalida a leitura silenciosa em andamento, que então não terminaria a checagem.
+    setChecking(false)
+    readPosition(PRECISE)
       .then((next) => {
         if (!mounted.current || current !== generation.current) return
         setPosition(next)
@@ -100,7 +106,8 @@ export function useDeviceLocation(): DeviceLocation {
         setStatus(error.code === PERMISSION_DENIED ? 'denied' : 'unavailable')
       })
       .finally(() => {
-        requesting.current = false
+        // Um pedido superado não pode liberar a vez do pedido mais novo, ainda em andamento.
+        if (current === generation.current) requesting.current = false
       })
   }, [])
 

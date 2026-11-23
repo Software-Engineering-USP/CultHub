@@ -77,6 +77,13 @@ function eventChoices(events: CultEvent[], onSelect: (id: string) => void) {
   return list
 }
 
+/** Tudo o que o pino mostra (cor, rótulo, tooltip, popup): se nada mudou, o marcador é reaproveitado. */
+function markerContent(group: CultEvent[]) {
+  return JSON.stringify(
+    group.map((event) => [event.id, event.title, eventMapCategory(event), event.eventDate, event.eventTime]),
+  )
+}
+
 function placeMarker(group: CultEvent[], onSelect: (id: string) => void) {
   const first = group[0]!
   const labels = group.map(eventLabel)
@@ -119,7 +126,7 @@ export default function EventsMap({
   const map = useRef<L.Map | null>(null)
   const select = useRef(onSelect)
   // Um marcador por local, guardado com os eventos dele: "carregar mais" só cria os novos.
-  const markers = useRef(new Map<string, { ids: string; marker: L.Marker }>())
+  const markers = useRef(new Map<string, { shown: string; marker: L.Marker }>())
   const userMarker = useRef<L.Marker | null>(null)
   const centered = useRef(false)
   const lastRecenter = useRef(recenter)
@@ -165,12 +172,12 @@ export default function EventsMap({
     }
     for (const [key, eventsAtPlace] of byLocation) {
       const group = uniqueOccurrences(eventsAtPlace)
-      const ids = group.map((event) => event.id).join(',')
+      const shown = markerContent(group)
       const existing = markers.current.get(key)
-      if (existing?.ids === ids) continue
+      if (existing?.shown === shown) continue
       existing?.marker.remove()
       markers.current.set(key, {
-        ids,
+        shown,
         marker: placeMarker(group, (id) => select.current(id)).addTo(instance),
       })
     }
