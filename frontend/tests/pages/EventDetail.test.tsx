@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import EventPage from '@/components/events/EventPage'
 import * as demo from '@/lib/demo'
 import { paths, routes } from '@/lib/paths'
@@ -9,6 +9,7 @@ import { ApiError as ActionApiError, api } from '@/services/api'
 import { catalogApi, ApiError as CatalogApiError, toCultEvent } from '@/services/catalog'
 import type { ApiEvent } from '@/services/catalog'
 import { rotasApi } from '@/services/rotas'
+import { apiAttendee } from '@tests/fixtures/attendees'
 import { apiEvent } from '@tests/fixtures/catalog'
 import { apiComment, commentPage } from '@tests/fixtures/comments'
 import { renderWithRouter } from '@tests/render'
@@ -42,8 +43,46 @@ function renderEvent(
 }
 
 describe('EventDetail', () => {
+  beforeEach(() => {
+    vi.spyOn(api.agenda, 'attendees').mockResolvedValue(commentPage([]))
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('mostra quem vai e recarrega a lista ao confirmar presença', async () => {
+    const attendees = vi
+      .spyOn(api.agenda, 'attendees')
+      .mockResolvedValueOnce(commentPage([apiAttendee()]))
+      .mockResolvedValueOnce(
+        commentPage([apiAttendee({ id: 'livia', nome: 'Lívia Costa', iniciais: 'LC' }), apiAttendee()]),
+      )
+    vi.spyOn(api.events, 'attend').mockResolvedValue()
+    const { user } = renderEvent('sp-jazz-blues-festival', undefined, { total_presencas: 1 })
+
+    const section = within(await screen.findByRole('region', { name: 'Quem vai' }))
+    expect(await section.findByRole('link', { name: 'Rafael Martins' })).toHaveAttribute(
+      'href',
+      paths.user('rafael-martins'),
+    )
+    expect(attendees).toHaveBeenCalledWith('sp-jazz-blues-festival', 1)
+
+    await user.click(screen.getByRole('button', { name: 'Vou' }))
+
+    expect(await section.findByRole('link', { name: 'Lívia Costa' })).toBeInTheDocument()
+    expect(attendees).toHaveBeenCalledTimes(2)
+    expect(screen.getByText('2 pessoas confirmaram presença.')).toBeInTheDocument()
+  })
+
+  it('visitante vê só o total e o convite para entrar e ver quem vai', async () => {
+    const attendees = vi.spyOn(api.agenda, 'attendees')
+    renderEvent('sp-jazz-blues-festival', null, { total_presencas: 3 })
+
+    expect(await screen.findByText('3 pessoas confirmaram presença.')).toBeInTheDocument()
+    expect(screen.getByText(/para salvar o evento, confirmar presença e ver quem vai\./)).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Quem vai' })).not.toBeInTheDocument()
+    expect(attendees).not.toHaveBeenCalled()
   })
 
   it('mostra o evento, o caminho da página e os links para planejar a visita', async () => {

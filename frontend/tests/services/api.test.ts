@@ -62,6 +62,8 @@ describe('api', () => {
     await api.agenda.attendances('passadas', 3)
     await api.agenda.calendar('2026-11-01', '2026-11-30')
     await api.agenda.calendar('2026-11-01', '2026-11-30', 2)
+    await api.agenda.attendees('evento/42')
+    await api.agenda.attendees('evento/42', 2)
 
     expect(fetchMock.mock.calls.map(([url, options]) => [url, (options as RequestInit).method])).toEqual([
       ['/api/eventos/evento%2F42/salvar/', 'POST'],
@@ -74,6 +76,8 @@ describe('api', () => {
       ['/api/eu/presencas/?quando=passadas&page=3', 'GET'],
       ['/api/eu/agenda/?de=2026-11-01&ate=2026-11-30', 'GET'],
       ['/api/eu/agenda/?de=2026-11-01&ate=2026-11-30&page=2', 'GET'],
+      ['/api/eventos/evento%2F42/presencas/', 'GET'],
+      ['/api/eventos/evento%2F42/presencas/?page=2', 'GET'],
     ])
   })
 

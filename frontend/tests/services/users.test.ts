@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatMemberSince, toPublicProfile } from '@/services/users'
+import { formatMemberSince, toAttendee, toPublicProfile } from '@/services/users'
 
 describe('toPublicProfile', () => {
   it('traduz os campos da API', () => {
@@ -19,6 +19,16 @@ describe('toPublicProfile', () => {
       city: '',
       preferences: ['art'],
       memberSince: '2026-11-05',
+    })
+  })
+})
+
+describe('toAttendee', () => {
+  it('traduz os campos da API', () => {
+    expect(toAttendee({ id: 'u1', nome: 'Caio Prado', iniciais: 'CP' })).toEqual({
+      id: 'u1',
+      name: 'Caio Prado',
+      initials: 'CP',
     })
   })
 })

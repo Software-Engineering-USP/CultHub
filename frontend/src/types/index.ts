@@ -86,6 +86,13 @@ export interface PublicProfile {
   memberSince: string
 }
 
+/** Pessoa que confirmou presença num evento (só o que o perfil público já mostra). */
+export interface Attendee {
+  id: string
+  name: string
+  initials: string
+}
+
 export interface CommentAuthor {
   id: string
   name: string
