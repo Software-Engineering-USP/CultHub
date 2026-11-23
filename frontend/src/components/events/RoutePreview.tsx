@@ -13,7 +13,7 @@ import type { CultEvent } from '@/types'
 
 function summary(state: RouteState | undefined): { time: string; detail: string } {
   if (!state || state.status === 'loading') return { time: '…', detail: 'Calculando' }
-  if (state.status === 'error') return { time: '—', detail: 'Indisponível desta partida' }
+  if (state.status === 'error') return { time: '—', detail: state.short ?? 'Indisponível desta partida' }
   const [route] = state.routes
   if (!route) return { time: '—', detail: 'Sem trajeto desta partida' }
   return { time: formatDuration(route.duracao_segundos), detail: formatDistance(route.distancia_metros) }
@@ -22,9 +22,10 @@ function summary(state: RouteState | undefined): { time: string; detail: string 
 /** Tempos na página do evento, a partir de uma partida estimada (ver usePreviewOrigin). */
 export default function RoutePreview({ event }: Readonly<{ event: CultEvent }>) {
   const preview = usePreviewOrigin(event.location)
-  const calculation = useEventRoutes(event.id, preview?.origin)
+  const calculation = useEventRoutes(event.id, preview?.origin, event.location)
   const routes = calculation?.routes
-  const failed = routes && Object.values(routes).some((state) => state.status === 'error')
+  // Só oferece repetir quando pode dar certo (ex.: não adianta para "longe demais").
+  const failed = routes && Object.values(routes).some((state) => state.status === 'error' && state.retryable)
   const destination = [event.venue, event.venueAddress].filter(Boolean).join(', ')
 
   return (

@@ -12,13 +12,14 @@ from rest_framework.test import APITestCase
 from rest_framework.throttling import ScopedRateThrottle
 
 from catalogo.models import Evento, Local
-from rotas.osrm import MODOS, ErroOSRM
+from rotas.osrm import MODOS, ErroOSRM, FilaCheia
 from rotas.views import (
     DISTANCIA_MAXIMA_KM,
     ERRO_ROTA,
     LOCAL_FORA_DO_MAPA,
     LOCAL_SEM_COORDENADAS,
     MODOS_DE_ROTA,
+    ROTAS_OCUPADO,
     _rotas_do_cache,
 )
 
@@ -258,6 +259,21 @@ class RotaEventoTest(APITestCase):
         (linha,) = logs.output
         self.assertIn("OSRM falhou: tempo esgotado", linha)
         self.assertNotIn("23.58", linha)
+
+    def test_fila_cheia_da_503_para_o_front_tentar_de_novo(self, calcular):
+        calcular.side_effect = [
+            FilaCheia("muitas requisições na fila"),
+            [ROTA],
+        ]
+
+        primeira = self.get()
+        segunda = self.get()
+
+        self.assertEqual(primeira.status_code, 503)
+        self.assertEqual(primeira.json(), ROTAS_OCUPADO)
+        self.assertEqual(primeira["Retry-After"], "2")
+        # Como o 502, não vai para o cache: a próxima tentativa calcula.
+        self.assertEqual(segunda.status_code, 200)
 
     def test_rotas_ficam_fora_do_cache_padrao(self, calcular):
         self.get()

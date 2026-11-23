@@ -51,6 +51,10 @@ class ErroOSRM(Exception):
     """Erro controlado ao consultar o OSRM."""
 
 
+class FilaCheia(ErroOSRM):
+    """A fila para o OSRM público estava cheia: vale tentar de novo logo."""
+
+
 def _codigo(dados):
     """Campo `code` da resposta, só se for texto."""
     codigo = dados.get("code")
@@ -72,7 +76,7 @@ def _corpo_sem_rota(erro):
 
 def _esperar_vez():
     if not _vez.aguardar():
-        raise ErroOSRM("muitas requisições na fila")
+        raise FilaCheia("muitas requisições na fila")
 
 
 def _ponto(coordenada):

@@ -102,4 +102,15 @@ describe('RoutePreview', () => {
     expect(screen.queryByRole('list', { name: 'Tempo até o local' })).not.toBeInTheDocument()
     expect(spy).not.toHaveBeenCalled()
   })
+
+  it('de longe, mostra o motivo no cartão a pé, sem chamar o backend nem oferecer repetir', async () => {
+    stubPermission('granted', { latitude: -23.2, longitude: -46.0 })
+    const spy = vi.spyOn(rotasApi, 'rota').mockResolvedValue([rota(3600, 70000)])
+    renderWithRouter(<RoutePreview event={emSaoPaulo} />)
+
+    const times = within(await screen.findByRole('list', { name: 'Tempo até o local' }))
+    expect(await times.findByText('mais de 30 km')).toBeInTheDocument()
+    await waitFor(() => expect(spy.mock.calls.map(([, , modo]) => modo)).toEqual(['carro']))
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+  })
 })

@@ -68,7 +68,7 @@ describe('EventDetail', () => {
       'href',
       paths.eventOrigin(id),
     )
-    expect(screen.getByRole('link', { name: 'Escolher outra partida' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Escolher outra partida' })).toHaveAttribute(
       'href',
       paths.eventOrigin(id),
     )

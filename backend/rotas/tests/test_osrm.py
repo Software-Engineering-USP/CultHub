@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from django.test import SimpleTestCase, override_settings
 
-from rotas.osrm import ErroOSRM, _consultar, calcular_rotas
+from rotas.osrm import ErroOSRM, FilaCheia, _consultar, calcular_rotas
 from rotas.transporte import USER_AGENT, Espacador
 
 ORIGEM = (-23.5874, -46.6576)
@@ -222,7 +222,8 @@ class TransporteTest(SemEsperaTestCase):
     def test_fila_cheia_e_erro_sem_chamar(self, urlopen):
         self.aguardar.return_value = False
 
-        with self.assertRaises(ErroOSRM):
+        # Subclasse de ErroOSRM, para a view responder 503 em vez de 502.
+        with self.assertRaises(FilaCheia):
             _consultar("carro", ORIGEM, DESTINO)
         urlopen.assert_not_called()
 
