@@ -1,8 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 
@@ -28,6 +30,23 @@ class Provedor(models.TextChoices):
     MANUAL = "manual", "Manual"
 
 
+# Com o ano 1 ou 9999, converter o horário para outro fuso (UTC ao salvar, ou
+# São Paulo na API) passa do limite do Python e a listagem quebra. Qualquer
+# fuso cabe entre os anos 2 e 9998.
+DATA_MINIMA = date(2, 1, 1)
+DATA_MAXIMA = date(9998, 12, 31)
+_DATA_FORA = "Data fora do intervalo aceito (anos 2 a 9998)."
+VALIDAR_DATA = [
+    MinValueValidator(DATA_MINIMA, message=_DATA_FORA),
+    MaxValueValidator(DATA_MAXIMA, message=_DATA_FORA),
+]
+
+# Limite do campo de preço (10 dígitos, 2 decimais). O SQLite grava valores
+# maiores, mas o Django falha ao lê-los, e um evento só derrubava a listagem.
+PRECO_MAXIMO = Decimal("99999999.99")
+VALIDAR_PRECO = [MinValueValidator(0), MaxValueValidator(PRECO_MAXIMO)]
+
+
 # Local (casa de show, teatro...) de um evento, importado ou cadastrado.
 class Local(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -41,10 +60,18 @@ class Local(models.Model):
     estado = models.CharField(max_length=2, blank=True)
     pais = models.CharField(max_length=2, default="BR")
     latitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
     )
     longitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
     )
 
     class Meta:
@@ -97,11 +124,11 @@ class Evento(models.Model):
         on_delete=models.PROTECT,
         related_name="eventos",
     )
-    data_inicio = models.DateField()
+    data_inicio = models.DateField(validators=VALIDAR_DATA)
     hora_inicio = models.TimeField(null=True, blank=True)
     # Calculado em `save()` a partir de data/hora e `fuso`.
     inicio = models.DateTimeField(null=True, editable=False)
-    data_fim = models.DateField(null=True, blank=True)
+    data_fim = models.DateField(null=True, blank=True, validators=VALIDAR_DATA)
     hora_fim = models.TimeField(null=True, blank=True)
     fim = models.DateTimeField(null=True, editable=False)
     fuso = models.CharField(max_length=50, default="America/Sao_Paulo")
@@ -194,10 +221,18 @@ class FaixaPreco(models.Model):
     tipo = models.CharField(max_length=30, blank=True)
     moeda = models.CharField(max_length=3, default="BRL")
     minimo = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=VALIDAR_PRECO,
     )
     maximo = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=VALIDAR_PRECO,
     )
 
     class Meta:

@@ -108,3 +108,63 @@ class CatalogoAdminTest(TestCase):
         )
         self.assertEqual(resposta.status_code, 302)
         self.assertEqual(Local.objects.get().nome, "Sesc")
+
+    def test_local_com_coordenada_impossivel_mostra_erro(self):
+        resposta = self.client.post(
+            "/admin/catalogo/local/add/",
+            {
+                "provedor": Provedor.MANUAL,
+                "nome": "Teatro",
+                "pais": "BR",
+                "latitude": "-123.45",
+                "longitude": "500",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Local.objects.exists())
+        erros = resposta.context["adminform"].form.errors
+        self.assertIn("latitude", erros)
+        self.assertIn("longitude", erros)
+
+    def test_data_que_nao_cabe_em_utc_mostra_erro(self):
+        resposta = self.client.post(
+            "/admin/catalogo/evento/add/",
+            self._formulario(data_inicio="9999-12-31", hora_inicio="23:00"),
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("data_inicio", resposta.context["adminform"].form.errors)
+        self.assertFalse(Evento.objects.exists())
+
+    def test_ano_1_em_utc_tambem_e_recusado(self):
+        # Converte para UTC, mas não para o horário de São Paulo da API.
+        resposta = self.client.post(
+            "/admin/catalogo/evento/add/",
+            self._formulario(
+                data_inicio="0001-01-01", hora_inicio="01:00", fuso="UTC"
+            ),
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("data_inicio", resposta.context["adminform"].form.errors)
+        self.assertFalse(Evento.objects.exists())
+
+    def test_os_dois_erros_da_data_de_fim_aparecem_juntos(self):
+        resposta = self.client.post(
+            "/admin/catalogo/evento/add/",
+            self._formulario(data_fim="0001-01-01"),
+        )
+        erros = resposta.context["adminform"].form.errors["data_fim"]
+        self.assertEqual(len(erros), 2)
+        self.assertIn("Data fora do intervalo aceito (anos 2 a 9998).", erros)
+        self.assertIn("A data de fim não pode ser anterior ao início.", erros)
+
+    def test_preco_negativo_no_admin_mostra_erro(self):
+        dados = self._formulario(
+            **{
+                "faixas_preco-TOTAL_FORMS": 1,
+                "faixas_preco-0-moeda": "BRL",
+                "faixas_preco-0-minimo": "-5",
+            }
+        )
+        resposta = self.client.post("/admin/catalogo/evento/add/", dados)
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(Evento.objects.exists())

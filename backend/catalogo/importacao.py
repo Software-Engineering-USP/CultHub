@@ -3,7 +3,7 @@
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, time
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
@@ -11,6 +11,9 @@ from django.utils import timezone
 
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
+    DATA_MAXIMA,
+    DATA_MINIMA,
+    PRECO_MAXIMO,
     CategoriaCultural,
     Evento,
     FaixaPreco,
@@ -72,6 +75,39 @@ def _decimal(valor):
     return None if valor in (None, "") else Decimal(str(valor))
 
 
+CENTAVO = Decimal("0.01")
+GRAU = Decimal("0.000001")
+
+
+def _numero(valor, casas, minimo, maximo):
+    """Número arredondado para `casas`; fora de [minimo, maximo] é erro.
+
+    Arredonda antes de conferir o limite: 99999999.994 vira 99999999.99, que
+    cabe no campo.
+    """
+    numero = _decimal(valor)
+    if numero is None:
+        return None
+    if not numero.is_finite():
+        raise ValueError(f"número inválido: {valor}")
+    numero = numero.quantize(casas, rounding=ROUND_HALF_UP)
+    if not minimo <= numero <= maximo:
+        raise ValueError(f"fora da faixa: {valor}")
+    return numero
+
+
+def _data(valor):
+    """Data do evento; fora dos anos aceitos é erro (ver `DATA_MINIMA`)."""
+    dia = date.fromisoformat(valor)
+    if not DATA_MINIMA <= dia <= DATA_MAXIMA:
+        raise ValueError(f"data fora do intervalo: {valor}")
+    return dia
+
+
+def _preco(valor):
+    return _numero(valor, CENTAVO, 0, PRECO_MAXIMO)
+
+
 def _salvar_local(venue):
     if venue is None:
         return None
@@ -85,8 +121,10 @@ def _salvar_local(venue):
             "cidade": _texto(_objeto(venue, "city"), "name"),
             "estado": _texto(_objeto(venue, "state"), "stateCode"),
             "pais": _texto(_objeto(venue, "country"), "countryCode"),
-            "latitude": _decimal(coordenadas.get("latitude")),
-            "longitude": _decimal(coordenadas.get("longitude")),
+            "latitude": _numero(coordenadas.get("latitude"), GRAU, -90, 90),
+            "longitude": _numero(
+                coordenadas.get("longitude"), GRAU, -180, 180
+            ),
         },
     )
     return local
@@ -126,7 +164,7 @@ def _salvar_evento(dados, agora):
             "url_externa": _texto(dados, "url"),
             "situacao": _texto(_objeto(datas, "status"), "code"),
             "local": _salvar_local(venue),
-            "data_inicio": date.fromisoformat(inicio["localDate"]),
+            "data_inicio": _data(inicio["localDate"]),
             "hora_inicio": _hora(inicio),
             "fuso": datas.get("timezone")
             or (venue or {}).get("timezone")
@@ -157,8 +195,8 @@ def _salvar_evento(dados, agora):
             evento=evento,
             tipo=_texto(faixa, "type"),
             moeda=faixa.get("currency") or "BRL",
-            minimo=_decimal(faixa.get("min")),
-            maximo=_decimal(faixa.get("max")),
+            minimo=_preco(faixa.get("min")),
+            maximo=_preco(faixa.get("max")),
         )
         for faixa in dados.get("priceRanges") or []
     )
