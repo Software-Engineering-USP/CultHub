@@ -175,8 +175,10 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
           type="button"
           variant={nearby ? 'default' : 'outline'}
           size="sm"
-          disabled={myLocation.status === 'locating'}
+          aria-disabled={myLocation.status === 'locating'}
+          aria-describedby={nearby ? undefined : 'filtro-local-aviso'}
           onClick={() => {
+            if (myLocation.status === 'locating') return
             if (nearby) {
               setNearby(null)
             } else if (myLocation.position) {
@@ -209,7 +211,9 @@ export default function EventFilters({ onClose }: Readonly<EventFiltersProps>) {
             </select>
           </div>
         ) : (
-          <p className="mt-1 text-2xs text-muted-foreground">{locationHint(myLocation.status)}</p>
+          <p id="filtro-local-aviso" className="mt-1 text-2xs text-muted-foreground">
+            {locationHint(myLocation.status)}
+          </p>
         )}
       </fieldset>
 

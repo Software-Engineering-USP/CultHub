@@ -7,7 +7,7 @@ import { toCultEvent } from '@/services/catalog'
 import { rotasApi } from '@/services/rotas'
 import type { RotaCalculada } from '@/services/rotas'
 import { apiEvent } from '@tests/fixtures/catalog'
-import { fakePermission } from '@tests/geolocation'
+import { fakePermission, restoreGeolocation, stubGeolocation } from '@tests/geolocation'
 import { renderWithRouter } from '@tests/render'
 
 const rota = (duracao: number, distancia: number): RotaCalculada => ({
@@ -20,20 +20,15 @@ const local = { nome: 'Auditório Ibirapuera', endereco: '', cidade: 'São Paulo
 const emSaoPaulo = toCultEvent(apiEvent({ local: { ...local, latitude: -23.5874, longitude: -46.6576 } }))
 
 function stubPermission(state: PermissionState, position?: { latitude: number; longitude: number }) {
-  vi.stubGlobal('navigator', {
-    ...navigator,
-    permissions: { query: vi.fn().mockResolvedValue(fakePermission(state)) },
-    geolocation: {
-      getCurrentPosition: vi.fn(
-        (success: PositionCallback) => position && success({ coords: position } as GeolocationPosition),
-      ),
-    },
-  })
+  stubGeolocation(
+    fakePermission(state),
+    vi.fn((success: PositionCallback) => position && success({ coords: position } as GeolocationPosition)),
+  )
 }
 
 describe('RoutePreview', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
+    restoreGeolocation()
     vi.restoreAllMocks()
   })
 
