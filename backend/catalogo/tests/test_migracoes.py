@@ -2,6 +2,7 @@ from decimal import Decimal
 from importlib import import_module
 
 from django.apps import apps
+from django.db import connection
 from django.test import TestCase
 
 from catalogo.models import FaixaPreco, Local
@@ -17,9 +18,13 @@ class LimparValoresInvalidosTest(TestCase):
         evento = criar_evento()
         boa = FaixaPreco.objects.create(evento=evento, minimo=10, maximo=20)
         ruim = FaixaPreco.objects.create(evento=evento, minimo=10, maximo=20)
-        # `update` grava sem validar, como o SQLite aceitava na importação.
+        # `update` grava sem validar. Preço acima do tamanho da coluna só o
+        # SQLite aceita (o Postgres recusa com "numeric field overflow");
+        # negativo e coordenadas impossíveis cabem nos dois.
+        gigante = connection.vendor == "sqlite"
         FaixaPreco.objects.filter(pk=ruim.pk).update(
-            minimo=Decimal(100000000), maximo=Decimal(-1)
+            minimo=Decimal(100000000) if gigante else Decimal(-5),
+            maximo=Decimal(-1),
         )
         local_ruim = Local.objects.create(nome="Ruim")
         Local.objects.filter(pk=local_ruim.pk).update(
