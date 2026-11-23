@@ -231,20 +231,37 @@ class ResponderTest(ComentariosBase):
         self.assertEqual(segunda.json()["resposta_a"], str(raiz.pk))
         self.assertEqual(segunda.json()["nivel"], 1)
 
-    def test_nao_responde_comentario_removido_ou_de_evento_removido(self):
-        removido = self.comentar()
-        removido.removido_em = timezone.now()
-        removido.save()
+    def test_responde_a_comentario_removido_pelos_dois_caminhos(self):
+        raiz = self.comentar("Raiz")
+        filha = self.comentar("Filha", autor=self.bia, resposta_a=raiz)
+        raiz.removido_em = timezone.now()
+        raiz.save()
+
+        direto = self.client.post(self.url(raiz), {"texto": "Direto"})
+        pela_filha = self.client.post(self.url(filha), {"texto": "Pela filha"})
+
+        self.assertEqual(
+            (direto.status_code, pela_filha.status_code), (201, 201)
+        )
+        # Com um nível de resposta, as duas ficam embaixo do removido.
+        self.assertEqual(direto.json()["resposta_a"], str(raiz.pk))
+        self.assertEqual(pela_filha.json()["resposta_a"], str(raiz.pk))
+        [dados] = self.client.get(self.lista()).json()["results"]
+        self.assertTrue(dados["removido"])
+        # A ordem das respostas não é o que este teste confere.
+        self.assertCountEqual(
+            [r["texto"] for r in dados["respostas"]],
+            ["Filha", "Direto", "Pela filha"],
+        )
+
+    def test_evento_removido_nao_recebe_resposta(self):
         ativo = self.comentar()
         self.evento.removido_em = timezone.now()
         self.evento.save(update_fields=("removido_em",))
-
+        resposta = self.client.post(self.url(ativo), {"texto": "x"})
+        self.assertEqual(resposta.status_code, 409)
         self.assertEqual(
-            self.client.post(self.url(removido), {"texto": "x"}).status_code,
-            409,
-        )
-        self.assertEqual(
-            self.client.post(self.url(ativo), {"texto": "x"}).status_code, 409
+            resposta.json()["detail"], "Este evento foi removido do catálogo."
         )
 
     def test_valida_texto_e_exige_login(self):

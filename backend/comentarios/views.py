@@ -24,11 +24,10 @@ from comentarios.serializers import (
 )
 
 EVENTO_REMOVIDO = {"detail": "Este evento foi removido do catálogo."}
-COMENTARIO_REMOVIDO = {"detail": "Este comentário foi removido."}
 SO_O_AUTOR = "Só quem escreveu o comentário pode alterá-lo."
 
 _RESPOSTA_409 = OpenApiResponse(
-    description="Evento ou comentário removido (`detail` com a mensagem)."
+    description="Evento removido do catálogo (`detail` com a mensagem)."
 )
 
 
@@ -95,10 +94,8 @@ def comentario_em_json(request, comentario, codigo=status.HTTP_200_OK):
     )
 
 
-def conflito(evento, comentario=None):
-    """409 se o comentário ou o evento foram removidos; senão, None."""
-    if comentario is not None and comentario.removido:
-        return Response(COMENTARIO_REMOVIDO, status=status.HTTP_409_CONFLICT)
+def conflito(evento):
+    """409 se o evento foi removido do catálogo; senão, None."""
     if evento.removido_em is not None:
         return Response(EVENTO_REMOVIDO, status=status.HTTP_409_CONFLICT)
     return None
@@ -176,7 +173,9 @@ class RespostasView(EscritaComLimite, APIView):
         alvo = get_object_or_404(
             Comentario.objects.select_related("evento"), pk=pk
         )
-        return conflito(alvo.evento, alvo) or criar(
+        # Comentário removido também recebe resposta, direto ou por uma
+        # resposta dele: a conversa segue embaixo do aviso "removido".
+        return conflito(alvo.evento) or criar(
             request, alvo.evento, resposta_a=alvo
         )
 
