@@ -172,10 +172,11 @@ def _salvar_local(venue):
             estado_geocodificado="",
             geocodificacao_falhou_em=None,
         )
-    elif anterior.geocodificado_em is not None:
-        # Mesma coordenada já conferida: a resposta do Photon continua
-        # valendo, combinada com o que o Ticketmaster manda agora, sem
-        # consultar de novo.
+    else:
+        # Mesma coordenada: a resposta do Photon guardada (vazia se nunca
+        # houve; provisória nos locais que a 0009 devolveu à fila)
+        # continua valendo, combinada com o que o Ticketmaster manda agora,
+        # sem consultar de novo.
         geocodificado = (
             anterior.cidade_geocodificada,
             anterior.estado_geocodificado,

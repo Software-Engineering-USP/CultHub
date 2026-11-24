@@ -1026,7 +1026,7 @@ class ComandoTest(TestCase):
                 "atualizados: 1",
                 "removidos: 1",
                 "ignorados: 2",
-                "cidades descobertas: 1 de 2 locais conferidos",
+                "cidades achadas pelo Photon: 1 de 2 locais conferidos",
                 "notificações de evento novo: 0",
                 "sem categoria: 1",
                 "  - Halloween 2026 | Soho House",
@@ -1086,9 +1086,11 @@ class ComandoGeocodificaTest(TestCase):
             cidade="", latitude__isnull=False
         ).count()
         self.assertGreater(restantes, 0)
-        self.assertIn("cidades descobertas: 3 de 3 locais conferidos", saida)
         self.assertIn(
-            f"locais sem cidade para a próxima importação: {restantes}",
+            "cidades achadas pelo Photon: 3 de 3 locais conferidos", saida
+        )
+        self.assertIn(
+            f"locais a conferir no Photon na próxima importação: {restantes}",
             saida,
         )
 
@@ -1138,7 +1140,9 @@ class ComandoGeocodificaTest(TestCase):
         with patch(f"{self.comando}.LIMITE_NA_TRANSACAO", 2):
             saida = self.importar()
 
-        self.assertIn("cidades descobertas: 2 de 2 locais conferidos", saida)
+        self.assertIn(
+            "cidades achadas pelo Photon: 2 de 2 locais conferidos", saida
+        )
         self.assertEqual(
             Local.objects.exclude(pk__in=ruins)
             .filter(cidade="São Paulo")

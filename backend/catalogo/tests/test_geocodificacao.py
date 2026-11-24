@@ -629,6 +629,40 @@ class CidadeNaImportacaoTest(TestCase):
                 self.assertEqual(local.geocodificado_em, AGORA)
         self.assertEqual(self.photon.call_count, 1)
 
+    def test_resposta_provisoria_vale_enquanto_espera_o_photon(self):
+        # Como a 0009 deixa um local que o Photon tinha corrigido:
+        # Ticketmaster com PB, resposta provisória Medianeira/PR, na fila.
+        self.venue["city"] = None
+        self.venue["state"] = {"stateCode": "PB"}
+        importar([self.dados], AGORA)
+        Local.objects.filter(pk=self.local().pk).update(
+            cidade="Medianeira",
+            estado="PR",
+            cidade_geocodificada="Medianeira",
+            estado_geocodificado="PR",
+        )
+        self.assertEqual(list(pendentes()), [self.local()])
+
+        # Photon fora: a importação não volta para os dados do Ticketmaster.
+        importar([self.dados], DEPOIS)
+
+        local = self.local()
+        self.assertEqual((local.cidade, local.estado), ("Medianeira", "PR"))
+        self.assertIsNone(local.geocodificado_em)
+
+    def test_so_conta_como_achada_a_cidade_que_veio_do_photon(self):
+        self.venue["city"] = {"name": "Curitiba"}
+        self.venue["state"] = None
+        importar([self.dados], AGORA)
+        self.photon.return_value = ("", "Paraná")
+
+        resumo = completar_cidades(AGORA)
+
+        self.assertEqual(
+            (self.local().cidade, self.local().estado), ("Curitiba", "PR")
+        )
+        self.assertEqual((resumo.conferidos, resumo.descobertos), (1, 0))
+
     def test_meia_coordenada_conta_como_sem_coordenada(self):
         self.venue["location"] = {"latitude": "-25.4"}
         self.venue["city"] = {"name": "Curitiba"}

@@ -1,4 +1,4 @@
-"""Cidade dos locais sem cidade, a partir da coordenada (Photon)."""
+"""Cidade e UF dos locais pela coordenada (Photon) e pelo Ticketmaster."""
 
 import logging
 import time
@@ -36,6 +36,7 @@ _vez = Espacador(
 @dataclass
 class ResumoGeocodificacao:
     conferidos: int = 0
+    # Locais cuja cidade veio do Photon (e não só do Ticketmaster).
     descobertos: int = 0
     # Locais que deram erro no Photon (não passageiro) e foram pulados; ficam
     # pendentes para a próxima importação.
@@ -121,8 +122,8 @@ def completar_cidades(
     (inclusive nesta execução). `eventos`: só os locais desses eventos
     (ex.: os criados nesta importação). Cada local é gravado logo depois
     da consulta.
-    Local conferido (com ou sem cidade descoberta) não é consultado de
-    novo enquanto a coordenada não mudar (ver `_salvar_local`).
+    Local conferido (com ou sem cidade achada) não é consultado de novo
+    enquanto a coordenada não mudar (ver `importacao._salvar_local`).
 
     Falha passageira do Photon (rede, 5xx, limite de uso) interrompe:
     os que faltaram ficam para a próxima vez. Erro de um local só (4xx,
@@ -184,7 +185,8 @@ def _gravar(local, resposta, agora, resumo):
     cidade, uf = combinar(
         local.cidade_informada, local.estado_informado, *resposta
     )
-    if cidade:
+    # A cidade veio do Photon se ele, sozinho, já chega nela.
+    if cidade and cidade == combinar("", "", *resposta)[0]:
         resumo.descobertos += 1
     Local.objects.filter(pk=local.pk).update(
         cidade=cidade,

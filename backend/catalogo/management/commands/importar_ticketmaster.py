@@ -68,10 +68,10 @@ class Command(BaseCommand):
                 "O Ticketmaster não retornou nenhum evento; nada foi "
                 "alterado para não remover o catálogo inteiro."
             )
-        # Locais que ficaram sem cidade em importações anteriores: fora da
-        # transação, cada um gravado logo após a consulta, para não segurar
-        # o banco durante as consultas ao Photon nem perder o que foi
-        # descoberto se algo falhar depois.
+        # Locais que ficaram por conferir no Photon em importações
+        # anteriores: fora da transação, cada um gravado logo após a
+        # consulta, para não segurar o banco durante as consultas ao Photon
+        # nem perder o que foi descoberto se algo falhar depois.
         anteriores = completar_cidades(
             timezone.now(), LIMITE_ANTES_DA_TRANSACAO
         )
@@ -113,7 +113,7 @@ class Command(BaseCommand):
 
     def _escrever_geocodificacao(self, anteriores, novos):
         self.stdout.write(
-            "cidades descobertas: "
+            "cidades achadas pelo Photon: "
             f"{anteriores.descobertos + novos.descobertos} de "
             f"{anteriores.conferidos + novos.conferidos} locais conferidos"
         )
@@ -123,5 +123,6 @@ class Command(BaseCommand):
             self.stdout.write(f"geocodificação interrompida ({falha})")
         if restantes := pendentes().count():
             self.stdout.write(
-                f"locais sem cidade para a próxima importação: {restantes}"
+                f"locais a conferir no Photon na próxima importação: "
+                f"{restantes}"
             )

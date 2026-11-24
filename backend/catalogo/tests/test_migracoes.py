@@ -170,3 +170,28 @@ class GeocodificarDeNovoTest(TestCase):
         self.assertIsNone(completo.geocodificado_em)
         self.assertIsNotNone(sem_coordenada.geocodificado_em)
         self.assertEqual(manual.cidade_informada, "")
+
+    def test_0009_guarda_a_cidade_de_hoje_como_resposta_provisoria(self):
+        coordenada = {
+            "latitude": Decimal("-25.3"),
+            "longitude": Decimal("-54.1"),
+        }
+        corrigido = self.criar("a", **coordenada)
+        ja_respondido = self.criar(
+            "b",
+            cidade_geocodificada="Foz do Iguaçu",
+            estado_geocodificado="PR",
+            **coordenada,
+        )
+        sem_coordenada = self.criar("c")
+
+        copiar_e_geocodificar_de_novo(apps, None)
+
+        for local in (corrigido, ja_respondido, sem_coordenada):
+            local.refresh_from_db()
+        self.assertEqual(
+            (corrigido.cidade_geocodificada, corrigido.estado_geocodificado),
+            ("Medianeira", "PR"),
+        )
+        self.assertEqual(ja_respondido.cidade_geocodificada, "Foz do Iguaçu")
+        self.assertEqual(sem_coordenada.cidade_geocodificada, "")
