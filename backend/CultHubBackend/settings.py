@@ -117,6 +117,7 @@ INSTALLED_APPS = [
     "rotas",
     "comentarios",
     "notificacoes",
+    "localidades",
 ]
 
 MIDDLEWARE = [
