@@ -25,20 +25,25 @@ class LocalidadeDoTextoAntigoTest(SimpleTestCase):
 
     def test_hifen_no_nome_nao_vira_separador(self):
         self.assertEqual(
-            migracao.localidade("Embu-Guaçu"), ("Embu-Guaçu", "SP")
+            migracao.localidade("Embu-Guaçu - SP"), ("Embu-Guaçu", "SP")
         )
 
     def test_so_a_uf(self):
         self.assertEqual(migracao.localidade("rj"), ("", "RJ"))
 
-    def test_cidade_sem_uf_que_so_existe_em_um_estado(self):
-        self.assertEqual(migracao.localidade("Curitiba"), ("Curitiba", "PR"))
-        self.assertEqual(
-            migracao.localidade("São Paulo, BR"), ("São Paulo", "SP")
-        )
-
-    def test_cidade_sem_uf_que_existe_em_varios_estados_fica_sem_uf(self):
-        self.assertEqual(migracao.localidade("bom jesus"), ("Bom Jesus", ""))
+    def test_sem_uf_no_texto_a_uf_nao_e_deduzida(self):
+        # O nome pode ser de um bairro: Moema é município de MG e bairro
+        # de São Paulo; Pinheiros, município do ES.
+        for texto, esperado in (
+            ("Moema", ("Moema", "")),
+            ("Pinheiros", ("Pinheiros", "")),
+            ("Curitiba", ("Curitiba", "")),
+            ("São Paulo, BR", ("São Paulo", "")),
+            ("bom jesus", ("Bom Jesus", "")),
+            ("Embu-Guaçu", ("Embu-Guaçu", "")),
+        ):
+            with self.subTest(texto=texto):
+                self.assertEqual(migracao.localidade(texto), esperado)
 
     def test_cidade_que_nao_existe_na_uf_mantem_so_a_uf(self):
         self.assertEqual(migracao.localidade("Sampa, SP"), ("", "SP"))

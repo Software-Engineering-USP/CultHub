@@ -32,8 +32,8 @@ def _cidade_e_uf(texto):
     aceitava "Cidade, UF", "Cidade - UF", "Cidade-UF", "Cidade – UF",
     "Cidade/UF" e "Cidade UF", mais o estado por extenso depois de um
     separador ("Pinheiros, São Paulo", "Bom Jesus - Piauí"). Um estado
-    sozinho ("SP", "Paraná") é só a UF, a não ser que também seja nome de
-    município dele ("São Paulo").
+    sozinho ("SP", "Paraná") é só a UF; se também for nome de município
+    dele ("São Paulo"), é a cidade e a UF, que valem nos dois casos.
     """
     ufs = {uf.casefold() for uf in estados()}
     partes = [
@@ -52,8 +52,8 @@ def _cidade_e_uf(texto):
         partes[-1:] = [cidade, ultima[-2:]]
     if len(partes) == 1:
         uf = sigla_do_estado(partes[0])
-        if uf and not municipio_oficial(partes[0], uf):
-            return "", uf
+        if uf:
+            return municipio_oficial(partes[0], uf), uf
         return partes[0], ""
     return partes[0], sigla_do_estado(partes[-1])
 
@@ -62,15 +62,16 @@ def localidade(texto):
     """(município oficial, UF) do texto antigo; o que faltar fica "".
 
     Mesma regra dos locais (`localizar_municipio`): com UF, a cidade
-    precisa ser dela ("Medianeira, PB" dá ("", "PB")); sem UF, a cidade de
-    um estado só ganha a UF ("Curitiba" fica no PR), e a de vários fica
-    com o nome oficial e sem UF ("Bom Jesus"): os avisos filtram pela
-    cidade, e Minha conta pede o estado quando a pessoa salvar de novo.
+    precisa ser dela ("Medianeira, PB" dá ("", "PB")). Sem UF no texto, a
+    UF não é deduzida pelo nome, que pode ser de um bairro ("Moema" é
+    município de MG e bairro de São Paulo): fica o nome oficial, sem UF
+    ("Curitiba" dá ("Curitiba", "")). Os avisos filtram pela cidade, e
+    Minha conta pede o estado quando a pessoa salvar de novo.
     """
     cidade, uf = _cidade_e_uf(texto)
     if not cidade:
         return "", uf
-    return localizar_municipio(cidade, uf)
+    return localizar_municipio(cidade, uf, completar_uf=False)
 
 
 def converter_cidades(apps, schema_editor):

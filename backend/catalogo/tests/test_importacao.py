@@ -1113,8 +1113,8 @@ class ComandoGeocodificaTest(TestCase):
         self.assertIsNone(self.antigo.geocodificado_em)
 
     def test_locais_antigos_com_erro_nao_impedem_os_novos(self):
-        # Os antigos que sempre dão erro param a primeira chamada (erros
-        # seguidos), mas os locais novos ainda são conferidos na transação.
+        # Os antigos que sempre dão erro não param a geocodificação nem
+        # impedem que os locais novos sejam conferidos na transação.
         self.antigo.delete()
         ruins = set()
         for numero in range(MAXIMO_ERROS_SEGUIDOS):
@@ -1146,6 +1146,26 @@ class ComandoGeocodificaTest(TestCase):
             2,
         )
         self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS + 2)
+
+    def test_servidor_recusando_tudo_freia_os_locais_novos(self):
+        # Erros seguidos em locais que nunca falharam: na transação, a
+        # geocodificação para no primeiro erro.
+        for numero in range(MAXIMO_ERROS_SEGUIDOS - 1):
+            Local.objects.create(
+                provedor=Provedor.TICKETMASTER,
+                id_externo=f"outro{numero}",
+                nome="Outro",
+                latitude=Decimal("-23.5"),
+                longitude=Decimal(numero),
+            )
+        self.photon.side_effect = ErroPhoton("Photon respondeu HTTP 403")
+
+        saida = self.importar()
+
+        self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS + 1)
+        self.assertIn(
+            "geocodificação interrompida (Photon respondeu HTTP 403)", saida
+        )
 
     def test_photon_fora_nao_e_consultado_de_novo_na_transacao(self):
         self.photon.side_effect = erro_passageiro("Photon respondeu HTTP 503")

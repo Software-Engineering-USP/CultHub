@@ -117,9 +117,11 @@ def _cidade_e_estado(venue, pais, tem_coordenada):
     ("Nocity") ou um bairro ("Pinheiros"), e às vezes omite a UF ou manda
     uma que não existe; ver `localizar_municipio`, que não troca a UF.
     Sem UF válida, a cidade só completa a UF se não houver coordenada; com
-    coordenada, as duas ficam para o Photon, porque o nome pode ser de um
-    bairro de outro estado. Com o nome oficial, o filtro por cidade das
-    notificações compara nomes escritos do mesmo jeito.
+    coordenada, o local fica com o nome e sem UF, e o Photon decide (o
+    nome pode ser de um bairro de outro estado), usando o nome como
+    palpite se não achar nada (ver `geocodificacao._localidade`). Com o
+    nome oficial, o filtro por cidade das notificações compara nomes
+    escritos do mesmo jeito.
     """
     cidade = _texto(_objeto(venue, "city"), "name")
     estado = _texto(_objeto(venue, "state"), "stateCode")
@@ -148,7 +150,9 @@ def _salvar_local(venue):
     ):
         latitude, longitude = anterior.latitude, anterior.longitude
     cidade, estado = _cidade_e_estado(
-        venue, pais, tem_coordenada=latitude is not None
+        venue,
+        pais,
+        tem_coordenada=latitude is not None and longitude is not None,
     )
     dados = {
         "nome": _texto(venue, "name"),
@@ -169,17 +173,18 @@ def _salvar_local(venue):
     # (o local segue no fim da fila de geocodificação).
     if mesma_coordenada:
         del dados["geocodificacao_falhou_em"]
-    # Sem cidade no Ticketmaster e com a mesma coordenada, a conferência no
-    # Photon continua valendo. Se ela achou a cidade, ficam a cidade e a UF
-    # dela; se não achou, a UF continua sendo a do Ticketmaster, que pode
-    # ter sido corrigida.
+    # Sem cidade e UF no Ticketmaster (o que mandaria o local de novo para o
+    # Photon) e com a mesma coordenada, a conferência no Photon continua
+    # valendo. Se ela achou a cidade, ou se o Ticketmaster não manda UF,
+    # ficam a cidade e a UF dela; se não, vale a UF do Ticketmaster, que
+    # pode ter sido corrigida.
     if (
         mesma_coordenada
-        and not dados["cidade"]
+        and not (dados["cidade"] and dados["estado"])
         and anterior.geocodificado_em is not None
     ):
         del dados["geocodificado_em"]
-        if anterior.cidade:
+        if anterior.cidade or not dados["estado"]:
             del dados["cidade"], dados["estado"]
     local, _ = Local.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,

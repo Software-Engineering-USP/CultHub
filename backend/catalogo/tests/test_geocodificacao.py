@@ -195,6 +195,27 @@ class CompletarCidadesTest(TestCase):
         self.assertEqual(len(resumo.com_erro), MAXIMO_ERROS_SEGUIDOS)
         self.assertEqual(pendentes().count(), 5)
 
+    def test_erros_de_locais_que_ja_falharam_nao_interrompem(self):
+        for nome in "ABCD":
+            criar_local(nome, geocodificacao_falhou_em=AGORA)
+        self.photon.side_effect = ErroPhoton(RESPOSTA_INVALIDA)
+
+        resumo = completar_cidades(DEPOIS)
+
+        self.assertEqual(self.photon.call_count, 4)
+        self.assertEqual(resumo.falha, "")
+        self.assertEqual(len(resumo.com_erro), 4)
+
+    def test_maximo_de_erros_seguidos_por_chamada(self):
+        for nome in "ABC":
+            criar_local(nome)
+        self.photon.side_effect = ErroPhoton(RESPOSTA_INVALIDA)
+
+        resumo = completar_cidades(AGORA, maximo_erros_seguidos=1)
+
+        self.assertEqual(self.photon.call_count, 1)
+        self.assertEqual(resumo.falha, RESPOSTA_INVALIDA)
+
     def test_locais_com_erro_vao_para_o_fim_da_fila(self):
         locais = [criar_local(nome) for nome in "ABCDE"]
         ruins = set(sorted(local.pk for local in locais)[:3])
@@ -381,7 +402,8 @@ class CidadeNaImportacaoTest(TestCase):
                 self.venue["state"] = estado
                 importar([self.dados], AGORA)
                 self.assertEqual(
-                    (self.local().cidade, self.local().estado), ("", "")
+                    (self.local().cidade, self.local().estado),
+                    ("Pinheiros", ""),
                 )
 
                 local = self.importar_e_geocodificar()
@@ -389,6 +411,41 @@ class CidadeNaImportacaoTest(TestCase):
                 self.assertEqual(
                     (local.cidade, local.estado), ("São Paulo", "SP")
                 )
+
+    def test_sem_cidade_no_photon_vale_o_palpite_do_ticketmaster(self):
+        self.venue["state"] = None
+        for numero, (cidade, resposta, esperado) in enumerate(
+            (
+                ("Curitiba", None, ("Curitiba", "PR")),
+                ("Curitiba", ("", "Paraná"), ("Curitiba", "PR")),
+                ("Bom Jesus", ("", "Piauí"), ("Bom Jesus", "PI")),
+                # O Photon dá a UF, e Pinheiros não é município de SP.
+                ("Pinheiros", ("", "São Paulo"), ("", "SP")),
+            )
+        ):
+            with self.subTest(cidade=cidade, resposta=resposta):
+                self.venue["id"] = f"palpite{numero}"
+                self.venue["city"] = {"name": cidade}
+                self.photon.return_value = resposta
+
+                local = self.importar_e_geocodificar()
+                self.assertEqual((local.cidade, local.estado), esperado)
+                self.assertEqual(local.geocodificado_em, AGORA)
+
+                # A reimportação mantém o que a geocodificação decidiu.
+                local = self.importar_e_geocodificar(DEPOIS)
+                self.assertEqual((local.cidade, local.estado), esperado)
+                self.assertEqual(local.geocodificado_em, AGORA)
+
+    def test_meia_coordenada_conta_como_sem_coordenada(self):
+        self.venue["location"] = {"latitude": "-25.4"}
+        self.venue["city"] = {"name": "Curitiba"}
+        self.venue["state"] = None
+
+        local = self.importar_e_geocodificar()
+
+        self.assertEqual((local.cidade, local.estado), ("Curitiba", "PR"))
+        self.photon.assert_not_called()
 
     def test_cidade_de_varios_estados_sem_uf_com_coordenada_vai_para_o_photon(
         self,

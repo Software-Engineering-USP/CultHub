@@ -6,6 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from catalogo.geocodificacao import (
+    MAXIMO_ERROS_SEGUIDOS,
     ResumoGeocodificacao,
     completar_cidades,
     pendentes,
@@ -56,9 +57,7 @@ class Command(BaseCommand):
         # A cidade dos locais novos é descoberta antes dos avisos, que
         # filtram por ela, mas só de alguns, para a transação ser curta; os
         # outros (e todos, com o Photon fora) filtram só pela UF desta vez.
-        # Os locais que já deram erro acima não são consultados de novo (os
-        # antigos com erro ficam no fim da fila, então a primeira chamada
-        # costuma parar neles).
+        # Os locais que já deram erro acima não são consultados de novo.
         try:
             with transaction.atomic():
                 # Depois da geocodificação acima, que pode levar minutos.
@@ -71,6 +70,11 @@ class Command(BaseCommand):
                         agora,
                         LIMITE_NA_TRANSACAO,
                         ignorar=anteriores.com_erro,
+                        # Se o servidor já parecia recusar tudo, para no
+                        # primeiro erro para não segurar a transação.
+                        maximo_erros_seguidos=(
+                            1 if anteriores.falha else MAXIMO_ERROS_SEGUIDOS
+                        ),
                     )
                 )
                 notificacoes = notificar_eventos_novos(resumo.ids_criados)

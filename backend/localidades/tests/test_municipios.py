@@ -94,8 +94,9 @@ class LocalizarMunicipioTest(SimpleTestCase):
 
     def test_sem_completar_a_uf(self):
         for (nome, uf), esperado in {
-            ("Pinheiros", ""): ("", ""),
-            ("Curitiba", "XX"): ("", ""),
+            ("Pinheiros", ""): ("Pinheiros", ""),
+            ("Curitiba", "XX"): ("Curitiba", ""),
+            ("Sampa", ""): ("", ""),
             ("Curitiba", "pr"): ("Curitiba", "PR"),
             ("Pinheiros", "SP"): ("", "SP"),
         }.items():

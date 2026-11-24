@@ -82,8 +82,13 @@ class LimparCidadesInvalidasTest(TestCase):
             "l", "Pinheiros", estado="", **coordenada
         )
         uf_invalida = self.criar("m", "", estado="XX")
-        uf_por_extenso = self.criar("n", "Santos", estado="São Paulo")
-        uf_minuscula = self.criar("o", "", estado="sp")
+        uf_minuscula = self.criar("o", "Santos", estado="sp")
+        so_latitude = self.criar(
+            "p", "Curitiba", estado="", latitude=Decimal("-25.4")
+        )
+        curitiba_com_coordenada = self.criar(
+            "q", "curitiba", estado="", **coordenada
+        )
 
         limpar_cidades(apps, None)
 
@@ -97,13 +102,16 @@ class LimparCidadesInvalidasTest(TestCase):
             (sem_estado, ("Bom Jesus", "")),
             (ambigua_errada, ("", "SP")),
             (bairro, ("", "SP")),
-            (sem_estado_com_coordenada, ("", "")),
+            (sem_estado_com_coordenada, ("Bom Jesus", "")),
             # Sem coordenada, o nome é tudo o que há.
             (bairro_sem_estado, ("Pinheiros", "ES")),
-            (bairro_sem_estado_com_coordenada, ("", "")),
+            # Com coordenada, fica o nome como palpite para o Photon.
+            (bairro_sem_estado_com_coordenada, ("Pinheiros", "")),
             (uf_invalida, ("", "")),
-            (uf_por_extenso, ("Santos", "SP")),
-            (uf_minuscula, ("", "SP")),
+            (uf_minuscula, ("Santos", "SP")),
+            # Meia coordenada não entra na geocodificação.
+            (so_latitude, ("Curitiba", "PR")),
+            (curitiba_com_coordenada, ("Curitiba", "")),
         ):
             local.refresh_from_db()
             self.assertEqual((local.cidade, local.estado), esperada)
