@@ -21,6 +21,25 @@ from notificacoes.servicos import notificar_eventos_novos
 LIMITE_NA_TRANSACAO = 10
 
 
+def _completar_cidades_novas(agora, anteriores):
+    """Geocodificação dos locais novos, dentro da transação.
+
+    Com o Photon fora (falha passageira antes), nem tenta. Os locais que
+    já deram erro em `anteriores` não são consultados de novo. Se o
+    servidor já parecia recusar tudo (erros seguidos), para no primeiro
+    erro para não segurar a transação.
+    """
+    if anteriores.passageira:
+        return ResumoGeocodificacao()
+    maximo = 1 if anteriores.falha else MAXIMO_ERROS_SEGUIDOS
+    return completar_cidades(
+        agora,
+        LIMITE_NA_TRANSACAO,
+        ignorar=anteriores.com_erro,
+        maximo_erros_seguidos=maximo,
+    )
+
+
 class Command(BaseCommand):
     help = "Importa os eventos futuros do Ticketmaster para o catálogo."
 
@@ -57,26 +76,12 @@ class Command(BaseCommand):
         # A cidade dos locais novos é descoberta antes dos avisos, que
         # filtram por ela, mas só de alguns, para a transação ser curta; os
         # outros (e todos, com o Photon fora) filtram só pela UF desta vez.
-        # Os locais que já deram erro acima não são consultados de novo.
         try:
             with transaction.atomic():
                 # Depois da geocodificação acima, que pode levar minutos.
                 agora = timezone.now()
                 resumo = importar(eventos, agora)
-                novos = (
-                    ResumoGeocodificacao()
-                    if anteriores.passageira
-                    else completar_cidades(
-                        agora,
-                        LIMITE_NA_TRANSACAO,
-                        ignorar=anteriores.com_erro,
-                        # Se o servidor já parecia recusar tudo, para no
-                        # primeiro erro para não segurar a transação.
-                        maximo_erros_seguidos=(
-                            1 if anteriores.falha else MAXIMO_ERROS_SEGUIDOS
-                        ),
-                    )
-                )
+                novos = _completar_cidades_novas(agora, anteriores)
                 notificacoes = notificar_eventos_novos(resumo.ids_criados)
         except ErroImportacao as erro:
             raise CommandError(str(erro)) from None
@@ -84,20 +89,7 @@ class Command(BaseCommand):
         self.stdout.write(f"atualizados: {resumo.atualizados}")
         self.stdout.write(f"removidos: {resumo.removidos}")
         self.stdout.write(f"ignorados: {resumo.ignorados}")
-        self.stdout.write(
-            "cidades descobertas: "
-            f"{anteriores.descobertos + novos.descobertos} de "
-            f"{anteriores.conferidos + novos.conferidos} locais conferidos"
-        )
-        if com_erro := len(anteriores.com_erro) + len(novos.com_erro):
-            self.stdout.write(f"locais com erro no Photon: {com_erro}")
-        falha = anteriores.falha or novos.falha
-        if falha:
-            self.stdout.write(f"geocodificação interrompida ({falha})")
-        if restantes := pendentes().count():
-            self.stdout.write(
-                f"locais sem cidade para a próxima importação: {restantes}"
-            )
+        self._escrever_geocodificacao(anteriores, novos)
         self.stdout.write(f"notificações de evento novo: {notificacoes}")
         self.stdout.write(f"sem categoria: {len(resumo.sem_categoria)}")
         for titulo in resumo.sem_categoria:
@@ -110,4 +102,19 @@ class Command(BaseCommand):
             self.stdout.write(
                 "remoção pulada: há item com erro e sem id; nenhum evento "
                 "foi removido."
+            )
+
+    def _escrever_geocodificacao(self, anteriores, novos):
+        self.stdout.write(
+            "cidades descobertas: "
+            f"{anteriores.descobertos + novos.descobertos} de "
+            f"{anteriores.conferidos + novos.conferidos} locais conferidos"
+        )
+        if com_erro := len(anteriores.com_erro) + len(novos.com_erro):
+            self.stdout.write(f"locais com erro no Photon: {com_erro}")
+        if falha := anteriores.falha or novos.falha:
+            self.stdout.write(f"geocodificação interrompida ({falha})")
+        if restantes := pendentes().count():
+            self.stdout.write(
+                f"locais sem cidade para a próxima importação: {restantes}"
             )
