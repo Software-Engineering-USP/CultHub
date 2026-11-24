@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { currentUser } from '@/data/user'
 import Account from '@/pages/Account'
 import { api } from '@/services/api'
 import type { ProfileResponse } from '@/services/api'
@@ -11,7 +12,8 @@ const profile: ProfileResponse = {
   id: 'livia-costa',
   nome: 'Lívia Costa',
   email: 'livia.costa@exemplo.com',
-  cidade: 'São Paulo, SP',
+  cidade: 'São Paulo',
+  estado: 'SP',
   bairro: 'Vila Mariana',
   preferencias: ['music', 'art'],
   iniciais: 'LC',
@@ -22,6 +24,13 @@ describe('Account', () => {
     vi.spyOn(api.agenda, 'attendances').mockResolvedValue(apiPage([]))
     vi.spyOn(api.agenda, 'calendar').mockResolvedValue(apiPage([]))
     vi.spyOn(api.comments, 'mine').mockResolvedValue(commentPage([apiMyComment()]))
+    vi.spyOn(api.localities, 'states').mockResolvedValue([
+      { sigla: 'RJ', nome: 'Rio de Janeiro' },
+      { sigla: 'SP', nome: 'São Paulo' },
+    ])
+    vi.spyOn(api.localities, 'cities').mockImplementation(async (state) =>
+      state === 'SP' ? ['Campinas', 'São Paulo'] : ['Niterói', 'Rio de Janeiro'],
+    )
   })
 
   afterEach(() => {
@@ -77,7 +86,7 @@ describe('Account', () => {
     expect(await screen.findByText('Mudei de ideia')).toBeInTheDocument()
   })
 
-  it('Salvar alterações envia nome, cidade e bairro (o e-mail não é editável)', async () => {
+  it('Salvar alterações envia nome e bairro, sem reenviar a localidade que não mudou', async () => {
     const update = vi.spyOn(api.profile, 'update').mockResolvedValue(profile)
     const { user } = renderWithRouter(<Account />)
 
@@ -87,7 +96,77 @@ describe('Account', () => {
     await user.type(bairro, 'Pinheiros')
     await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
-    expect(update).toHaveBeenCalledWith({ name: 'Lívia Costa', city: 'São Paulo, SP', district: 'Pinheiros' })
+    expect(update).toHaveBeenCalledWith({ name: 'Lívia Costa', district: 'Pinheiros' })
+  })
+
+  it('mostra a cidade e a UF na lateral', () => {
+    renderWithRouter(<Account />)
+    const aside = within(screen.getByRole('complementary', { name: 'Perfil e navegação da conta' }))
+    expect(aside.getByText('São Paulo, SP')).toBeInTheDocument()
+  })
+
+  it('trocar o estado limpa a cidade e a busca sugere os municípios da nova UF', async () => {
+    const update = vi
+      .spyOn(api.profile, 'update')
+      .mockResolvedValue({ ...profile, cidade: 'Niterói', estado: 'RJ' })
+    const { user } = renderWithRouter(<Account />)
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    await waitFor(() => expect(cidade).toHaveValue('São Paulo'))
+
+    await user.selectOptions(screen.getByLabelText('Estado'), 'RJ')
+    expect(cidade).toHaveValue('')
+    expect(api.localities.cities).toHaveBeenCalledWith('RJ')
+
+    await user.type(cidade, 'nite')
+    await user.click(await screen.findByRole('option', { name: 'Niterói' }))
+    expect(cidade).toHaveValue('Niterói')
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(update).toHaveBeenCalledWith({
+      name: 'Lívia Costa',
+      district: 'Vila Mariana',
+      locality: { city: 'Niterói', state: 'RJ' },
+    })
+    const aside = within(screen.getByRole('complementary', { name: 'Perfil e navegação da conta' }))
+    expect(await aside.findByText('Niterói, RJ')).toBeInTheDocument()
+  })
+
+  it('cidade escrita sem acento vira o nome oficial ao sair do campo', async () => {
+    const { user } = renderWithRouter(<Account />)
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    await user.clear(cidade)
+    await user.type(cidade, 'sao paulo')
+    await user.tab()
+
+    expect(cidade).toHaveValue('São Paulo')
+  })
+
+  it('cidade fora da lista da UF não é enviada', async () => {
+    const update = vi.spyOn(api.profile, 'update').mockResolvedValue(profile)
+    const { user } = renderWithRouter(<Account />)
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    await user.clear(cidade)
+    await user.type(cidade, 'Sampa')
+    await user.tab()
+
+    expect(await screen.findByText(/Não há um município com esse nome em SP/)).toBeInTheDocument()
+    expect(cidade).toHaveAttribute('aria-invalid', 'true')
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('perfil antigo com cidade sem estado pede o estado e mantém a cidade ao escolher', async () => {
+    const { user } = renderWithRouter(<Account />, {
+      authUser: { ...currentUser, city: 'Campinas', state: '' },
+    })
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    expect(cidade).toHaveAttribute('readonly')
+    expect(screen.getByText('Escolha o estado de Campinas para confirmar a cidade.')).toBeInTheDocument()
+
+    await screen.findByRole('option', { name: 'São Paulo (SP)' })
+    await user.selectOptions(screen.getByLabelText('Estado'), 'SP')
+    expect(cidade).toHaveValue('Campinas')
+    expect(cidade).not.toHaveAttribute('readonly')
   })
 
   it('salvar preferências envia a lista atualizada', async () => {

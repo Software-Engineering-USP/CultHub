@@ -17,6 +17,7 @@ const switchProfile: ProfileResponse = {
   nome: 'Outra Pessoa',
   email: 'outra.pessoa@exemplo.com',
   cidade: '',
+  estado: '',
   bairro: '',
   preferencias: [],
   iniciais: 'OP',

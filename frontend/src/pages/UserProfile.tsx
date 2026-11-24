@@ -12,6 +12,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { usePublicProfile } from '@/hooks/usePublicProfile'
 import { categories, categoryOrder } from '@/lib/categories'
 import { chipClass } from '@/lib/classes'
+import { formatLocality } from '@/lib/locality'
 import { paths } from '@/lib/paths'
 import { ApiError } from '@/services/api'
 import { formatMemberSince } from '@/services/users'
@@ -77,7 +78,7 @@ function ProfileContent({ profile, isMe }: Readonly<{ profile: PublicProfile; is
             <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted-foreground max-sm:justify-center">
               <li className="inline-flex items-center gap-1.5">
                 <MapPin aria-hidden="true" className="size-4" />
-                {profile.city || 'Cidade não informada'}
+                {formatLocality(profile.city, profile.state) || 'Cidade não informada'}
               </li>
               <li className="inline-flex items-center gap-1.5">
                 <CalendarDays aria-hidden="true" className="size-4" />

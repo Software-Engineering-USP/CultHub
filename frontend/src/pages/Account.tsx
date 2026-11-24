@@ -5,6 +5,7 @@ import AgendaSection from '@/components/account/AgendaSection'
 import AttendanceSection from '@/components/account/AttendanceSection'
 import EventGrid from '@/components/account/EventGrid'
 import ListStatus from '@/components/account/ListStatus'
+import LocalityFields from '@/components/account/LocalityFields'
 import MyCommentItem from '@/components/account/MyCommentItem'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
@@ -21,6 +22,7 @@ import { useSavedEvents } from '@/hooks/useUserEvents'
 import { categories } from '@/lib/categories'
 import { chipClass, peerFocusRing } from '@/lib/classes'
 import { onFormSubmit, text } from '@/lib/forms'
+import { formatLocality } from '@/lib/locality'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 import { api, ApiError } from '@/services/api'
@@ -106,7 +108,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
             className="mb-4 max-md:float-left max-md:mr-4.5 max-md:size-16 max-sm:float-none max-sm:mr-0 max-sm:mb-3.5"
           />
           <h2 className="mb-[6px] text-[21px]">{user.name}</h2>
-          <p className="text-[11px]">{user.city || 'Cidade não informada'}</p>
+          <p className="text-[11px]">{formatLocality(user.city, user.state) || 'Cidade não informada'}</p>
           <Badge variant="success" size="md" className="mt-4 max-md:mt-2.5">
             <span aria-hidden="true" className="size-2 rounded-full bg-current" />
             <span>Conta conectada</span>
@@ -166,17 +168,20 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
             </div>
 
             <form
-              key={`${user.id}-${user.name}-${user.city}-${user.district}`}
+              key={`${user.id}-${user.name}-${user.city}-${user.state}-${user.district}`}
               aria-label="Editar dados da conta"
               autoComplete="on"
               onSubmit={onFormSubmit(async (data) => {
                 setSaving(true)
                 setProfileMessage('')
+                const city = text(data, 'cidade').trim()
+                const state = text(data, 'estado')
                 try {
                   const profile = await api.profile.update({
                     name: text(data, 'nome'),
-                    city: text(data, 'cidade'),
                     district: text(data, 'bairro'),
+                    // Sem mudança, não reenvia: perfil antigo com cidade sem UF ainda salva o resto.
+                    ...((city !== user.city || state !== user.state) && { locality: { city, state } }),
                   })
                   updateUser(profile)
                   setProfileMessage('Dados atualizados.')
@@ -206,14 +211,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
                   readOnly
                   help="O e-mail não pode ser alterado."
                 />
-                <Field
-                  id="cidade"
-                  name="cidade"
-                  label="Cidade"
-                  type="text"
-                  defaultValue={user.city}
-                  autoComplete="address-level2"
-                />
+                <LocalityFields defaultCity={user.city} defaultState={user.state} />
                 <Field
                   id="bairro"
                   name="bairro"
