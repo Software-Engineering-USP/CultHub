@@ -114,20 +114,18 @@ def _cidade_e_estado(venue, pais, tem_coordenada):
     """Cidade e UF do venue; no Brasil, a cidade é um município do IBGE.
 
     O Ticketmaster quase nunca manda a cidade, às vezes manda lixo
-    ("Nocity") ou um bairro ("Pinheiros"), e às vezes omite a UF; ver
-    `localizar_municipio`, que completa a UF mas não a troca. Cidade de
-    vários estados sem UF, se houver coordenada, fica para o Photon. Com o
-    nome oficial, o filtro por cidade das notificações compara nomes
-    escritos do mesmo jeito.
+    ("Nocity") ou um bairro ("Pinheiros"), e às vezes omite a UF ou manda
+    uma que não existe; ver `localizar_municipio`, que não troca a UF.
+    Sem UF válida, a cidade só completa a UF se não houver coordenada; com
+    coordenada, as duas ficam para o Photon, porque o nome pode ser de um
+    bairro de outro estado. Com o nome oficial, o filtro por cidade das
+    notificações compara nomes escritos do mesmo jeito.
     """
     cidade = _texto(_objeto(venue, "city"), "name")
     estado = _texto(_objeto(venue, "state"), "stateCode")
     if pais not in ("", "BR"):
         return cidade, estado
-    cidade, uf = localizar_municipio(cidade, estado)
-    if cidade and not uf and tem_coordenada:
-        cidade = ""
-    return cidade, uf or estado
+    return localizar_municipio(cidade, estado, completar_uf=not tem_coordenada)
 
 
 def _salvar_local(venue):

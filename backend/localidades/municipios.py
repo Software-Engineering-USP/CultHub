@@ -91,23 +91,29 @@ def ufs_com_municipio(nome):
     return [uf for uf, nomes in _dados()[1].items() if chave in nomes]
 
 
-def localizar_municipio(nome, uf):
+def localizar_municipio(nome, uf, completar_uf=True):
     """(nome oficial, UF) da cidade; completa a UF, mas nunca a troca.
+
+    A UF pode vir pela sigla ou pelo nome ("São Paulo"); a que não é
+    estado conta como ausente e nunca é devolvida.
 
     - UF válida: a cidade precisa ser município dela, senão fica ""
       (("Pinheiros", "SP") dá ("", "SP"): Pinheiros é bairro de São
       Paulo, apesar de ser município no ES).
-    - Sem UF (ou com uma que não é estado): o nome de um estado só ganha
-      esse estado ("Curitiba" dá ("Curitiba", "PR")); o de vários fica
-      com o nome oficial, que é o mesmo em todos, e sem UF ("Bom Jesus"
-      dá ("Bom Jesus", "")); o que não existe dá ("", "").
+    - Sem UF, com `completar_uf`: o nome de um estado só ganha esse
+      estado ("Curitiba" dá ("Curitiba", "PR")); o de vários fica com o
+      nome oficial, que é o mesmo em todos, e sem UF ("Bom Jesus" dá
+      ("Bom Jesus", "")); o que não existe dá ("", "").
+    - Sem UF e sem `completar_uf`: ("", ""). Para quando há outro jeito de
+      saber a cidade (a coordenada), já que o nome sozinho pode ser de um
+      bairro de outro estado (("Pinheiros", "") daria ES).
     """
-    uf = uf.strip().upper() if isinstance(uf, str) else ""
+    uf = sigla_do_estado(uf)
     if not isinstance(nome, str):
-        return "", uf if uf in estados() else ""
-    if uf in estados():
+        return "", uf
+    if uf:
         return municipio_oficial(nome, uf), uf
-    candidatas = ufs_com_municipio(nome)
+    candidatas = ufs_com_municipio(nome) if completar_uf else []
     if not candidatas:
         return "", ""
     unica = candidatas[0] if len(candidatas) == 1 else ""

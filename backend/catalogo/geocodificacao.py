@@ -38,6 +38,9 @@ class ResumoGeocodificacao:
     com_erro: list = field(default_factory=list)
     # Mensagem da falha que interrompeu a geocodificação, se houve.
     falha: str = ""
+    # Se a falha foi passageira (servidor ou rede fora), e não erros
+    # seguidos em locais: aí não adianta consultar mais nada agora.
+    passageira: bool = False
 
 
 def pendentes():
@@ -74,7 +77,7 @@ def _localidade(local):
     if resposta is None:
         return "", ""
     cidade, estado = resposta
-    uf = sigla_do_estado(estado) or local.estado.strip().upper()
+    uf = sigla_do_estado(estado) or sigla_do_estado(local.estado)
     cidade = municipio_oficial(cidade, uf)
     return (cidade, uf) if cidade else ("", "")
 
@@ -103,6 +106,7 @@ def completar_cidades(agora, limite=None, ignorar=()):
             if erro.passageira:
                 logger.warning("Geocodificação interrompida: %s", erro)
                 resumo.falha = str(erro)
+                resumo.passageira = True
                 break
             logger.warning(
                 "Local %s pulado na geocodificação: %s", local.pk, erro

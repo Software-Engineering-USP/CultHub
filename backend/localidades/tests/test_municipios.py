@@ -76,6 +76,9 @@ class LocalizarMunicipioTest(SimpleTestCase):
             ("Ipanema", "RJ"): ("", "RJ"),
             ("Lapa", "SP"): ("", "SP"),
             ("Medianeira", "XX"): ("Medianeira", "PR"),
+            ("Pinheiros", "São Paulo"): ("", "SP"),
+            ("Bom Jesus", "piaui"): ("Bom Jesus", "PI"),
+            ("Pinheiros", ""): ("Pinheiros", "ES"),
             ("Sampa", "XX"): ("", ""),
             (None, "sp"): ("", "SP"),
             ("Curitiba", ""): ("Curitiba", "PR"),
@@ -88,6 +91,19 @@ class LocalizarMunicipioTest(SimpleTestCase):
         }.items():
             with self.subTest(nome=nome, uf=uf):
                 self.assertEqual(localizar_municipio(nome, uf), esperado)
+
+    def test_sem_completar_a_uf(self):
+        for (nome, uf), esperado in {
+            ("Pinheiros", ""): ("", ""),
+            ("Curitiba", "XX"): ("", ""),
+            ("Curitiba", "pr"): ("Curitiba", "PR"),
+            ("Pinheiros", "SP"): ("", "SP"),
+        }.items():
+            with self.subTest(nome=nome, uf=uf):
+                self.assertEqual(
+                    localizar_municipio(nome, uf, completar_uf=False),
+                    esperado,
+                )
 
 
 class SiglaDoEstadoTest(SimpleTestCase):

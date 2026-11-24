@@ -46,6 +46,19 @@ class LocalidadeDoTextoAntigoTest(SimpleTestCase):
         # Mesma regra dos locais: a UF escrita não é trocada.
         self.assertEqual(migracao.localidade("Medianeira, PB"), ("", "PB"))
 
+    def test_estado_por_extenso(self):
+        for texto, esperado in (
+            ("Pinheiros, São Paulo", ("", "SP")),
+            ("Bom Jesus, Piauí", ("Bom Jesus", "PI")),
+            ("bom jesus - piaui", ("Bom Jesus", "PI")),
+            ("Curitiba / Paraná", ("Curitiba", "PR")),
+            ("Paraná", ("", "PR")),
+            # Nome de estado que também é município dele é a cidade.
+            ("São Paulo", ("São Paulo", "SP")),
+        ):
+            with self.subTest(texto=texto):
+                self.assertEqual(migracao.localidade(texto), esperado)
+
     def test_texto_irreconhecivel_fica_em_branco(self):
         for texto in ("Sampa", "SP capital", "BR", ",", ""):
             with self.subTest(texto=texto):

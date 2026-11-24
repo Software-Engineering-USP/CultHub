@@ -56,6 +56,9 @@ class Command(BaseCommand):
         # A cidade dos locais novos é descoberta antes dos avisos, que
         # filtram por ela, mas só de alguns, para a transação ser curta; os
         # outros (e todos, com o Photon fora) filtram só pela UF desta vez.
+        # Os locais que já deram erro acima não são consultados de novo (os
+        # antigos com erro ficam no fim da fila, então a primeira chamada
+        # costuma parar neles).
         try:
             with transaction.atomic():
                 # Depois da geocodificação acima, que pode levar minutos.
@@ -63,7 +66,7 @@ class Command(BaseCommand):
                 resumo = importar(eventos, agora)
                 novos = (
                     ResumoGeocodificacao()
-                    if anteriores.falha
+                    if anteriores.passageira
                     else completar_cidades(
                         agora,
                         LIMITE_NA_TRANSACAO,

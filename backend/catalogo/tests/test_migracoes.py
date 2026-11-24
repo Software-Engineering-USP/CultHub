@@ -70,13 +70,20 @@ class LimparCidadesInvalidasTest(TestCase):
         sem_estado = self.criar("g", "Bom Jesus", estado="")
         ambigua_errada = self.criar("h", "Bom Jesus")
         bairro = self.criar("i", "Pinheiros")
+        coordenada = {
+            "latitude": Decimal("-23.5"),
+            "longitude": Decimal("-46.6"),
+        }
         sem_estado_com_coordenada = self.criar(
-            "j",
-            "Bom Jesus",
-            estado="",
-            latitude=Decimal("-28.6"),
-            longitude=Decimal("-50.4"),
+            "j", "Bom Jesus", estado="", **coordenada
         )
+        bairro_sem_estado = self.criar("k", "Pinheiros", estado="")
+        bairro_sem_estado_com_coordenada = self.criar(
+            "l", "Pinheiros", estado="", **coordenada
+        )
+        uf_invalida = self.criar("m", "", estado="XX")
+        uf_por_extenso = self.criar("n", "Santos", estado="São Paulo")
+        uf_minuscula = self.criar("o", "", estado="sp")
 
         limpar_cidades(apps, None)
 
@@ -91,6 +98,12 @@ class LimparCidadesInvalidasTest(TestCase):
             (ambigua_errada, ("", "SP")),
             (bairro, ("", "SP")),
             (sem_estado_com_coordenada, ("", "")),
+            # Sem coordenada, o nome é tudo o que há.
+            (bairro_sem_estado, ("Pinheiros", "ES")),
+            (bairro_sem_estado_com_coordenada, ("", "")),
+            (uf_invalida, ("", "")),
+            (uf_por_extenso, ("Santos", "SP")),
+            (uf_minuscula, ("", "SP")),
         ):
             local.refresh_from_db()
             self.assertEqual((local.cidade, local.estado), esperada)

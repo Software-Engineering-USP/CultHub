@@ -13,7 +13,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from catalogo import importacao
-from catalogo.geocodificacao import INTERVALO
+from catalogo.geocodificacao import INTERVALO, MAXIMO_ERROS_SEGUIDOS
 from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, ImagemEvento, Local, Provedor
 from catalogo.ticketmaster import ErroTicketmaster
@@ -1111,6 +1111,41 @@ class ComandoGeocodificaTest(TestCase):
         self.assertIn("locais com erro no Photon: 1", saida)
         self.antigo.refresh_from_db()
         self.assertIsNone(self.antigo.geocodificado_em)
+
+    def test_locais_antigos_com_erro_nao_impedem_os_novos(self):
+        # Os antigos que sempre dão erro param a primeira chamada (erros
+        # seguidos), mas os locais novos ainda são conferidos na transação.
+        self.antigo.delete()
+        ruins = set()
+        for numero in range(MAXIMO_ERROS_SEGUIDOS):
+            ruins.add(
+                Local.objects.create(
+                    provedor=Provedor.TICKETMASTER,
+                    id_externo=f"ruim{numero}",
+                    nome="Ruim",
+                    latitude=Decimal(-10),
+                    longitude=Decimal(numero),
+                    geocodificacao_falhou_em=AGORA,
+                ).pk
+            )
+
+        def photon(latitude, longitude, antes_de_tentar):
+            if latitude == -10:
+                raise ErroPhoton("Photon respondeu HTTP 400")
+            return ("São Paulo", "SP")
+
+        self.photon.side_effect = photon
+        with patch(f"{self.comando}.LIMITE_NA_TRANSACAO", 2):
+            saida = self.importar()
+
+        self.assertIn("cidades descobertas: 2 de 2 locais conferidos", saida)
+        self.assertEqual(
+            Local.objects.exclude(pk__in=ruins)
+            .filter(cidade="São Paulo")
+            .count(),
+            2,
+        )
+        self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS + 2)
 
     def test_photon_fora_nao_e_consultado_de_novo_na_transacao(self):
         self.photon.side_effect = erro_passageiro("Photon respondeu HTTP 503")

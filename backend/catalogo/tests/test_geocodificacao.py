@@ -158,6 +158,7 @@ class CompletarCidadesTest(TestCase):
         resumo = completar_cidades(AGORA)
 
         self.assertEqual(resumo.falha, "Photon respondeu HTTP 429")
+        self.assertTrue(resumo.passageira)
         self.assertEqual((resumo.conferidos, resumo.descobertos), (1, 1))
         self.assertEqual(self.photon.call_count, 2)
         self.assertEqual(Local.objects.filter(cidade="Santos").count(), 1)
@@ -190,6 +191,7 @@ class CompletarCidadesTest(TestCase):
 
         self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS)
         self.assertEqual(resumo.falha, RESPOSTA_INVALIDA)
+        self.assertFalse(resumo.passageira)
         self.assertEqual(len(resumo.com_erro), MAXIMO_ERROS_SEGUIDOS)
         self.assertEqual(pendentes().count(), 5)
 
@@ -351,6 +353,7 @@ class CidadeNaImportacaoTest(TestCase):
             ({"stateCode": "RJ"}, "Ipanema", ("", "RJ")),
             (None, "Curitiba", ("Curitiba", "PR")),
             (None, "Bom Jesus", ("Bom Jesus", "")),
+            ({"stateCode": "XX"}, "Nocity", ("", "")),
         ):
             with self.subTest(cidade=cidade):
                 self.venue["state"] = estado
@@ -368,6 +371,24 @@ class CidadeNaImportacaoTest(TestCase):
 
         self.assertEqual((local.cidade, local.estado), ("São Paulo", "SP"))
         self.assertEqual(self.photon.call_count, 1)
+
+    def test_cidade_sem_uf_com_coordenada_vai_para_o_photon(self):
+        # Pinheiros só é município no ES, mas este fica em São Paulo.
+        for numero, estado in enumerate((None, {"stateCode": "XX"})):
+            with self.subTest(estado=estado):
+                self.venue["id"] = f"pinheiros{numero}"
+                self.venue["city"] = {"name": "Pinheiros"}
+                self.venue["state"] = estado
+                importar([self.dados], AGORA)
+                self.assertEqual(
+                    (self.local().cidade, self.local().estado), ("", "")
+                )
+
+                local = self.importar_e_geocodificar()
+
+                self.assertEqual(
+                    (local.cidade, local.estado), ("São Paulo", "SP")
+                )
 
     def test_cidade_de_varios_estados_sem_uf_com_coordenada_vai_para_o_photon(
         self,

@@ -11,7 +11,12 @@ import unicodedata
 
 from django.db import migrations
 
-from localidades.municipios import estados, localizar_municipio
+from localidades.municipios import (
+    estados,
+    localizar_municipio,
+    municipio_oficial,
+    sigla_do_estado,
+)
 
 
 def normalizar_texto(texto):
@@ -21,31 +26,36 @@ def normalizar_texto(texto):
 
 
 def _cidade_e_uf(texto):
-    """("sao paulo", "sp") a partir de "São Paulo, SP"; a UF é opcional.
+    """("sao paulo", "SP") a partir de "São Paulo, SP"; a UF é opcional.
 
-    Cópia da leitura que as notificações faziam do texto livre: aceita
-    "Cidade, UF", "Cidade - UF", "Cidade-UF", "Cidade – UF", "Cidade/UF" e
-    "Cidade UF". Uma sigla isolada ("SP") é só a UF.
+    Cópia da leitura que as notificações faziam do texto livre, que
+    aceitava "Cidade, UF", "Cidade - UF", "Cidade-UF", "Cidade – UF",
+    "Cidade/UF" e "Cidade UF", mais o estado por extenso depois de um
+    separador ("Pinheiros, São Paulo", "Bom Jesus - Piauí"). Um estado
+    sozinho ("SP", "Paraná") é só a UF, a não ser que também seja nome de
+    município dele ("São Paulo").
     """
     ufs = {uf.casefold() for uf in estados()}
     partes = [
         parte.strip()
-        for parte in re.split(r"[,/]", normalizar_texto(texto))
+        for parte in re.split(r"[,/]|\s[-–—]\s", normalizar_texto(texto))
         if parte.strip()
     ]
     if not partes:
         return "", ""
-    # Espaço, hífen ou travessão só separam uma UF no fim, para não
-    # quebrar cidades como "Embu-Guaçu".
+    # Espaço, hífen ou travessão colados só separam uma sigla no fim, para
+    # não quebrar cidades como "Embu-Guaçu".
     ultima = partes[-1]
     resto = ultima[:-2]
     cidade = resto.rstrip(" \t-–—")
     if ultima[-2:] in ufs and cidade and cidade != resto:
         partes[-1:] = [cidade, ultima[-2:]]
-    if len(partes) == 1 and partes[0] in ufs:
-        return "", partes[0]
-    uf = partes[-1] if len(partes) > 1 and partes[-1] in ufs else ""
-    return partes[0], uf
+    if len(partes) == 1:
+        uf = sigla_do_estado(partes[0])
+        if uf and not municipio_oficial(partes[0], uf):
+            return "", uf
+        return partes[0], ""
+    return partes[0], sigla_do_estado(partes[-1])
 
 
 def localidade(texto):
@@ -59,7 +69,7 @@ def localidade(texto):
     """
     cidade, uf = _cidade_e_uf(texto)
     if not cidade:
-        return "", uf.upper()
+        return "", uf
     return localizar_municipio(cidade, uf)
 
 
