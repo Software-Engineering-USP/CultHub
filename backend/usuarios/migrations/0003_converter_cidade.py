@@ -11,11 +11,7 @@ import unicodedata
 
 from django.db import migrations
 
-from localidades.municipios import (
-    estados,
-    municipio_oficial,
-    ufs_com_municipio,
-)
+from localidades.municipios import estados, localizar_municipio
 
 
 def normalizar_texto(texto):
@@ -55,22 +51,16 @@ def _cidade_e_uf(texto):
 def localidade(texto):
     """(município oficial, UF) do texto antigo; o que faltar fica "".
 
-    Sem UF, a cidade de um estado só ganha a UF ("Curitiba" fica no PR).
-    A que existe em vários fica com o nome oficial e sem UF ("Bom Jesus"):
-    os avisos continuam filtrando pela cidade, e Minha conta pede o estado
-    quando a pessoa salvar de novo.
+    Mesma regra dos locais (`localizar_municipio`): com UF, a cidade
+    precisa ser dela ("Medianeira, PB" dá ("", "PB")); sem UF, a cidade de
+    um estado só ganha a UF ("Curitiba" fica no PR), e a de vários fica
+    com o nome oficial e sem UF ("Bom Jesus"): os avisos filtram pela
+    cidade, e Minha conta pede o estado quando a pessoa salvar de novo.
     """
     cidade, uf = _cidade_e_uf(texto)
-    uf = uf.upper()
     if not cidade:
-        return "", uf
-    if uf:
-        return municipio_oficial(cidade, uf), uf
-    candidatas = ufs_com_municipio(cidade)
-    if not candidatas:
-        return "", ""
-    unica = candidatas[0] if len(candidatas) == 1 else ""
-    return municipio_oficial(cidade, candidatas[0]), unica
+        return "", uf.upper()
+    return localizar_municipio(cidade, uf)
 
 
 def converter_cidades(apps, schema_editor):

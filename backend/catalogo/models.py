@@ -76,6 +76,9 @@ class Local(models.Model):
     # Quando a coordenada foi conferida no Photon para descobrir a cidade
     # (ver `catalogo/geocodificacao.py`); nulo enquanto falta conferir.
     geocodificado_em = models.DateTimeField(null=True, blank=True)
+    # Última consulta ao Photon que deu erro deste local: ele vai para o
+    # fim da fila, para não travar os outros.
+    geocodificacao_falhou_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ("nome",)

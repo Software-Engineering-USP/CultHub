@@ -71,7 +71,13 @@ class LocalizarMunicipioTest(SimpleTestCase):
     def test_casos(self):
         for (nome, uf), esperado in {
             ("campinas", "sp"): ("Campinas", "SP"),
-            ("Medianeira", "PB"): ("Medianeira", "PR"),
+            ("Medianeira", "PB"): ("", "PB"),
+            ("Pinheiros", "SP"): ("", "SP"),
+            ("Ipanema", "RJ"): ("", "RJ"),
+            ("Lapa", "SP"): ("", "SP"),
+            ("Medianeira", "XX"): ("Medianeira", "PR"),
+            ("Sampa", "XX"): ("", ""),
+            (None, "sp"): ("", "SP"),
             ("Curitiba", ""): ("Curitiba", "PR"),
             ("bom jesus", ""): ("Bom Jesus", ""),
             ("Bom Jesus", "RS"): ("Bom Jesus", "RS"),

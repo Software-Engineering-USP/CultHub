@@ -481,6 +481,17 @@ class CidadeEEstadoTest(SimpleTestCase):
 
                 self.assertIsNone(buscar_cidade_e_estado(-25.0, -57.6))
 
+    def test_espera_a_vez_antes_de_cada_tentativa(self, urlopen):
+        urlopen.side_effect = [TimeoutError(), colecao()]
+        vezes = []
+
+        buscar_cidade_e_estado(
+            -23.5, -46.6, antes_de_tentar=lambda: vezes.append(1)
+        )
+
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(len(vezes), 2)
+
     def test_falha_vira_erro_photon(self, urlopen):
         urlopen.side_effect = erro_http(429)
 

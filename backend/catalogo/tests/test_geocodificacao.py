@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+from catalogo import geocodificacao
 from catalogo.geocodificacao import (
     INTERVALO,
     MAXIMO_ERROS_SEGUIDOS,
@@ -47,7 +48,9 @@ class CompletarCidadesTest(TestCase):
         self.assertEqual((local.cidade, local.estado), ("São Paulo", "SP"))
         self.assertEqual(local.geocodificado_em, AGORA)
         self.assertEqual((resumo.conferidos, resumo.descobertos), (1, 1))
-        self.photon.assert_called_once_with(-23.5, -46.6)
+        self.photon.assert_called_once_with(
+            -23.5, -46.6, antes_de_tentar=geocodificacao._vez.aguardar
+        )
 
     def test_uf_da_coordenada_corrige_a_do_ticketmaster(self):
         local = criar_local("Auditório CEEP", estado="PB")
@@ -125,15 +128,24 @@ class CompletarCidadesTest(TestCase):
             dormir=esperas.append,
         )
 
+        def photon(*_coordenada, antes_de_tentar):
+            # Uma falha passageira na primeira consulta, com nova tentativa.
+            antes_de_tentar()
+            if not esperas:
+                antes_de_tentar()
+
+        self.photon.side_effect = photon
         with patch("catalogo.geocodificacao._vez", vez):
             completar_cidades(AGORA, limite=2)
             relogio[0] += 0.5
             completar_cidades(AGORA)
 
-        self.assertEqual(len(esperas), 2)
+        # Nova tentativa e segunda consulta esperam a vez; a terceira, na
+        # outra chamada, espera o que faltava.
+        self.assertEqual(len(esperas), 3)
         self.assertAlmostEqual(esperas[0], INTERVALO)
-        # A terceira consulta, na outra chamada, espera o que faltava.
-        self.assertAlmostEqual(esperas[1], 2 * INTERVALO - 0.5)
+        self.assertAlmostEqual(esperas[1], 2 * INTERVALO)
+        self.assertAlmostEqual(esperas[2], 3 * INTERVALO - 0.5)
 
     def test_falha_passageira_interrompe_e_deixa_o_resto_para_depois(self):
         for nome in ("A", "B", "C"):
@@ -178,8 +190,55 @@ class CompletarCidadesTest(TestCase):
 
         self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS)
         self.assertEqual(resumo.falha, RESPOSTA_INVALIDA)
-        self.assertEqual(len(resumo.com_erro), MAXIMO_ERROS_SEGUIDOS - 1)
+        self.assertEqual(len(resumo.com_erro), MAXIMO_ERROS_SEGUIDOS)
         self.assertEqual(pendentes().count(), 5)
+
+    def test_locais_com_erro_vao_para_o_fim_da_fila(self):
+        locais = [criar_local(nome) for nome in "ABCDE"]
+        ruins = set(sorted(local.pk for local in locais)[:3])
+
+        def photon(latitude, longitude, antes_de_tentar):
+            if consultados[-1] in ruins:
+                raise ErroPhoton("Photon respondeu HTTP 400")
+            return ("Santos", "SP")
+
+        consultados = []
+        original = geocodificacao._localidade
+
+        def localidade(local):
+            consultados.append(local.pk)
+            return original(local)
+
+        self.photon.side_effect = photon
+        with patch("catalogo.geocodificacao._localidade", localidade):
+            primeira = completar_cidades(AGORA)
+            segunda = completar_cidades(DEPOIS)
+
+        # Na primeira, os 3 ruins do começo param tudo; na segunda, eles
+        # ficam por último e os outros são conferidos.
+        self.assertEqual(primeira.conferidos, 0)
+        self.assertEqual(len(primeira.com_erro), 3)
+        self.assertEqual(segunda.conferidos, 2)
+        self.assertEqual(
+            set(consultados[3:5]),
+            {local.pk for local in locais if local.pk not in ruins},
+        )
+        falhas = Local.objects.filter(pk__in=ruins).values_list(
+            "geocodificacao_falhou_em", flat=True
+        )
+        # Tentados de novo no fim da segunda, ficam com a data dela.
+        self.assertEqual(set(falhas), {DEPOIS})
+
+    def test_cidade_sem_uf_tambem_e_pendente(self):
+        local = criar_local("Bom Jesus", cidade="Bom Jesus")
+        criar_local("Com UF", cidade="Bom Jesus", estado="RS")
+        self.photon.return_value = ("Bom Jesus", "Rio Grande do Sul")
+
+        self.assertEqual(list(pendentes()), [local])
+        completar_cidades(AGORA)
+
+        local.refresh_from_db()
+        self.assertEqual((local.cidade, local.estado), ("Bom Jesus", "RS"))
 
     def test_ignorar(self):
         primeiro = criar_local("A")
@@ -286,7 +345,10 @@ class CidadeNaImportacaoTest(TestCase):
         # Sem coordenada, esses locais nunca passariam pelo Photon.
         self.venue["location"] = None
         for estado, cidade, esperado in (
-            ({"stateCode": "PB"}, "Medianeira", ("Medianeira", "PR")),
+            # UF válida não é trocada: a cidade que não é dela é apagada.
+            ({"stateCode": "PB"}, "Medianeira", ("", "PB")),
+            ({"stateCode": "SP"}, "Pinheiros", ("", "SP")),
+            ({"stateCode": "RJ"}, "Ipanema", ("", "RJ")),
             (None, "Curitiba", ("Curitiba", "PR")),
             (None, "Bom Jesus", ("Bom Jesus", "")),
         ):
@@ -298,6 +360,40 @@ class CidadeNaImportacaoTest(TestCase):
 
                 local = self.local()
                 self.assertEqual((local.cidade, local.estado), esperado)
+
+    def test_bairro_com_coordenada_vai_para_o_photon(self):
+        self.venue["city"] = {"name": "Pinheiros"}
+
+        local = self.importar_e_geocodificar()
+
+        self.assertEqual((local.cidade, local.estado), ("São Paulo", "SP"))
+        self.assertEqual(self.photon.call_count, 1)
+
+    def test_cidade_de_varios_estados_sem_uf_com_coordenada_vai_para_o_photon(
+        self,
+    ):
+        self.venue["city"] = {"name": "Bom Jesus"}
+        self.venue["state"] = None
+        self.photon.return_value = ("Bom Jesus", "Rio Grande do Sul")
+
+        local = self.importar_e_geocodificar()
+        self.assertEqual((local.cidade, local.estado), ("Bom Jesus", "RS"))
+
+        local = self.importar_e_geocodificar(DEPOIS)
+        self.assertEqual((local.cidade, local.estado), ("Bom Jesus", "RS"))
+        self.assertEqual(self.photon.call_count, 1)
+
+    def test_erro_no_photon_continua_marcado_ate_a_coordenada_mudar(self):
+        self.photon.side_effect = ErroPhoton("Photon respondeu HTTP 400")
+        self.importar_e_geocodificar()
+        self.assertEqual(self.local().geocodificacao_falhou_em, AGORA)
+
+        importar([self.dados], DEPOIS)
+        self.assertEqual(self.local().geocodificacao_falhou_em, AGORA)
+
+        self.venue["location"] = {"latitude": "-22.9", "longitude": "-43.2"}
+        importar([self.dados], DEPOIS)
+        self.assertIsNone(self.local().geocodificacao_falhou_em)
 
     def test_venue_sem_location_mantem_coordenada_e_cidade(self):
         self.importar_e_geocodificar()

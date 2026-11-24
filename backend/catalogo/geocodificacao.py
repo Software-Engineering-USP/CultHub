@@ -4,6 +4,8 @@ import logging
 import time
 from dataclasses import dataclass, field
 
+from django.db.models import F, Q
+
 from localidades.municipios import municipio_oficial, sigla_do_estado
 from rotas.photon import ErroPhoton, buscar_cidade_e_estado
 from rotas.transporte import Espacador
@@ -39,19 +41,21 @@ class ResumoGeocodificacao:
 
 
 def pendentes():
-    """Locais do Ticketmaster no Brasil sem cidade e ainda não conferidos.
+    """Locais do Ticketmaster no Brasil a conferir no Photon.
 
-    Só os que têm coordenada. Os cadastrados à mão ficam como o admin
-    deixou.
+    Os que têm coordenada, ainda não foram conferidos e estão sem cidade
+    ou sem UF (cidade de vários estados, como "Bom Jesus"). Os que deram
+    erro vão para o fim, do erro mais antigo para o mais novo, para não
+    travar a fila. Os cadastrados à mão ficam como o admin deixou.
     """
     return Local.objects.filter(
+        Q(cidade="") | Q(estado=""),
         provedor=Provedor.TICKETMASTER,
-        cidade="",
         pais__in=("", "BR"),
         latitude__isnull=False,
         longitude__isnull=False,
         geocodificado_em__isnull=True,
-    ).order_by("pk")
+    ).order_by(F("geocodificacao_falhou_em").asc(nulls_first=True), "pk")
 
 
 def _localidade(local):
@@ -63,7 +67,9 @@ def _localidade(local):
     resposta do Photon, vale a UF que o local já tinha.
     """
     resposta = buscar_cidade_e_estado(
-        float(local.latitude), float(local.longitude)
+        float(local.latitude),
+        float(local.longitude),
+        antes_de_tentar=_vez.aguardar,
     )
     if resposta is None:
         return "", ""
@@ -83,26 +89,33 @@ def completar_cidades(agora, limite=None, ignorar=()):
 
     Falha passageira do Photon (rede, 5xx, limite de uso) interrompe:
     os que faltaram ficam para a próxima vez. Erro de um local só (4xx,
-    resposta inválida) pula aquele local, que continua pendente, para ele
-    não travar os outros; depois de `MAXIMO_ERROS_SEGUIDOS` seguidos, para.
+    resposta inválida) marca `geocodificacao_falhou_em` e segue para o
+    próximo; o local continua pendente, no fim da fila. Depois de
+    `MAXIMO_ERROS_SEGUIDOS` seguidos, desconfia do servidor e para.
     """
     resumo = ResumoGeocodificacao()
     locais = list(pendentes().exclude(pk__in=ignorar)[:limite])
     erros_seguidos = 0
     for local in locais:
-        _vez.aguardar()
         try:
             cidade, uf = _localidade(local)
         except ErroPhoton as erro:
-            erros_seguidos += 1
-            if erro.passageira or erros_seguidos >= MAXIMO_ERROS_SEGUIDOS:
+            if erro.passageira:
                 logger.warning("Geocodificação interrompida: %s", erro)
                 resumo.falha = str(erro)
                 break
             logger.warning(
                 "Local %s pulado na geocodificação: %s", local.pk, erro
             )
+            Local.objects.filter(pk=local.pk).update(
+                geocodificacao_falhou_em=agora
+            )
             resumo.com_erro.append(local.pk)
+            erros_seguidos += 1
+            if erros_seguidos >= MAXIMO_ERROS_SEGUIDOS:
+                logger.warning("Geocodificação interrompida: %s", erro)
+                resumo.falha = str(erro)
+                break
             continue
         erros_seguidos = 0
         campos = {"geocodificado_em": agora}

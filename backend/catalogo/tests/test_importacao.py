@@ -1095,7 +1095,7 @@ class ComandoGeocodificaTest(TestCase):
     def test_local_com_erro_nao_e_consultado_de_novo_na_transacao(self):
         respostas = iter([ErroPhoton("Photon respondeu HTTP 400")])
 
-        def photon(*_coordenada):
+        def photon(*_coordenada, antes_de_tentar):
             erro = next(respostas, None)
             if erro:
                 raise erro

@@ -87,7 +87,23 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     def clean(self):
         super().clean()
+        # A migração 0003 deixou cidades de vários estados sem UF ("Bom
+        # Jesus"): o admin precisa conseguir salvar esse usuário sem mexer
+        # na cidade (para desativá-lo, por exemplo).
+        if self._localidade_gravada() == (self.cidade, self.estado):
+            return
         self.cidade = conferir_localidade(self.cidade, self.estado)
+
+    def _localidade_gravada(self):
+        """(cidade, estado) como estão no banco; None se ainda não existe."""
+        if self._state.adding:
+            return None
+        return (
+            type(self)
+            .objects.filter(pk=self.pk)
+            .values_list("cidade", "estado")
+            .first()
+        )
 
     def save(self, *args, **kwargs):
         self.email = self.normalize_username(self.email)

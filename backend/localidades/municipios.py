@@ -92,23 +92,23 @@ def ufs_com_municipio(nome):
 
 
 def localizar_municipio(nome, uf):
-    """(nome oficial, UF) da cidade, corrigindo ou completando a UF.
+    """(nome oficial, UF) da cidade; completa a UF, mas nunca a troca.
 
-    - Município da UF informada: fica como está.
-    - Nome que só existe em um estado: vale esse estado, mesmo que a UF
-      informada seja outra ("Medianeira", "PB" dá ("Medianeira", "PR")).
-    - Nome de vários estados e sem UF: o nome oficial, que é o mesmo em
-      todos, com a UF vazia ("Bom Jesus", "").
-    - O resto (nome que não existe, ou de vários estados e nenhum deles o
-      informado): ("", UF informada).
+    - UF válida: a cidade precisa ser município dela, senão fica ""
+      (("Pinheiros", "SP") dá ("", "SP"): Pinheiros é bairro de São
+      Paulo, apesar de ser município no ES).
+    - Sem UF (ou com uma que não é estado): o nome de um estado só ganha
+      esse estado ("Curitiba" dá ("Curitiba", "PR")); o de vários fica
+      com o nome oficial, que é o mesmo em todos, e sem UF ("Bom Jesus"
+      dá ("Bom Jesus", "")); o que não existe dá ("", "").
     """
     uf = uf.strip().upper() if isinstance(uf, str) else ""
     if not isinstance(nome, str):
-        return "", uf
-    if oficial := municipio_oficial(nome, uf):
-        return oficial, uf
+        return "", uf if uf in estados() else ""
+    if uf in estados():
+        return municipio_oficial(nome, uf), uf
     candidatas = ufs_com_municipio(nome)
-    if len(candidatas) == 1 or (candidatas and not uf):
-        unica = candidatas[0] if len(candidatas) == 1 else ""
-        return municipio_oficial(nome, candidatas[0]), unica
-    return "", uf
+    if not candidatas:
+        return "", ""
+    unica = candidatas[0] if len(candidatas) == 1 else ""
+    return municipio_oficial(nome, candidatas[0]), unica

@@ -22,7 +22,7 @@ class ErroPhoton(Exception):
     passageira = False
 
 
-def _get_json(caminho, parametros):
+def _get_json(caminho, parametros, antes_de_tentar=None):
     base = settings.PHOTON_URL.rstrip("/")
     dados = obter_json(
         f"{base}{caminho}?{urllib.parse.urlencode(parametros)}",
@@ -30,6 +30,7 @@ def _get_json(caminho, parametros):
         erro=ErroPhoton,
         timeout=TIMEOUT,
         tentativas=TENTATIVAS,
+        antes_de_tentar=antes_de_tentar,
     )
     if not isinstance(dados, dict) or not isinstance(
         dados.get("features"), list
@@ -136,14 +137,18 @@ def buscar_endereco_reverso(latitude, longitude):
     return convertida[0] if convertida else None
 
 
-def buscar_cidade_e_estado(latitude, longitude):
+def buscar_cidade_e_estado(latitude, longitude, antes_de_tentar=None):
     """(cidade, estado) do ponto, como o Photon escreve; None fora do BR.
 
     O estado às vezes vem pelo nome ("São Paulo"), às vezes pela sigla
     ("SP"); qualquer um dos dois pode faltar e vir como "".
+    `antes_de_tentar` é chamado antes de cada tentativa, inclusive a nova
+    tentativa depois de uma falha passageira (ex.: esperar a vez).
     """
     dados = _get_json(
-        "/reverse", {"lat": latitude, "lon": longitude, "limit": 1}
+        "/reverse",
+        {"lat": latitude, "lon": longitude, "limit": 1},
+        antes_de_tentar=antes_de_tentar,
     )
     if not dados["features"] or not isinstance(dados["features"][0], dict):
         return None

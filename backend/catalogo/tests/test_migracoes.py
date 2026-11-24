@@ -69,18 +69,28 @@ class LimparCidadesInvalidasTest(TestCase):
         de_fora = self.criar("f", "Buenos Aires", estado="", pais="AR")
         sem_estado = self.criar("g", "Bom Jesus", estado="")
         ambigua_errada = self.criar("h", "Bom Jesus")
+        bairro = self.criar("i", "Pinheiros")
+        sem_estado_com_coordenada = self.criar(
+            "j",
+            "Bom Jesus",
+            estado="",
+            latitude=Decimal("-28.6"),
+            longitude=Decimal("-50.4"),
+        )
 
         limpar_cidades(apps, None)
 
         for local, esperada in (
             (invalida, ("", "SP")),
-            (outra_uf, ("Curitiba", "PR")),
+            (outra_uf, ("", "SP")),
             (sem_acento, ("São Paulo", "SP")),
             (valida, ("Ribeirão Preto", "SP")),
             (manual, ("Sampa", "SP")),
             (de_fora, ("Buenos Aires", "")),
             (sem_estado, ("Bom Jesus", "")),
             (ambigua_errada, ("", "SP")),
+            (bairro, ("", "SP")),
+            (sem_estado_com_coordenada, ("", "")),
         ):
             local.refresh_from_db()
             self.assertEqual((local.cidade, local.estado), esperada)

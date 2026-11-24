@@ -110,19 +110,24 @@ def _preco(valor):
     return _numero(valor, CENTAVO, 0, PRECO_MAXIMO)
 
 
-def _cidade_e_estado(venue, pais):
+def _cidade_e_estado(venue, pais, tem_coordenada):
     """Cidade e UF do venue; no Brasil, a cidade é um município do IBGE.
 
     O Ticketmaster quase nunca manda a cidade, às vezes manda lixo
-    ("Nocity") e às vezes erra ou omite a UF; ver `localizar_municipio`.
-    Com o nome oficial, o filtro por cidade das notificações compara nomes
+    ("Nocity") ou um bairro ("Pinheiros"), e às vezes omite a UF; ver
+    `localizar_municipio`, que completa a UF mas não a troca. Cidade de
+    vários estados sem UF, se houver coordenada, fica para o Photon. Com o
+    nome oficial, o filtro por cidade das notificações compara nomes
     escritos do mesmo jeito.
     """
     cidade = _texto(_objeto(venue, "city"), "name")
     estado = _texto(_objeto(venue, "state"), "stateCode")
     if pais not in ("", "BR"):
         return cidade, estado
-    return localizar_municipio(cidade, estado)
+    cidade, uf = localizar_municipio(cidade, estado)
+    if cidade and not uf and tem_coordenada:
+        cidade = ""
+    return cidade, uf or estado
 
 
 def _salvar_local(venue):
@@ -130,17 +135,8 @@ def _salvar_local(venue):
         return None
     coordenadas = _objeto(venue, "location")
     pais = _texto(_objeto(venue, "country"), "countryCode")
-    cidade, estado = _cidade_e_estado(venue, pais)
-    dados = {
-        "nome": _texto(venue, "name"),
-        "endereco": _texto(_objeto(venue, "address"), "line1"),
-        "cidade": cidade,
-        "estado": estado,
-        "pais": pais,
-        "latitude": _numero(coordenadas.get("latitude"), GRAU, -90, 90),
-        "longitude": _numero(coordenadas.get("longitude"), GRAU, -180, 180),
-        "geocodificado_em": None,
-    }
+    latitude = _numero(coordenadas.get("latitude"), GRAU, -90, 90)
+    longitude = _numero(coordenadas.get("longitude"), GRAU, -180, 180)
     anterior = Local.objects.filter(
         provedor=Provedor.TICKETMASTER, id_externo=venue["id"]
     ).first()
@@ -149,21 +145,40 @@ def _salvar_local(venue):
     if (
         anterior is not None
         and anterior.latitude is not None
-        and dados["latitude"] is None
-        and dados["longitude"] is None
+        and latitude is None
+        and longitude is None
     ):
-        dados["latitude"] = anterior.latitude
-        dados["longitude"] = anterior.longitude
+        latitude, longitude = anterior.latitude, anterior.longitude
+    cidade, estado = _cidade_e_estado(
+        venue, pais, tem_coordenada=latitude is not None
+    )
+    dados = {
+        "nome": _texto(venue, "name"),
+        "endereco": _texto(_objeto(venue, "address"), "line1"),
+        "cidade": cidade,
+        "estado": estado,
+        "pais": pais,
+        "latitude": latitude,
+        "longitude": longitude,
+        "geocodificado_em": None,
+        "geocodificacao_falhou_em": None,
+    }
+    mesma_coordenada = anterior is not None and (
+        anterior.latitude,
+        anterior.longitude,
+    ) == (latitude, longitude)
+    # Com a mesma coordenada, o erro anterior no Photon continua valendo
+    # (o local segue no fim da fila de geocodificação).
+    if mesma_coordenada:
+        del dados["geocodificacao_falhou_em"]
     # Sem cidade no Ticketmaster e com a mesma coordenada, a conferência no
     # Photon continua valendo. Se ela achou a cidade, ficam a cidade e a UF
     # dela; se não achou, a UF continua sendo a do Ticketmaster, que pode
     # ter sido corrigida.
     if (
-        not dados["cidade"]
-        and anterior is not None
+        mesma_coordenada
+        and not dados["cidade"]
         and anterior.geocodificado_em is not None
-        and (anterior.latitude, anterior.longitude)
-        == (dados["latitude"], dados["longitude"])
     ):
         del dados["geocodificado_em"]
         if anterior.cidade:

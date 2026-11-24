@@ -43,6 +43,8 @@ class LocalidadeDoTextoAntigoTest(SimpleTestCase):
     def test_cidade_que_nao_existe_na_uf_mantem_so_a_uf(self):
         self.assertEqual(migracao.localidade("Sampa, SP"), ("", "SP"))
         self.assertEqual(migracao.localidade("Curitiba, SP"), ("", "SP"))
+        # Mesma regra dos locais: a UF escrita não é trocada.
+        self.assertEqual(migracao.localidade("Medianeira, PB"), ("", "PB"))
 
     def test_texto_irreconhecivel_fica_em_branco(self):
         for texto in ("Sampa", "SP capital", "BR", ",", ""):

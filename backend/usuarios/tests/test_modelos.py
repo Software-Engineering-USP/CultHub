@@ -94,6 +94,17 @@ class LocalidadeDoModeloTest(TestCase):
                     list(contexto.exception.message_dict), [campo]
                 )
 
+    def test_cidade_sem_estado_que_ja_estava_gravada_vale(self):
+        usuario = Usuario.objects.create_user(
+            "b@exemplo.com", "senha1234", nome="B", cidade="Bom Jesus"
+        )
+        usuario.is_active = False
+        usuario.clean()
+
+        usuario.cidade = "Curitiba"
+        with self.assertRaises(ValidationError):
+            usuario.clean()
+
     def test_sem_cidade_vale(self):
         for campos in ({}, {"estado": "MG"}):
             with self.subTest(**campos):

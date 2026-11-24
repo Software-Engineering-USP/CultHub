@@ -15,4 +15,9 @@ class Migration(migrations.Migration):
             name='geocodificado_em',
             field=models.DateTimeField(blank=True, null=True),
         ),
+        migrations.AddField(
+            model_name='local',
+            name='geocodificacao_falhou_em',
+            field=models.DateTimeField(blank=True, null=True),
+        ),
     ]
