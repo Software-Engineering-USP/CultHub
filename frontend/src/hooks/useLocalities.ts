@@ -6,21 +6,41 @@ import type { ApiState } from '@/services/api'
 let statesRequest: Promise<ApiState[]> | undefined
 const citiesRequests = new Map<string, Promise<string[]>>()
 
-function loadStates() {
-  statesRequest ??= api.localities.states().catch((error: unknown) => {
-    statesRequest = undefined
-    throw error
+/** Sem resposta nesse tempo, a consulta conta como falha (e pode ser repetida). */
+export const LOCALITIES_TIMEOUT_MS = 15_000
+
+/** Esquece as listas já carregadas (para os testes começarem do zero). */
+export function clearLocalitiesCache() {
+  statesRequest = undefined
+  citiesRequests.clear()
+}
+
+function withTimeout<T>(request: Promise<T>, failure: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(failure)), LOCALITIES_TIMEOUT_MS)
+    request.then(resolve, reject).finally(() => clearTimeout(timer))
   })
+}
+
+function loadStates() {
+  statesRequest ??= withTimeout(api.localities.states(), 'Os estados demoraram a carregar.').catch(
+    (error: unknown) => {
+      statesRequest = undefined
+      throw error
+    },
+  )
   return statesRequest
 }
 
 function loadCities(state: string) {
   let request = citiesRequests.get(state)
   if (!request) {
-    request = api.localities.cities(state).catch((error: unknown) => {
-      citiesRequests.delete(state)
-      throw error
-    })
+    request = withTimeout(api.localities.cities(state), 'As cidades demoraram a carregar.').catch(
+      (error: unknown) => {
+        citiesRequests.delete(state)
+        throw error
+      },
+    )
     citiesRequests.set(state, request)
   }
   return request
@@ -30,28 +50,41 @@ function message(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
-/** As 27 UFs. */
+interface StatesState {
+  attempt: number
+  states: ApiState[]
+  error: string | null
+}
+
+/** As 27 UFs. `retry` consulta de novo depois de um erro. */
 export function useStates() {
-  const [state, setState] = useState<{ states: ApiState[]; error: string | null }>({
-    states: [],
-    error: null,
-  })
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState<StatesState>({ attempt: -1, states: [], error: null })
 
   useEffect(() => {
     let active = true
     loadStates()
       .then((states) => {
-        if (active) setState({ states, error: null })
+        if (active) setResult({ attempt, states, error: null })
       })
       .catch((error: unknown) => {
-        if (active) setState({ states: [], error: message(error, 'Não foi possível carregar os estados.') })
+        if (active) {
+          setResult({ attempt, states: [], error: message(error, 'Não foi possível carregar os estados.') })
+        }
       })
     return () => {
       active = false
     }
-  }, [])
+  }, [attempt])
 
-  return state
+  const retry = useCallback(() => setAttempt((value) => value + 1), [])
+  // Enquanto a nova tentativa não responde, o erro anterior some.
+  const current = result.attempt === attempt
+  return {
+    states: current ? result.states : [],
+    error: current ? result.error : null,
+    retry,
+  }
 }
 
 interface CitiesState {

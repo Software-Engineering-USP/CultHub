@@ -65,6 +65,19 @@ describe('api', () => {
     expect(JSON.parse(options.body as string)).toEqual({ nome: 'Lívia Costa', bairro: 'Vila Mariana' })
   })
 
+  it('erro de validação guarda as mensagens por campo', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ cidade: ['Não há um município com esse nome em SP.'], detail: 'x' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(
+      api.profile.update({ name: 'Lívia', district: '', locality: { city: 'Sampa', state: 'SP' } }),
+    ).rejects.toMatchObject({ status: 400, fields: { cidade: ['Não há um município com esse nome em SP.'] } })
+  })
+
   it('consulta os estados e os municípios de uma UF', async () => {
     await api.localities.states()
     await api.localities.cities('SP')

@@ -6,6 +6,7 @@ import AttendanceSection from '@/components/account/AttendanceSection'
 import EventGrid from '@/components/account/EventGrid'
 import ListStatus from '@/components/account/ListStatus'
 import LocalityFields from '@/components/account/LocalityFields'
+import type { LocalityServerError } from '@/components/account/LocalityFields'
 import MyCommentItem from '@/components/account/MyCommentItem'
 import Eyebrow from '@/components/common/Eyebrow'
 import Field from '@/components/common/Field'
@@ -70,6 +71,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
   const { active: activeSection, select: selectSection } = useActiveSection(sectionIds)
   const savedEvents = useSavedEvents()
   const [profileMessage, setProfileMessage] = useState('')
+  const [localityError, setLocalityError] = useState<LocalityServerError | null>(null)
   const [preferencesMessage, setPreferencesMessage] = useState('')
   const [logoutMessage, setLogoutMessage] = useState('')
   const [saving, setSaving] = useState(false)
@@ -187,11 +189,18 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
                     ...(localityChanged && { locality: { city, state } }),
                   })
                   updateUser(profile)
+                  setLocalityError(null)
                   setProfileMessage('Dados atualizados.')
                 } catch (error) {
-                  setProfileMessage(
-                    error instanceof ApiError ? error.message : 'Não foi possível salvar. Tente novamente.',
-                  )
+                  // Recusa da cidade ou do estado aparece no campo, com o texto do backend.
+                  const locality =
+                    error instanceof ApiError ? [error.fields.estado, error.fields.cidade].flat() : []
+                  const localityMessage = locality.filter(Boolean).join(' ')
+                  setLocalityError(localityMessage ? { city, state, message: localityMessage } : null)
+                  let message = 'Não foi possível salvar. Tente novamente.'
+                  if (localityMessage) message = 'Não foi possível salvar. Confira o estado e a cidade.'
+                  else if (error instanceof ApiError) message = error.message
+                  setProfileMessage(message)
                 } finally {
                   setSaving(false)
                 }
@@ -214,7 +223,11 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
                   readOnly
                   help="O e-mail não pode ser alterado."
                 />
-                <LocalityFields defaultCity={user.city} defaultState={user.state} />
+                <LocalityFields
+                  defaultCity={user.city}
+                  defaultState={user.state}
+                  serverError={localityError}
+                />
                 <Field
                   id="bairro"
                   name="bairro"

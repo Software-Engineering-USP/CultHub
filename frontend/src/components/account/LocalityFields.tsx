@@ -13,9 +13,18 @@ function sameName(a: string, b: string) {
   return normalizePlaceName(a) === normalizePlaceName(b)
 }
 
+/** Recusa do backend para a cidade e o estado enviados. */
+export interface LocalityServerError {
+  city: string
+  state: string
+  message: string
+}
+
 interface LocalityFieldsProps {
   defaultCity: string
   defaultState: string
+  /** Mostrada no campo enquanto a cidade e o estado forem os que o backend recusou. */
+  serverError?: LocalityServerError | null
 }
 
 /** O que se sabe da cidade digitada, para decidir as mensagens do campo. */
@@ -56,10 +65,16 @@ function cityHelp({ state, loading, listError }: CityCheck, keptLegacyCity: stri
  * entre os municípios do IBGE da UF escolhida; fora da lista, o campo fica inválido e o
  * formulário não envia.
  */
-export default function LocalityFields({ defaultCity, defaultState }: Readonly<LocalityFieldsProps>) {
+export default function LocalityFields({
+  defaultCity,
+  defaultState,
+  serverError,
+}: Readonly<LocalityFieldsProps>) {
   const [state, setState] = useState(defaultState)
   const [city, setCity] = useState(defaultCity)
-  const { states, error: statesError } = useStates()
+  // A pessoa mexeu na cidade (digitou, escolheu ou apagou); limpar ao trocar de UF não conta.
+  const [cityEdited, setCityEdited] = useState(false)
+  const { states, error: statesError, retry: retryStates } = useStates()
   const { cities, error: citiesError, loading, retry } = useCities(state)
 
   // Perfil antigo com cidade e sem UF: o campo fica editável para a pessoa poder apagá-la.
@@ -90,9 +105,10 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
             aria-describedby={statesError ? 'estado-ajuda' : undefined}
             onChange={(event) => {
               const next = event.target.value
-              // Perfil antigo que volta para "Não informado" recupera a cidade gravada; fora isso,
-              // trocar de UF invalida a cidade (sem UF antes, ela é conferida na nova).
-              if (!next && legacyCity) setCity(defaultCity)
+              // Voltar para a UF gravada (ou "Não informado", no perfil antigo) recupera a cidade
+              // gravada, se a pessoa não mexeu nela; fora isso, trocar de UF invalida a cidade
+              // (sem UF antes, ela é conferida na nova).
+              if (next === defaultState && !cityEdited) setCity(defaultCity)
               else if (state) setCity('')
               setState(next)
             }}
@@ -114,28 +130,48 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
         </div>
         {statesError && (
           <small id="estado-ajuda" className="text-2xs text-muted-foreground">
-            {statesError}
+            {statesError} <RetryButton onClick={retryStates} />
           </small>
         )}
       </div>
 
       <CitySearch
         value={city}
-        onValueChange={setCity}
+        onValueChange={(value) => {
+          setCity(value)
+          setCityEdited(true)
+        }}
+        onSettle={setCity}
         canonical={canonical}
         cities={cities}
         readOnly={!state && !legacyCity}
         help={help}
         error={cityError(check)}
         onRetry={state && citiesError ? retry : undefined}
+        serverError={
+          serverError && serverError.state === state && sameName(serverError.city, city)
+            ? serverError.message
+            : ''
+        }
       />
     </>
   )
 }
 
+function RetryButton({ onClick }: Readonly<{ onClick: () => void }>) {
+  return (
+    <button type="button" onClick={onClick} className="font-semibold text-maroon underline">
+      Tentar de novo
+    </button>
+  )
+}
+
 interface CitySearchProps {
   value: string
+  /** A pessoa digitou ou escolheu uma cidade. */
   onValueChange: (value: string) => void
+  /** O campo trocou o texto pelo nome oficial (mesma cidade). */
+  onSettle: (value: string) => void
   /** Nome a pôr no campo ao sair dele ou com Enter ("sao paulo" vira "São Paulo"). */
   canonical?: string
   cities: string[]
@@ -145,18 +181,22 @@ interface CitySearchProps {
   error: string
   /** Mostra "Tentar de novo" (lista de cidades que não carregou). */
   onRetry?: () => void
+  /** Recusa do backend para esta cidade; não impede um novo envio. */
+  serverError: string
 }
 
 /** Campo de cidade com sugestões da lista de municípios enquanto a pessoa digita. */
 function CitySearch({
   value,
   onValueChange,
+  onSettle,
   canonical,
   cities,
   readOnly,
   help,
   error,
   onRetry,
+  serverError,
 }: Readonly<CitySearchProps>) {
   const listId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -166,7 +206,7 @@ function CitySearch({
   const suggestions = open ? candidates : []
   const expanded = suggestions.length > 0
   // Enquanto a pessoa digita, o erro não aparece (só no envio ou ao sair do campo).
-  const shownError = open ? '' : error
+  const shownError = open ? '' : error || serverError
   const message = shownError || help
 
   useEffect(() => {
@@ -184,7 +224,7 @@ function CitySearch({
   }
 
   function settle() {
-    if (canonical && canonical !== value) onValueChange(canonical)
+    if (canonical && canonical !== value) onSettle(canonical)
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -238,9 +278,7 @@ function CitySearch({
               {onRetry && (
                 <>
                   {' '}
-                  <button type="button" onClick={onRetry} className="font-semibold text-maroon underline">
-                    Tentar de novo
-                  </button>
+                  <RetryButton onClick={onRetry} />
                 </>
               )}
             </>

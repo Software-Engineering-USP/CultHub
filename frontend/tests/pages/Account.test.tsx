@@ -1,8 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { currentUser } from '@/data/user'
+import { clearLocalitiesCache } from '@/hooks/useLocalities'
 import Account from '@/pages/Account'
-import { api } from '@/services/api'
+import { api, ApiError } from '@/services/api'
 import type { ProfileResponse } from '@/services/api'
 import { apiEvent, apiPage } from '@tests/fixtures/catalog'
 import { apiComment, apiMyComment, commentPage } from '@tests/fixtures/comments'
@@ -21,6 +22,7 @@ const profile: ProfileResponse = {
 
 describe('Account', () => {
   beforeEach(() => {
+    clearLocalitiesCache()
     vi.spyOn(api.agenda, 'attendances').mockResolvedValue(apiPage([]))
     vi.spyOn(api.agenda, 'calendar').mockResolvedValue(apiPage([]))
     vi.spyOn(api.comments, 'mine').mockResolvedValue(commentPage([apiMyComment()]))
@@ -291,10 +293,13 @@ describe('Account', () => {
   })
 
   it('se as cidades da UF falham, bloqueia a cidade nova e deixa tentar de novo', async () => {
-    const cities = vi
-      .mocked(api.localities.cities)
-      .mockRejectedValueOnce(new Error('Falha de rede.'))
-      .mockResolvedValueOnce(['Salvador'])
+    let attemptsBA = 0
+    const cities = vi.mocked(api.localities.cities).mockImplementation(async (state) => {
+      if (state !== 'BA') return ['Campinas', 'São Paulo']
+      attemptsBA += 1
+      if (attemptsBA === 1) throw new Error('Falha de rede.')
+      return ['Salvador']
+    })
     const update = vi.spyOn(api.profile, 'update').mockResolvedValue(profile)
     const { user } = renderWithRouter(<Account />)
     await screen.findByRole('option', { name: 'Bahia (BA)' })
@@ -311,13 +316,71 @@ describe('Account', () => {
     await waitFor(() =>
       expect(screen.queryByText('Não foi possível conferir a cidade.')).not.toBeInTheDocument(),
     )
-    expect(cities).toHaveBeenCalledTimes(2)
+    expect(cities.mock.calls.filter(([state]) => state === 'BA')).toHaveLength(2)
     await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(update).toHaveBeenCalledWith({
       name: 'Lívia Costa',
       district: 'Vila Mariana',
       locality: { city: 'Salvador', state: 'BA' },
     })
+  })
+
+  it('perfil antigo que apagou a cidade não a recupera ao voltar para "Não informado"', async () => {
+    const update = vi.spyOn(api.profile, 'update').mockResolvedValue({ ...profile, cidade: '', estado: '' })
+    const { user } = renderWithRouter(<Account />, {
+      authUser: { ...currentUser, city: 'Moema', state: '' },
+    })
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    await screen.findByRole('option', { name: 'São Paulo (SP)' })
+
+    await user.clear(cidade)
+    await user.selectOptions(screen.getByLabelText('Estado'), 'SP')
+    await user.selectOptions(screen.getByLabelText('Estado'), '')
+    expect(cidade).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(update).toHaveBeenCalledWith({
+      name: 'Lívia Costa',
+      district: 'Vila Mariana',
+      locality: { city: '', state: '' },
+    })
+  })
+
+  it('voltar para a UF gravada recupera a cidade gravada', async () => {
+    const { user } = renderWithRouter(<Account />)
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    await screen.findByRole('option', { name: 'São Paulo (SP)' })
+
+    await user.selectOptions(screen.getByLabelText('Estado'), 'RJ')
+    expect(cidade).toHaveValue('')
+    await user.selectOptions(screen.getByLabelText('Estado'), 'SP')
+    expect(cidade).toHaveValue('São Paulo')
+  })
+
+  it('a recusa do backend para a cidade aparece no campo, até a cidade mudar', async () => {
+    vi.spyOn(api.profile, 'update').mockRejectedValue(
+      new ApiError('cidade: Não há um município com esse nome em SP.', 400, {
+        cidade: ['Não há um município com esse nome em SP.'],
+      }),
+    )
+    const { user } = renderWithRouter(<Account />)
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    await waitFor(() => expect(screen.queryByText('Carregando as cidades…')).not.toBeInTheDocument())
+
+    await user.clear(cidade)
+    await user.type(cidade, 'campinas')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(await screen.findByText('Não há um município com esse nome em SP.')).toBeInTheDocument()
+    expect(cidade).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText('Não foi possível salvar. Confira o estado e a cidade.')).toBeInTheDocument()
+    expect(screen.queryByText(/cidade: /)).not.toBeInTheDocument()
+
+    await user.clear(cidade)
+    await user.type(cidade, 'São Paulo')
+    await user.tab()
+    expect(screen.queryByText('Não há um município com esse nome em SP.')).not.toBeInTheDocument()
   })
 
   it('perfil antigo sem estado não envia outra cidade sem a UF', async () => {

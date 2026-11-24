@@ -91,12 +91,28 @@ export interface ApiState {
 
 export class ApiError extends Error {
   readonly status: number
+  /** Mensagens de validação por campo (ex.: `cidade`), quando o backend as manda. */
+  readonly fields: Record<string, string[]>
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, fields: Record<string, string[]> = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.fields = fields
   }
+}
+
+function fieldErrors(data: unknown): Record<string, string[]> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {}
+  const fields: Record<string, string[]> = {}
+  for (const [field, value] of Object.entries(data as Record<string, unknown>)) {
+    if (field === 'detail' || field === 'non_field_errors') continue
+    const messages = (Array.isArray(value) ? value : [value]).filter(
+      (message): message is string => typeof message === 'string',
+    )
+    if (messages.length) fields[field] = messages
+  }
+  return fields
 }
 
 function csrfCookie(): string | undefined {
@@ -149,7 +165,7 @@ async function apiRequest<T>(path: string, method: Method = 'GET', body?: object
     ) {
       window.dispatchEvent(new Event(AUTHENTICATION_FAILURE_EVENT))
     }
-    throw new ApiError(errorMessage(data), response.status)
+    throw new ApiError(errorMessage(data), response.status, fieldErrors(data))
   }
   return data as T
 }
