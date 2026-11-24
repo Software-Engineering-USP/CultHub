@@ -3,16 +3,22 @@ export function formatLocality(city: string, state: string): string {
   return [city, state].filter(Boolean).join(', ')
 }
 
+// Os mesmos do backend (`localidades.municipios.APOSTROFOS`), para "Dias d´Ávila" valer.
+const APOSTROPHES = /[’‘ʼ`´]/g
+
 /** Nome para comparar sem caixa, acento, tipo de apóstrofo nem espaço repetido. */
 export function normalizePlaceName(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .replace(/[’‘`´]/g, "'")
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .join(' ')
+  return (
+    name
+      // Antes de tirar os acentos: "´", "`" e "ʼ" também contam como acento e sumiriam.
+      .replace(APOSTROPHES, "'")
+      .normalize('NFKD')
+      .replace(/\p{Mn}/gu, '')
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(' ')
+  )
 }
 
 /** Cidades da lista que combinam com o texto: as que começam com ele primeiro. */

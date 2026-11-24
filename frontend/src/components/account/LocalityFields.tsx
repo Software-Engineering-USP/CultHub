@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'react'
 import Field from '@/components/common/Field'
 import { Label } from '@/components/ui/label'
 import { useCities, useStates } from '@/hooks/useLocalities'
-import { findCity, matchCities } from '@/lib/locality'
+import { findCity, matchCities, normalizePlaceName } from '@/lib/locality'
 import { cn } from '@/lib/utils'
 
 const MAX_SUGGESTIONS = 8
@@ -25,12 +25,21 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
   const { states, error: statesError } = useStates()
   const { cities, error: citiesError, loading } = useCities(state)
 
-  const unknownCity = Boolean(state && city.trim() && cities.length && !findCity(cities, city))
+  // Perfil antigo com cidade e sem UF: o campo fica editável para a pessoa poder apagá-la.
+  const legacyCity = !defaultState && defaultCity !== ''
+  const keptLegacyCity = legacyCity && normalizePlaceName(city) === normalizePlaceName(defaultCity)
+
+  let error = ''
+  if (state && city.trim() && cities.length && !findCity(cities, city)) {
+    error = `Não há um município com esse nome em ${state}. Escolha um da lista.`
+  } else if (!state && city.trim() && !keptLegacyCity) {
+    error = 'Escolha o estado da cidade.'
+  }
 
   let help = ''
   if (!state) {
-    help = city
-      ? `Escolha o estado de ${city} para confirmar a cidade.`
+    help = keptLegacyCity
+      ? `Escolha o estado de ${defaultCity} para confirmar a cidade, ou apague o campo.`
       : 'Escolha o estado para buscar a cidade.'
   } else if (loading) help = 'Carregando as cidades…'
   else if (citiesError) help = citiesError
@@ -78,9 +87,9 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
         value={city}
         onValueChange={setCity}
         cities={cities}
-        readOnly={!state}
+        readOnly={!state && !legacyCity}
         help={help}
-        error={unknownCity ? `Não há um município com esse nome em ${state}. Escolha um da lista.` : ''}
+        error={error}
       />
     </>
   )

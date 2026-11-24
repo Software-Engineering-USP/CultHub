@@ -15,6 +15,11 @@ describe('normalizePlaceName', () => {
     expect(normalizePlaceName('  São   Paulo ')).toBe('sao paulo')
     expect(normalizePlaceName('Olho D’Água')).toBe(normalizePlaceName("olho d'agua"))
   })
+
+  it.each(['´', '`', 'ʼ', '’', '‘'])('trata "%s" como apóstrofo, como o backend', (apostrophe) => {
+    expect(normalizePlaceName(`Dias d${apostrophe}Ávila`)).toBe("dias d'avila")
+    expect(findCity(["Dias d'Ávila"], `dias d${apostrophe}avila`)).toBe("Dias d'Ávila")
+  })
 })
 
 describe('matchCities', () => {

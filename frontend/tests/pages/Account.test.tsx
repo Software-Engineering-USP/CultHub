@@ -155,18 +155,64 @@ describe('Account', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
+  it('sem estado nem cidade, a cidade só é editável depois de escolher a UF', async () => {
+    const { user } = renderWithRouter(<Account />, {
+      authUser: { ...currentUser, city: '', state: '' },
+    })
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    expect(cidade).toHaveAttribute('readonly')
+    expect(screen.getByText('Escolha o estado para buscar a cidade.')).toBeInTheDocument()
+
+    await screen.findByRole('option', { name: 'São Paulo (SP)' })
+    await user.selectOptions(screen.getByLabelText('Estado'), 'SP')
+    expect(cidade).not.toHaveAttribute('readonly')
+  })
+
   it('perfil antigo com cidade sem estado pede o estado e mantém a cidade ao escolher', async () => {
     const { user } = renderWithRouter(<Account />, {
       authUser: { ...currentUser, city: 'Campinas', state: '' },
     })
     const cidade = screen.getByRole('combobox', { name: 'Cidade' })
-    expect(cidade).toHaveAttribute('readonly')
-    expect(screen.getByText('Escolha o estado de Campinas para confirmar a cidade.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Escolha o estado de Campinas para confirmar a cidade, ou apague o campo.'),
+    ).toBeInTheDocument()
 
     await screen.findByRole('option', { name: 'São Paulo (SP)' })
     await user.selectOptions(screen.getByLabelText('Estado'), 'SP')
     expect(cidade).toHaveValue('Campinas')
+  })
+
+  it('perfil antigo com cidade sem estado consegue apagar a cidade', async () => {
+    const update = vi.spyOn(api.profile, 'update').mockResolvedValue({ ...profile, cidade: '', estado: '' })
+    const { user } = renderWithRouter(<Account />, {
+      authUser: { ...currentUser, city: 'Moema', state: '' },
+    })
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
     expect(cidade).not.toHaveAttribute('readonly')
+
+    await user.clear(cidade)
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+
+    expect(update).toHaveBeenCalledWith({
+      name: 'Lívia Costa',
+      district: 'Vila Mariana',
+      locality: { city: '', state: '' },
+    })
+  })
+
+  it('perfil antigo sem estado não envia outra cidade sem a UF', async () => {
+    const update = vi.spyOn(api.profile, 'update').mockResolvedValue(profile)
+    const { user } = renderWithRouter(<Account />, {
+      authUser: { ...currentUser, city: 'Moema', state: '' },
+    })
+    const cidade = screen.getByRole('combobox', { name: 'Cidade' })
+    await user.clear(cidade)
+    await user.type(cidade, 'Campinas')
+    await user.tab()
+
+    expect(await screen.findByText('Escolha o estado da cidade.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(update).not.toHaveBeenCalled()
   })
 
   it('salvar preferências envia a lista atualizada', async () => {
