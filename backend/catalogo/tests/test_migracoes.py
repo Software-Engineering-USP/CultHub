@@ -67,16 +67,20 @@ class LimparCidadesInvalidasTest(TestCase):
         valida = self.criar("d", "Ribeirão Preto")
         manual = self.criar("e", "Sampa", provedor=Provedor.MANUAL)
         de_fora = self.criar("f", "Buenos Aires", estado="", pais="AR")
+        sem_estado = self.criar("g", "Bom Jesus", estado="")
+        ambigua_errada = self.criar("h", "Bom Jesus")
 
         limpar_cidades(apps, None)
 
         for local, esperada in (
-            (invalida, ""),
-            (outra_uf, ""),
-            (sem_acento, "São Paulo"),
-            (valida, "Ribeirão Preto"),
-            (manual, "Sampa"),
-            (de_fora, "Buenos Aires"),
+            (invalida, ("", "SP")),
+            (outra_uf, ("Curitiba", "PR")),
+            (sem_acento, ("São Paulo", "SP")),
+            (valida, ("Ribeirão Preto", "SP")),
+            (manual, ("Sampa", "SP")),
+            (de_fora, ("Buenos Aires", "")),
+            (sem_estado, ("Bom Jesus", "")),
+            (ambigua_errada, ("", "SP")),
         ):
             local.refresh_from_db()
-            self.assertEqual(local.cidade, esperada)
+            self.assertEqual((local.cidade, local.estado), esperada)

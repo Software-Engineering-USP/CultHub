@@ -6,6 +6,7 @@ from django.test import SimpleTestCase
 from localidades import municipios
 from localidades.municipios import (
     estados,
+    localizar_municipio,
     municipio_oficial,
     municipios_da_uf,
     sigla_do_estado,
@@ -64,6 +65,23 @@ class MunicipioOficialTest(SimpleTestCase):
         self.assertEqual(ufs_com_municipio("curitiba"), ["PR"])
         self.assertEqual(len(ufs_com_municipio("Bom Jesus")), 5)
         self.assertEqual(ufs_com_municipio("Sampa"), [])
+
+
+class LocalizarMunicipioTest(SimpleTestCase):
+    def test_casos(self):
+        for (nome, uf), esperado in {
+            ("campinas", "sp"): ("Campinas", "SP"),
+            ("Medianeira", "PB"): ("Medianeira", "PR"),
+            ("Curitiba", ""): ("Curitiba", "PR"),
+            ("bom jesus", ""): ("Bom Jesus", ""),
+            ("Bom Jesus", "RS"): ("Bom Jesus", "RS"),
+            ("Bom Jesus", "SP"): ("", "SP"),
+            ("Nocity", "SP"): ("", "SP"),
+            ("", "SP"): ("", "SP"),
+            (None, None): ("", ""),
+        }.items():
+            with self.subTest(nome=nome, uf=uf):
+                self.assertEqual(localizar_municipio(nome, uf), esperado)
 
 
 class SiglaDoEstadoTest(SimpleTestCase):

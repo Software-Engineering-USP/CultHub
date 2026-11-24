@@ -99,6 +99,24 @@ class TransporteTest(SimpleTestCase):
             _get_json("/api/", {})
         self.assertEqual(urlopen.call_count, 2)
 
+    def test_falha_marca_se_e_passageira(self, urlopen):
+        casos = {
+            "tempo esgotado": ([TimeoutError(), TimeoutError()], True),
+            "5xx": ([erro_http(503), erro_http(502)], True),
+            "limite de uso": (erro_http(429), True),
+            "4xx": (erro_http(400), False),
+            "json inválido": (None, False),
+        }
+        for nome, (falha, passageira) in casos.items():
+            with self.subTest(nome):
+                urlopen.reset_mock()
+                urlopen.side_effect = falha
+                urlopen.return_value = BytesIO(b"<html>")
+
+                with self.assertRaises(ErroPhoton) as contexto:
+                    _get_json("/api/", {})
+                self.assertIs(contexto.exception.passageira, passageira)
+
     def test_http_4xx_nao_tenta_de_novo(self, urlopen):
         urlopen.side_effect = erro_http(400)
 

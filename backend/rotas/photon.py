@@ -13,7 +13,13 @@ LIMITE_SUGESTOES = 5
 
 
 class ErroPhoton(Exception):
-    """Erro controlado ao consultar o Photon."""
+    """Erro controlado ao consultar o Photon.
+
+    `passageira` diz se é falha do servidor ou da rede (ver
+    `rotas.transporte.obter_json`), e não daquele pedido.
+    """
+
+    passageira = False
 
 
 def _get_json(caminho, parametros):

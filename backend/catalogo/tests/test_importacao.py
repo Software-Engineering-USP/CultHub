@@ -13,10 +13,12 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from catalogo import importacao
+from catalogo.geocodificacao import INTERVALO
 from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, ImagemEvento, Local, Provedor
 from catalogo.ticketmaster import ErroTicketmaster
 from rotas.photon import ErroPhoton
+from rotas.transporte import Espacador
 
 FIXTURE = Path(__file__).parent / "dados" / "ticketmaster_pagina.json"
 AGORA = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
@@ -47,11 +49,21 @@ def simular_photon(caso, resposta=None):
         "catalogo.geocodificacao.buscar_cidade_e_estado",
         return_value=resposta,
     )
-    espera = patch("catalogo.geocodificacao.time.sleep")
-    caso.addCleanup(espera.stop)
+    # Espaçador novo, sem espera: o do módulo guarda a vez entre testes.
+    vez = patch(
+        "catalogo.geocodificacao._vez",
+        Espacador(INTERVALO, float("inf"), dormir=lambda _segundos: None),
+    )
+    caso.addCleanup(vez.stop)
     caso.addCleanup(photon.stop)
-    espera.start()
+    vez.start()
     return photon.start()
+
+
+def erro_passageiro(mensagem):
+    erro = ErroPhoton(mensagem)
+    erro.passageira = True
+    return erro
 
 
 class ImportarTest(TestCase):
@@ -1080,8 +1092,28 @@ class ComandoGeocodificaTest(TestCase):
             saida,
         )
 
+    def test_local_com_erro_nao_e_consultado_de_novo_na_transacao(self):
+        respostas = iter([ErroPhoton("Photon respondeu HTTP 400")])
+
+        def photon(*_coordenada):
+            erro = next(respostas, None)
+            if erro:
+                raise erro
+
+        self.photon.side_effect = photon
+
+        with patch(f"{self.comando}.LIMITE_NA_TRANSACAO", 1):
+            saida = self.importar()
+
+        consultados = [chamada.args for chamada in self.photon.call_args_list]
+        self.assertEqual(len(consultados), 2)
+        self.assertNotEqual(consultados[0], consultados[1])
+        self.assertIn("locais com erro no Photon: 1", saida)
+        self.antigo.refresh_from_db()
+        self.assertIsNone(self.antigo.geocodificado_em)
+
     def test_photon_fora_nao_e_consultado_de_novo_na_transacao(self):
-        self.photon.side_effect = ErroPhoton("Photon respondeu HTTP 503")
+        self.photon.side_effect = erro_passageiro("Photon respondeu HTTP 503")
 
         saida = self.importar()
 

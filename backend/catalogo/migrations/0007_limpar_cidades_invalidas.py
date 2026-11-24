@@ -1,14 +1,16 @@
-"""Apaga a cidade dos locais do Ticketmaster que não é município do IBGE.
+"""Confere a cidade dos locais do Ticketmaster na lista do IBGE.
 
 Antes da importação conferir a cidade, ficou gravado o que viesse
-("Nocity"). Sem cidade, o local entra na geocodificação da próxima
-importação. A cidade válida passa a ter o nome oficial. Locais cadastrados
-à mão ficam como estão.
+("Nocity"). A cidade válida passa a ter o nome oficial, e a UF é corrigida
+ou completada quando o nome só existe em um estado (ver
+`localizar_municipio`); a que não dá para reconhecer é apagada, e o local
+entra na geocodificação da próxima importação se tiver coordenada.
+Locais cadastrados à mão ficam como estão.
 """
 
 from django.db import migrations
 
-from localidades.municipios import municipio_oficial
+from localidades.municipios import localizar_municipio
 
 
 def limpar_cidades(apps, schema_editor):
@@ -19,9 +21,11 @@ def limpar_cidades(apps, schema_editor):
         .only("cidade", "estado")
     )
     for local in locais:
-        oficial = municipio_oficial(local.cidade, local.estado)
-        if oficial != local.cidade:
-            modelo.objects.filter(pk=local.pk).update(cidade=oficial)
+        cidade, estado = localizar_municipio(local.cidade, local.estado)
+        if (cidade, estado) != (local.cidade, local.estado):
+            modelo.objects.filter(pk=local.pk).update(
+                cidade=cidade, estado=estado
+            )
 
 
 class Migration(migrations.Migration):

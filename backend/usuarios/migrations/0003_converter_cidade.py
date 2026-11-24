@@ -2,7 +2,8 @@
 
 Até aqui a cidade do perfil era digitada ("São Paulo, SP", "São Paulo -
 SP", "sampa"...). Fica o que dá para reconhecer na lista do IBGE; o resto
-fica em branco e a pessoa escolhe de novo em Minha conta.
+fica em branco e a pessoa escolhe de novo em Minha conta (ver
+`localidade`).
 """
 
 import re
@@ -54,19 +55,22 @@ def _cidade_e_uf(texto):
 def localidade(texto):
     """(município oficial, UF) do texto antigo; o que faltar fica "".
 
-    Sem UF, a cidade só é aceita se o nome existe em um estado só
-    ("Curitiba"); "Bom Jesus", que existe em cinco, fica em branco.
+    Sem UF, a cidade de um estado só ganha a UF ("Curitiba" fica no PR).
+    A que existe em vários fica com o nome oficial e sem UF ("Bom Jesus"):
+    os avisos continuam filtrando pela cidade, e Minha conta pede o estado
+    quando a pessoa salvar de novo.
     """
     cidade, uf = _cidade_e_uf(texto)
     uf = uf.upper()
     if not cidade:
         return "", uf
-    if not uf:
-        candidatas = ufs_com_municipio(cidade)
-        if len(candidatas) != 1:
-            return "", ""
-        uf = candidatas[0]
-    return municipio_oficial(cidade, uf), uf
+    if uf:
+        return municipio_oficial(cidade, uf), uf
+    candidatas = ufs_com_municipio(cidade)
+    if not candidatas:
+        return "", ""
+    unica = candidatas[0] if len(candidatas) == 1 else ""
+    return municipio_oficial(cidade, candidatas[0]), unica
 
 
 def converter_cidades(apps, schema_editor):

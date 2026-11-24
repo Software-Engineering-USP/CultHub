@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
 from django.utils import timezone
 
-from localidades.municipios import municipio_oficial
+from localidades.municipios import localizar_municipio
 
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
@@ -110,29 +110,31 @@ def _preco(valor):
     return _numero(valor, CENTAVO, 0, PRECO_MAXIMO)
 
 
-def _cidade(venue, estado, pais):
-    """Cidade do venue; no Brasil, só se for um município da UF.
+def _cidade_e_estado(venue, pais):
+    """Cidade e UF do venue; no Brasil, a cidade é um município do IBGE.
 
-    O Ticketmaster quase nunca manda a cidade e às vezes manda lixo
-    ("Nocity"). Com o nome oficial do IBGE, o filtro por cidade das
-    notificações compara nomes escritos do mesmo jeito.
+    O Ticketmaster quase nunca manda a cidade, às vezes manda lixo
+    ("Nocity") e às vezes erra ou omite a UF; ver `localizar_municipio`.
+    Com o nome oficial, o filtro por cidade das notificações compara nomes
+    escritos do mesmo jeito.
     """
     cidade = _texto(_objeto(venue, "city"), "name")
+    estado = _texto(_objeto(venue, "state"), "stateCode")
     if pais not in ("", "BR"):
-        return cidade
-    return municipio_oficial(cidade, estado)
+        return cidade, estado
+    return localizar_municipio(cidade, estado)
 
 
 def _salvar_local(venue):
     if venue is None:
         return None
     coordenadas = _objeto(venue, "location")
-    estado = _texto(_objeto(venue, "state"), "stateCode")
     pais = _texto(_objeto(venue, "country"), "countryCode")
+    cidade, estado = _cidade_e_estado(venue, pais)
     dados = {
         "nome": _texto(venue, "name"),
         "endereco": _texto(_objeto(venue, "address"), "line1"),
-        "cidade": _cidade(venue, estado, pais),
+        "cidade": cidade,
         "estado": estado,
         "pais": pais,
         "latitude": _numero(coordenadas.get("latitude"), GRAU, -90, 90),
@@ -142,6 +144,16 @@ def _salvar_local(venue):
     anterior = Local.objects.filter(
         provedor=Provedor.TICKETMASTER, id_externo=venue["id"]
     ).first()
+    # Venue que veio sem `location` fica com a coordenada que já tinha (e
+    # com o que a geocodificação descobriu a partir dela).
+    if (
+        anterior is not None
+        and anterior.latitude is not None
+        and dados["latitude"] is None
+        and dados["longitude"] is None
+    ):
+        dados["latitude"] = anterior.latitude
+        dados["longitude"] = anterior.longitude
     # Sem cidade no Ticketmaster e com a mesma coordenada, a conferência no
     # Photon continua valendo. Se ela achou a cidade, ficam a cidade e a UF
     # dela; se não achou, a UF continua sendo a do Ticketmaster, que pode

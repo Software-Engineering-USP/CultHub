@@ -37,8 +37,8 @@ class LocalidadeDoTextoAntigoTest(SimpleTestCase):
             migracao.localidade("São Paulo, BR"), ("São Paulo", "SP")
         )
 
-    def test_cidade_sem_uf_que_existe_em_varios_estados_fica_em_branco(self):
-        self.assertEqual(migracao.localidade("Bom Jesus"), ("", ""))
+    def test_cidade_sem_uf_que_existe_em_varios_estados_fica_sem_uf(self):
+        self.assertEqual(migracao.localidade("bom jesus"), ("Bom Jesus", ""))
 
     def test_cidade_que_nao_existe_na_uf_mantem_so_a_uf(self):
         self.assertEqual(migracao.localidade("Sampa, SP"), ("", "SP"))

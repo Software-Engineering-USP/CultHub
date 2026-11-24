@@ -1,19 +1,26 @@
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 from django.test import TestCase
 
-from catalogo.geocodificacao import INTERVALO, completar_cidades, pendentes
+from catalogo.geocodificacao import (
+    INTERVALO,
+    MAXIMO_ERROS_SEGUIDOS,
+    completar_cidades,
+    pendentes,
+)
 from catalogo.importacao import importar
 from catalogo.models import Local, Provedor
 from catalogo.tests.test_importacao import (
     AGORA,
     achar,
+    erro_passageiro,
     eventos_da_fixture,
     simular_photon,
 )
 from rotas.photon import ErroPhoton
+from rotas.transporte import RESPOSTA_INVALIDA, Espacador
 
 DEPOIS = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
 
@@ -106,21 +113,34 @@ class CompletarCidadesTest(TestCase):
         self.assertEqual(completar_cidades(DEPOIS).conferidos, 1)
         self.assertEqual(self.photon.call_count, 1)
 
-    def test_espera_entre_as_consultas(self):
+    def test_espera_entre_as_consultas_mesmo_em_chamadas_separadas(self):
         for nome in ("A", "B", "C"):
             criar_local(nome)
+        relogio = [100.0]
+        esperas = []
+        vez = Espacador(
+            INTERVALO,
+            float("inf"),
+            relogio=lambda: relogio[0],
+            dormir=esperas.append,
+        )
 
-        with patch("catalogo.geocodificacao.time.sleep") as espera:
+        with patch("catalogo.geocodificacao._vez", vez):
+            completar_cidades(AGORA, limite=2)
+            relogio[0] += 0.5
             completar_cidades(AGORA)
 
-        self.assertEqual(espera.call_args_list, [call(INTERVALO)] * 2)
+        self.assertEqual(len(esperas), 2)
+        self.assertAlmostEqual(esperas[0], INTERVALO)
+        # A terceira consulta, na outra chamada, espera o que faltava.
+        self.assertAlmostEqual(esperas[1], 2 * INTERVALO - 0.5)
 
-    def test_falha_no_photon_interrompe_e_deixa_o_resto_para_depois(self):
+    def test_falha_passageira_interrompe_e_deixa_o_resto_para_depois(self):
         for nome in ("A", "B", "C"):
             criar_local(nome)
         self.photon.side_effect = [
             ("Santos", "SP"),
-            ErroPhoton("Photon respondeu HTTP 429"),
+            erro_passageiro("Photon respondeu HTTP 429"),
         ]
 
         resumo = completar_cidades(AGORA)
@@ -130,6 +150,47 @@ class CompletarCidadesTest(TestCase):
         self.assertEqual(self.photon.call_count, 2)
         self.assertEqual(Local.objects.filter(cidade="Santos").count(), 1)
         self.assertEqual(pendentes().count(), 2)
+
+    def test_erro_de_um_local_pula_so_ele(self):
+        for nome in ("A", "B", "C"):
+            criar_local(nome)
+        self.photon.side_effect = [
+            ("Santos", "SP"),
+            ErroPhoton("Photon respondeu HTTP 400"),
+            ("Santos", "SP"),
+        ]
+
+        resumo = completar_cidades(AGORA)
+
+        self.assertEqual(resumo.falha, "")
+        self.assertEqual((resumo.conferidos, resumo.descobertos), (2, 2))
+        self.assertEqual(len(resumo.com_erro), 1)
+        self.assertEqual(
+            list(pendentes().values_list("pk", flat=True)), resumo.com_erro
+        )
+
+    def test_erros_seguidos_demais_interrompem(self):
+        for nome in "ABCDE":
+            criar_local(nome)
+        self.photon.side_effect = ErroPhoton(RESPOSTA_INVALIDA)
+
+        resumo = completar_cidades(AGORA)
+
+        self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS)
+        self.assertEqual(resumo.falha, RESPOSTA_INVALIDA)
+        self.assertEqual(len(resumo.com_erro), MAXIMO_ERROS_SEGUIDOS - 1)
+        self.assertEqual(pendentes().count(), 5)
+
+    def test_ignorar(self):
+        primeiro = criar_local("A")
+        segundo = criar_local("B")
+
+        resumo = completar_cidades(AGORA, ignorar=[primeiro.pk])
+
+        self.assertEqual(resumo.conferidos, 1)
+        self.assertEqual(list(pendentes()), [primeiro])
+        segundo.refresh_from_db()
+        self.assertIsNotNone(segundo.geocodificado_em)
 
     def test_sem_pendentes_nao_consulta(self):
         resumo = completar_cidades(AGORA)
@@ -220,6 +281,34 @@ class CidadeNaImportacaoTest(TestCase):
 
         self.assertEqual((local.cidade, local.estado), ("Osasco", "SP"))
         self.assertIsNone(local.geocodificado_em)
+
+    def test_cidade_do_ticketmaster_corrige_ou_completa_a_uf(self):
+        # Sem coordenada, esses locais nunca passariam pelo Photon.
+        self.venue["location"] = None
+        for estado, cidade, esperado in (
+            ({"stateCode": "PB"}, "Medianeira", ("Medianeira", "PR")),
+            (None, "Curitiba", ("Curitiba", "PR")),
+            (None, "Bom Jesus", ("Bom Jesus", "")),
+        ):
+            with self.subTest(cidade=cidade):
+                self.venue["state"] = estado
+                self.venue["city"] = {"name": cidade}
+
+                importar([self.dados], AGORA)
+
+                local = self.local()
+                self.assertEqual((local.cidade, local.estado), esperado)
+
+    def test_venue_sem_location_mantem_coordenada_e_cidade(self):
+        self.importar_e_geocodificar()
+        del self.venue["location"]
+
+        local = self.importar_e_geocodificar(DEPOIS)
+
+        self.assertEqual((local.cidade, local.estado), ("São Paulo", "SP"))
+        self.assertIsNotNone(local.latitude)
+        self.assertEqual(local.geocodificado_em, AGORA)
+        self.assertEqual(self.photon.call_count, 1)
 
     def test_fora_do_brasil_a_cidade_fica_como_veio(self):
         self.venue["city"] = {"name": "Buenos Aires"}

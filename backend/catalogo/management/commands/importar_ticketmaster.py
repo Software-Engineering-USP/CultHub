@@ -45,12 +45,11 @@ class Command(BaseCommand):
                 "O Ticketmaster não retornou nenhum evento; nada foi "
                 "alterado para não remover o catálogo inteiro."
             )
-        agora = timezone.now()
         # Locais que ficaram sem cidade em importações anteriores: fora da
         # transação, cada um gravado logo após a consulta, para não segurar
         # o banco durante as consultas ao Photon nem perder o que foi
         # descoberto se algo falhar depois.
-        anteriores = completar_cidades(agora)
+        anteriores = completar_cidades(timezone.now())
         # Mesma transação: se os avisos falharem, a importação é desfeita e
         # a próxima execução cria os eventos (e os avisos) de novo. Só evento
         # criado gera aviso, então importar sem avisar perderia os avisos.
@@ -59,11 +58,17 @@ class Command(BaseCommand):
         # outros (e todos, com o Photon fora) filtram só pela UF desta vez.
         try:
             with transaction.atomic():
+                # Depois da geocodificação acima, que pode levar minutos.
+                agora = timezone.now()
                 resumo = importar(eventos, agora)
                 novos = (
                     ResumoGeocodificacao()
                     if anteriores.falha
-                    else completar_cidades(agora, LIMITE_NA_TRANSACAO)
+                    else completar_cidades(
+                        agora,
+                        LIMITE_NA_TRANSACAO,
+                        ignorar=anteriores.com_erro,
+                    )
                 )
                 notificacoes = notificar_eventos_novos(resumo.ids_criados)
         except ErroImportacao as erro:
@@ -77,6 +82,8 @@ class Command(BaseCommand):
             f"{anteriores.descobertos + novos.descobertos} de "
             f"{anteriores.conferidos + novos.conferidos} locais conferidos"
         )
+        if com_erro := len(anteriores.com_erro) + len(novos.com_erro):
+            self.stdout.write(f"locais com erro no Photon: {com_erro}")
         falha = anteriores.falha or novos.falha
         if falha:
             self.stdout.write(f"geocodificação interrompida ({falha})")

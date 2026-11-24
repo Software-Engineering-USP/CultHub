@@ -22,6 +22,18 @@ class _FalhaPassageira(Exception):
     """Falha que vale tentar de novo (rede, tempo esgotado, HTTP 5xx)."""
 
 
+def _passageira(erro, mensagem):
+    """`erro(mensagem)` marcado como passageiro (`passageira = True`).
+
+    Quem chama pode querer parar de consultar o servidor por um tempo
+    (rede, tempo esgotado, 5xx, limite de uso), em vez de tratar como um
+    problema daquele pedido. As outras falhas ficam com `False`.
+    """
+    excecao = erro(mensagem)
+    excecao.passageira = True
+    return excecao
+
+
 def numero(valor):
     """Se `valor` é um número finito (int ou float, mas não bool)."""
     if not isinstance(valor, (int, float)) or isinstance(valor, bool):
@@ -60,6 +72,9 @@ def _requisitar(url, servico, erro, timeout, fim, ler_erro_http):
             dados = ler_erro_http(falha) if ler_erro_http else None
         if dados is not None:
             return dados
+        # 429: limite de uso; tentar de novo na hora só piora.
+        if falha.code == 429:
+            raise _passageira(erro, mensagem) from None
         raise erro(mensagem) from None
     except urllib.error.URLError as falha:
         raise _FalhaPassageira(
@@ -88,7 +103,8 @@ def obter_json(
 ):
     """JSON de `url`, com nova tentativa imediata em falha passageira.
 
-    Toda falha vira `erro(mensagem)`; a mensagem nunca leva a URL.
+    Toda falha vira `erro(mensagem)`; a mensagem nunca leva a URL. A
+    passageira (rede, tempo, 5xx, 429) sai com `passageira = True`.
 
     - `prazo`: tempo total (s) para todas as tentativas, contando a espera
       de `antes_de_tentar`; a tentativa usa o que sobrar, até `timeout`.
@@ -123,7 +139,7 @@ def obter_json(
             return _requisitar(url, servico, erro, limite, fim, ler_erro_http)
         except _FalhaPassageira as falha:
             ultima_falha = str(falha)
-    raise erro(ultima_falha)
+    raise _passageira(erro, ultima_falha)
 
 
 class Espacador:
