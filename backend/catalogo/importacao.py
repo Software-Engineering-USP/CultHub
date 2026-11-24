@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
 from django.utils import timezone
 
-from localidades.municipios import localizar_municipio
+from localidades.municipios import localizar_municipio, municipio_oficial
 
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
@@ -130,6 +130,28 @@ def _cidade_e_estado(venue, pais, tem_coordenada):
     return localizar_municipio(cidade, estado, completar_uf=not tem_coordenada)
 
 
+def _manter_geocodificacao(anterior, dados):
+    """Ajusta `dados` para manter o que a geocodificação de `anterior` achou.
+
+    - O Photon achou a cidade: ficam a cidade e a UF dela.
+    - Não achou, e o Ticketmaster agora manda um nome (palpite, sem UF):
+      com a UF da geocodificação, o nome vale se for dela; sem UF
+      nenhuma, o local volta para o Photon, que usa o palpite.
+    - Não achou, e o Ticketmaster não manda nome: vale a UF dele, que pode
+      ter sido corrigida; sem ela, fica a da geocodificação.
+    """
+    if anterior.cidade:
+        del dados["cidade"], dados["estado"]
+    elif dados["cidade"]:
+        if not anterior.estado:
+            return
+        dados["cidade"] = municipio_oficial(dados["cidade"], anterior.estado)
+        dados["estado"] = anterior.estado
+    elif not dados["estado"]:
+        del dados["cidade"], dados["estado"]
+    del dados["geocodificado_em"]
+
+
 def _salvar_local(venue):
     if venue is None:
         return None
@@ -175,17 +197,13 @@ def _salvar_local(venue):
         del dados["geocodificacao_falhou_em"]
     # Sem cidade e UF no Ticketmaster (o que mandaria o local de novo para o
     # Photon) e com a mesma coordenada, a conferência no Photon continua
-    # valendo. Se ela achou a cidade, ou se o Ticketmaster não manda UF,
-    # ficam a cidade e a UF dela; se não, vale a UF do Ticketmaster, que
-    # pode ter sido corrigida.
+    # valendo.
     if (
         mesma_coordenada
         and not (dados["cidade"] and dados["estado"])
         and anterior.geocodificado_em is not None
     ):
-        del dados["geocodificado_em"]
-        if anterior.cidade or not dados["estado"]:
-            del dados["cidade"], dados["estado"]
+        _manter_geocodificacao(anterior, dados)
     local, _ = Local.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
         id_externo=venue["id"],

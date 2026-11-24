@@ -6,7 +6,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from catalogo.geocodificacao import (
-    MAXIMO_ERROS_SEGUIDOS,
     ResumoGeocodificacao,
     completar_cidades,
     pendentes,
@@ -25,18 +24,17 @@ def _completar_cidades_novas(agora, anteriores):
     """Geocodificação dos locais novos, dentro da transação.
 
     Com o Photon fora (falha passageira antes), nem tenta. Os locais que
-    já deram erro em `anteriores` não são consultados de novo. Se o
-    servidor já parecia recusar tudo (erros seguidos), para no primeiro
-    erro para não segurar a transação.
+    já deram erro (antes ou em `anteriores`) ficam de fora: este lote é
+    para os novos. Para no primeiro erro, para não segurar a transação;
+    os que faltarem ficam para a etapa fora dela, na próxima importação.
     """
     if anteriores.passageira:
         return ResumoGeocodificacao()
-    maximo = 1 if anteriores.falha else MAXIMO_ERROS_SEGUIDOS
     return completar_cidades(
         agora,
         LIMITE_NA_TRANSACAO,
-        ignorar=anteriores.com_erro,
-        maximo_erros_seguidos=maximo,
+        so_sem_erro=True,
+        maximo_erros_seguidos=1,
     )
 
 

@@ -460,6 +460,23 @@ class CidadeEEstadoTest(SimpleTestCase):
                     ("São Paulo", estado),
                 )
 
+    def test_lugar_que_e_a_propria_cidade_vem_pelo_nome(self, urlopen):
+        # Formato real da busca por "Curitiba" (osm_value "municipality").
+        urlopen.return_value = colecao(
+            feature({"type": "city", "name": "Curitiba", "state": "Paraná"})
+        )
+        self.assertEqual(
+            buscar_cidade_e_estado(-25.4, -49.3), ("Curitiba", "Paraná")
+        )
+
+        # Povoado ou bairro com o mesmo nome não é a cidade.
+        urlopen.return_value = colecao(
+            feature(
+                {"type": "district", "name": "Curitiba", "state": "Amazonas"}
+            )
+        )
+        self.assertEqual(buscar_cidade_e_estado(-8.7, -67.4), ("", "Amazonas"))
+
     def test_campo_ausente_vira_texto_vazio(self, urlopen):
         urlopen.return_value = colecao(feature({"state": "Paraná"}))
 

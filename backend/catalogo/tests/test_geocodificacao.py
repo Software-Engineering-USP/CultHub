@@ -71,8 +71,19 @@ class CompletarCidadesTest(TestCase):
         com_uf.refresh_from_db()
         self.assertEqual((com_uf.cidade, com_uf.estado), ("São Paulo", "SP"))
         sem_uf.refresh_from_db()
-        self.assertEqual((sem_uf.cidade, sem_uf.estado), ("", ""))
+        # Sem UF nenhuma, a cidade do Photon completa a UF se o nome for
+        # de um estado só.
+        self.assertEqual((sem_uf.cidade, sem_uf.estado), ("São Paulo", "SP"))
         self.assertEqual(sem_uf.geocodificado_em, AGORA)
+
+    def test_sem_estado_nenhum_cidade_de_varios_estados_fica_sem_uf(self):
+        local = criar_local("Bom Jesus")
+        self.photon.return_value = ("Bom Jesus", "")
+
+        completar_cidades(AGORA)
+
+        local.refresh_from_db()
+        self.assertEqual((local.cidade, local.estado), ("Bom Jesus", ""))
 
     def test_limite_por_execucao(self):
         for nome in ("A", "B", "C"):
@@ -195,16 +206,35 @@ class CompletarCidadesTest(TestCase):
         self.assertEqual(len(resumo.com_erro), MAXIMO_ERROS_SEGUIDOS)
         self.assertEqual(pendentes().count(), 5)
 
-    def test_erros_de_locais_que_ja_falharam_nao_interrompem(self):
-        for nome in "ABCD":
+    def test_erros_de_locais_que_ja_falharam_tambem_interrompem(self):
+        # Servidor recusando tudo depois que todos falharam uma vez: não
+        # consulta a fila inteira de novo.
+        for nome in "ABCDE":
             criar_local(nome, geocodificacao_falhou_em=AGORA)
-        self.photon.side_effect = ErroPhoton(RESPOSTA_INVALIDA)
+        self.photon.side_effect = ErroPhoton("Photon respondeu HTTP 403")
+
+        resumo = completar_cidades(DEPOIS)
+
+        self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS)
+        self.assertEqual(resumo.falha, "Photon respondeu HTTP 403")
+
+    def test_erros_no_fim_da_fila_nao_contam_como_interrupcao(self):
+        criar_local("Bom")
+        for nome in "ABC":
+            criar_local(nome, geocodificacao_falhou_em=AGORA)
+
+        def photon(latitude, longitude, antes_de_tentar):
+            if self.photon.call_count > 1:
+                raise ErroPhoton(RESPOSTA_INVALIDA)
+            return ("São Paulo", "SP")
+
+        self.photon.side_effect = photon
 
         resumo = completar_cidades(DEPOIS)
 
         self.assertEqual(self.photon.call_count, 4)
+        self.assertEqual(len(resumo.com_erro), 3)
         self.assertEqual(resumo.falha, "")
-        self.assertEqual(len(resumo.com_erro), 4)
 
     def test_maximo_de_erros_seguidos_por_chamada(self):
         for nome in "ABC":
@@ -263,16 +293,17 @@ class CompletarCidadesTest(TestCase):
         local.refresh_from_db()
         self.assertEqual((local.cidade, local.estado), ("Bom Jesus", "RS"))
 
-    def test_ignorar(self):
-        primeiro = criar_local("A")
-        segundo = criar_local("B")
+    def test_so_sem_erro(self):
+        com_erro = criar_local("A", geocodificacao_falhou_em=AGORA)
+        sem_erro = criar_local("B")
+        self.photon.return_value = ("São Paulo", "SP")
 
-        resumo = completar_cidades(AGORA, ignorar=[primeiro.pk])
+        resumo = completar_cidades(DEPOIS, so_sem_erro=True)
 
         self.assertEqual(resumo.conferidos, 1)
-        self.assertEqual(list(pendentes()), [primeiro])
-        segundo.refresh_from_db()
-        self.assertIsNotNone(segundo.geocodificado_em)
+        self.assertEqual(list(pendentes()), [com_erro])
+        sem_erro.refresh_from_db()
+        self.assertEqual(sem_erro.geocodificado_em, DEPOIS)
 
     def test_sem_pendentes_nao_consulta(self):
         resumo = completar_cidades(AGORA)
@@ -416,7 +447,10 @@ class CidadeNaImportacaoTest(TestCase):
         self.venue["state"] = None
         for numero, (cidade, resposta, esperado) in enumerate(
             (
-                ("Curitiba", None, ("Curitiba", "PR")),
+                # Sem UF de lugar nenhum, o palpite fica sem UF: o nome
+                # pode ser de um bairro de outro estado.
+                ("Curitiba", None, ("Curitiba", "")),
+                ("Pinheiros", None, ("Pinheiros", "")),
                 ("Curitiba", ("", "Paraná"), ("Curitiba", "PR")),
                 ("Bom Jesus", ("", "Piauí"), ("Bom Jesus", "PI")),
                 # O Photon dá a UF, e Pinheiros não é município de SP.
@@ -436,6 +470,44 @@ class CidadeNaImportacaoTest(TestCase):
                 local = self.importar_e_geocodificar(DEPOIS)
                 self.assertEqual((local.cidade, local.estado), esperado)
                 self.assertEqual(local.geocodificado_em, AGORA)
+
+    def test_palpite_que_chega_depois_da_geocodificacao(self):
+        self.venue["state"] = None
+        self.photon.return_value = None
+        local = self.importar_e_geocodificar()
+        self.assertEqual((local.cidade, local.estado), ("", ""))
+
+        # Sem UF nenhuma: o local volta para o Photon, que usa o palpite.
+        self.venue["city"] = {"name": "curitiba"}
+        importar([self.dados], DEPOIS)
+        self.assertEqual(list(pendentes()), [self.local()])
+        local = self.importar_e_geocodificar(DEPOIS)
+        self.assertEqual((local.cidade, local.estado), ("Curitiba", ""))
+        self.assertEqual(self.photon.call_count, 2)
+
+    def test_palpite_que_chega_depois_vale_se_for_da_uf_achada(self):
+        self.venue["state"] = None
+        self.photon.return_value = ("", "Paraná")
+        local = self.importar_e_geocodificar()
+        self.assertEqual((local.cidade, local.estado), ("", "PR"))
+
+        # Sem nome nem UF no Ticketmaster, fica a UF da geocodificação.
+        local = self.importar_e_geocodificar(DEPOIS)
+        self.assertEqual((local.cidade, local.estado), ("", "PR"))
+
+        for cidade, esperado in (
+            ("Curitiba", ("Curitiba", "PR")),
+            ("Pinheiros", ("", "PR")),
+        ):
+            with self.subTest(cidade=cidade):
+                Local.objects.filter(pk=local.pk).update(cidade="")
+                self.venue["city"] = {"name": cidade}
+
+                local = self.importar_e_geocodificar(DEPOIS)
+
+                self.assertEqual((local.cidade, local.estado), esperado)
+                self.assertEqual(local.geocodificado_em, AGORA)
+        self.assertEqual(self.photon.call_count, 1)
 
     def test_meia_coordenada_conta_como_sem_coordenada(self):
         self.venue["location"] = {"latitude": "-25.4"}

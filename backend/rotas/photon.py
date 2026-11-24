@@ -141,7 +141,8 @@ def buscar_cidade_e_estado(latitude, longitude, antes_de_tentar=None):
     """(cidade, estado) do ponto, como o Photon escreve; None fora do BR.
 
     O estado às vezes vem pelo nome ("São Paulo"), às vezes pela sigla
-    ("SP"); qualquer um dos dois pode faltar e vir como "".
+    ("SP"); qualquer um dos dois pode faltar e vir como "". Quando o lugar
+    devolvido é a própria cidade (`type` "city"), ela vem só em `name`.
     `antes_de_tentar` é chamado antes de cada tentativa, inclusive a nova
     tentativa depois de uma falha passageira (ex.: esperar a vez).
     """
@@ -158,7 +159,7 @@ def buscar_cidade_e_estado(latitude, longitude, antes_de_tentar=None):
         or propriedades.get("countrycode") != "BR"
     ):
         return None
-    return (
-        _texto(propriedades, "city") or "",
-        _texto(propriedades, "state") or "",
-    )
+    cidade = _texto(propriedades, "city")
+    if cidade is None and propriedades.get("type") == "city":
+        cidade = _texto(propriedades, "name")
+    return cidade or "", _texto(propriedades, "state") or ""

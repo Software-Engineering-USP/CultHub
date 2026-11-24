@@ -8,7 +8,6 @@ from django.db.models import F, Q
 
 from localidades.municipios import (
     localizar_municipio,
-    municipio_oficial,
     sigla_do_estado,
 )
 from rotas.photon import ErroPhoton, buscar_cidade_e_estado
@@ -19,9 +18,8 @@ from .models import Local, Provedor
 # O servidor público do Photon pede uso "razoável": uma consulta por vez,
 # com folga de mais de um segundo entre elas.
 INTERVALO = 1.1
-# Erros seguidos (não passageiros) em locais que nunca deram erro, que
-# fazem desconfiar do servidor, e não dos locais: a geocodificação para em
-# vez de pular todos.
+# Erros seguidos (não passageiros) que fazem desconfiar do servidor, e não
+# dos locais: a geocodificação para em vez de tentar todos.
 MAXIMO_ERROS_SEGUIDOS = 3
 
 logger = logging.getLogger(__name__)
@@ -73,10 +71,10 @@ def _localidade(local):
     Ticketmaster, porque a coordenada erra menos que o estado informado
     (já veio um local de Medianeira/PR marcado como PB). Sem estado na
     resposta do Photon, vale a UF que o local já tinha. Sem cidade na
-    resposta (o Photon às vezes devolve a própria cidade, sem `city`), a
-    cidade que o local já tinha (o palpite do Ticketmaster) vale se for
-    dessa UF; sem UF nenhuma, ela completa a UF se o nome for de um estado
-    só (ver `localizar_municipio`).
+    resposta, a cidade que o local já tinha (o palpite do Ticketmaster)
+    vale se for dessa UF. Sem UF nenhuma, a cidade do Photon completa a
+    UF quando o nome é de um estado só; o palpite não, porque pode ser um
+    bairro de outro estado (ver `localizar_municipio`).
     """
     resposta = buscar_cidade_e_estado(
         float(local.latitude),
@@ -85,22 +83,23 @@ def _localidade(local):
     )
     cidade, estado = resposta or ("", "")
     uf = sigla_do_estado(estado) or sigla_do_estado(local.estado)
-    oficial = municipio_oficial(cidade, uf)
+    oficial, uf_do_nome = localizar_municipio(cidade, uf)
     if oficial:
-        return oficial, uf
-    return localizar_municipio(local.cidade, uf)
+        return oficial, uf_do_nome
+    return localizar_municipio(local.cidade, uf, completar_uf=False)
 
 
 def completar_cidades(
     agora,
     limite=None,
-    ignorar=(),
+    so_sem_erro=False,
     maximo_erros_seguidos=MAXIMO_ERROS_SEGUIDOS,
 ):
     """Descobre a cidade de até `limite` locais pendentes (todos se None).
 
-    `ignorar`: pks que não devem ser consultados (ex.: os que já deram
-    erro nesta execução). Cada local é gravado logo depois da consulta.
+    `so_sem_erro`: deixa de fora os locais que já deram erro no Photon
+    (inclusive nesta execução). Cada local é gravado logo depois da
+    consulta.
     Local conferido (com ou sem cidade descoberta) não é consultado de
     novo enquanto a coordenada não mudar (ver `_salvar_local`).
 
@@ -108,14 +107,18 @@ def completar_cidades(
     os que faltaram ficam para a próxima vez. Erro de um local só (4xx,
     resposta inválida) marca `geocodificacao_falhou_em` e segue para o
     próximo; o local continua pendente, no fim da fila. Depois de
-    `maximo_erros_seguidos` seguidos, desconfia do servidor e para. Não
-    contam os erros dos locais que já tinham dado erro antes, que ficam
-    juntos no fim da fila e falhariam sempre.
+    `maximo_erros_seguidos` seguidos, desconfia do servidor e para; só
+    conta como interrupção (`falha`) se ainda havia local para consultar,
+    para os que sempre falham, juntos no fim da fila, não interromperem
+    toda importação.
     """
     resumo = ResumoGeocodificacao()
-    locais = list(pendentes().exclude(pk__in=ignorar)[:limite])
+    fila = pendentes()
+    if so_sem_erro:
+        fila = fila.filter(geocodificacao_falhou_em__isnull=True)
+    locais = list(fila[:limite])
     erros_seguidos = 0
-    for local in locais:
+    for posicao, local in enumerate(locais, start=1):
         try:
             cidade, uf = _localidade(local)
         except ErroPhoton as erro:
@@ -131,11 +134,11 @@ def completar_cidades(
                 geocodificacao_falhou_em=agora
             )
             resumo.com_erro.append(local.pk)
-            if local.geocodificacao_falhou_em is None:
-                erros_seguidos += 1
+            erros_seguidos += 1
             if erros_seguidos >= maximo_erros_seguidos:
-                logger.warning("Geocodificação interrompida: %s", erro)
-                resumo.falha = str(erro)
+                if posicao < len(locais):
+                    logger.warning("Geocodificação interrompida: %s", erro)
+                    resumo.falha = str(erro)
                 break
             continue
         erros_seguidos = 0
