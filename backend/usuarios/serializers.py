@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from catalogo.models import CategoriaCultural
+from localidades.municipios import municipio_oficial
 from usuarios.models import Usuario
 
 
@@ -26,11 +27,39 @@ class PerfilSerializer(serializers.ModelSerializer):
             "nome",
             "email",
             "cidade",
+            "estado",
             "bairro",
             "preferencias",
             "iniciais",
         )
         read_only_fields = ("id", "email")
+
+    def validate(self, dados):
+        """A cidade precisa ser um município do estado escolhido.
+
+        Grava o nome oficial do IBGE ("sao paulo" vira "São Paulo"), que é
+        o mesmo dos locais dos eventos. Estado sem cidade vale (filtra os
+        avisos só pelo estado); cidade sem estado, não.
+        """
+        if "cidade" not in dados and "estado" not in dados:
+            return dados
+        cidade = dados.get("cidade", getattr(self.instance, "cidade", ""))
+        estado = dados.get("estado", getattr(self.instance, "estado", ""))
+        cidade = " ".join(cidade.split())
+        if not cidade:
+            dados["cidade"] = ""
+            return dados
+        if not estado:
+            raise serializers.ValidationError(
+                {"estado": ["Escolha o estado da cidade."]}
+            )
+        oficial = municipio_oficial(cidade, estado)
+        if not oficial:
+            raise serializers.ValidationError(
+                {"cidade": [f"Não há um município com esse nome em {estado}."]}
+            )
+        dados["cidade"] = oficial
+        return dados
 
 
 class PerfilPublicoSerializer(serializers.ModelSerializer):
@@ -51,6 +80,7 @@ class PerfilPublicoSerializer(serializers.ModelSerializer):
             "nome",
             "iniciais",
             "cidade",
+            "estado",
             "preferencias",
             "membro_desde",
         )

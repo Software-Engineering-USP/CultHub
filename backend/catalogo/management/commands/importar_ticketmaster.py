@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
+from catalogo.geocodificacao import completar_cidades
 from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, Provedor
 from catalogo.ticketmaster import ErroTicketmaster, buscar_todos
@@ -39,9 +40,13 @@ class Command(BaseCommand):
         # Mesma transação: se os avisos falharem, a importação é desfeita e
         # a próxima execução cria os eventos (e os avisos) de novo. Só evento
         # criado gera aviso, então importar sem avisar perderia os avisos.
+        # A cidade dos locais novos é descoberta antes dos avisos, que
+        # filtram por ela; com o Photon fora, eles filtram só pela UF.
         try:
             with transaction.atomic():
-                resumo = importar(eventos, timezone.now())
+                agora = timezone.now()
+                resumo = importar(eventos, agora)
+                geocodificacao = completar_cidades(agora)
                 notificacoes = notificar_eventos_novos(resumo.ids_criados)
         except ErroImportacao as erro:
             raise CommandError(str(erro)) from None
@@ -49,6 +54,15 @@ class Command(BaseCommand):
         self.stdout.write(f"atualizados: {resumo.atualizados}")
         self.stdout.write(f"removidos: {resumo.removidos}")
         self.stdout.write(f"ignorados: {resumo.ignorados}")
+        self.stdout.write(
+            f"cidades descobertas: {geocodificacao.descobertos} de "
+            f"{geocodificacao.conferidos} locais conferidos"
+        )
+        if geocodificacao.falha:
+            self.stdout.write(
+                f"geocodificação interrompida ({geocodificacao.falha}); os "
+                "locais restantes ficam para a próxima importação."
+            )
         self.stdout.write(f"notificações de evento novo: {notificacoes}")
         self.stdout.write(f"sem categoria: {len(resumo.sem_categoria)}")
         for titulo in resumo.sem_categoria:

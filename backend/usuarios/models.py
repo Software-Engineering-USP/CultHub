@@ -4,6 +4,8 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
+from localidades.municipios import estados
+
 
 class UsuarioManager(BaseUserManager):
     use_in_migrations = True
@@ -28,7 +30,12 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     nome = models.CharField(max_length=150)
+    # Nome oficial do município (IBGE), sempre junto com o estado; ver
+    # `PerfilSerializer.validate`.
     cidade = models.CharField(max_length=100, blank=True)
+    estado = models.CharField(
+        max_length=2, blank=True, choices=tuple(estados().items())
+    )
     bairro = models.CharField(max_length=100, blank=True)
     # Nulo só para superusuário criado pela linha de comando
     termos_aceitos_em = models.DateTimeField(null=True, blank=True)

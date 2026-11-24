@@ -11,6 +11,7 @@ from rotas.photon import (
     BBOX_BRASIL,
     ErroPhoton,
     _get_json,
+    buscar_cidade_e_estado,
     buscar_endereco_reverso,
     buscar_enderecos,
     montar_rotulo,
@@ -408,3 +409,62 @@ class ReversaTest(SimpleTestCase):
                 urlopen.return_value = resposta
 
                 self.assertIsNone(buscar_endereco_reverso(-25.0, -40.0))
+
+
+@patch("rotas.photon.urllib.request.urlopen")
+class CidadeEEstadoTest(SimpleTestCase):
+    def test_usa_a_reversa(self, urlopen):
+        urlopen.return_value = colecao()
+
+        buscar_cidade_e_estado(-23.5874, -46.6576)
+
+        caminho, parametros = parametros_da_chamada(urlopen)
+        self.assertEqual(caminho, "/reverse")
+        self.assertEqual(parametros["lat"], ["-23.5874"])
+        self.assertEqual(parametros["limit"], ["1"])
+
+    def test_devolve_cidade_e_estado_como_vieram(self, urlopen):
+        for estado in ("São Paulo", "SP"):
+            with self.subTest(estado=estado):
+                urlopen.return_value = colecao(
+                    feature(
+                        {
+                            "name": "Rua Antônio de Queiroga",
+                            "district": "Moema",
+                            "city": "São Paulo",
+                            "state": estado,
+                        }
+                    )
+                )
+
+                self.assertEqual(
+                    buscar_cidade_e_estado(-23.58, -46.65),
+                    ("São Paulo", estado),
+                )
+
+    def test_campo_ausente_vira_texto_vazio(self, urlopen):
+        urlopen.return_value = colecao(feature({"state": "Paraná"}))
+
+        self.assertEqual(buscar_cidade_e_estado(-25.0, -54.0), ("", "Paraná"))
+
+    def test_fora_do_brasil_ou_sem_resultado_devolve_none(self, urlopen):
+        sem_propriedades = feature({})
+        sem_propriedades["properties"] = None
+        casos = {
+            "vazia": colecao(),
+            "item nulo": colecao(None),
+            "outro país": colecao(feature({"city": "Asunción"}, pais="PY")),
+            "sem país": colecao(feature({"city": "X"}, pais=None)),
+            "sem propriedades": colecao(sem_propriedades),
+        }
+        for nome, resposta in casos.items():
+            with self.subTest(nome):
+                urlopen.return_value = resposta
+
+                self.assertIsNone(buscar_cidade_e_estado(-25.0, -57.6))
+
+    def test_falha_vira_erro_photon(self, urlopen):
+        urlopen.side_effect = erro_http(429)
+
+        with self.assertRaises(ErroPhoton):
+            buscar_cidade_e_estado(-23.5, -46.6)

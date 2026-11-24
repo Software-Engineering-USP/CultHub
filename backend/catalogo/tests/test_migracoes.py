@@ -5,7 +5,7 @@ from django.apps import apps
 from django.db import connection
 from django.test import TestCase
 
-from catalogo.models import FaixaPreco, Local
+from catalogo.models import FaixaPreco, Local, Provedor
 from catalogo.tests.fabrica import criar_evento
 
 limpar_valores_invalidos = import_module(
@@ -42,3 +42,41 @@ class LimparValoresInvalidosTest(TestCase):
             (local_ruim.latitude, local_ruim.longitude), (None, None)
         )
         self.assertIsNotNone(evento.local.latitude)
+
+
+limpar_cidades = import_module(
+    "catalogo.migrations.0007_limpar_cidades_invalidas"
+).limpar_cidades
+
+
+class LimparCidadesInvalidasTest(TestCase):
+    def criar(self, nome, cidade, estado="SP", **campos):
+        campos.setdefault("provedor", Provedor.TICKETMASTER)
+        return Local.objects.create(
+            nome=nome,
+            id_externo=nome,
+            cidade=cidade,
+            estado=estado,
+            **campos,
+        )
+
+    def test_so_fica_municipio_do_ibge_com_o_nome_oficial(self):
+        invalida = self.criar("a", "Nocity")
+        outra_uf = self.criar("b", "Curitiba")
+        sem_acento = self.criar("c", "sao paulo")
+        valida = self.criar("d", "Ribeirão Preto")
+        manual = self.criar("e", "Sampa", provedor=Provedor.MANUAL)
+        de_fora = self.criar("f", "Buenos Aires", estado="", pais="AR")
+
+        limpar_cidades(apps, None)
+
+        for local, esperada in (
+            (invalida, ""),
+            (outra_uf, ""),
+            (sem_acento, "São Paulo"),
+            (valida, "Ribeirão Preto"),
+            (manual, "Sampa"),
+            (de_fora, "Buenos Aires"),
+        ):
+            local.refresh_from_db()
+            self.assertEqual(local.cidade, esperada)

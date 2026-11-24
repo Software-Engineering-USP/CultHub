@@ -16,7 +16,8 @@ class PerfilPublicoTest(APITestCase):
             "caio@exemplo.com",
             "senha1234",
             nome="Caio Prado",
-            cidade="São Paulo, SP",
+            cidade="São Paulo",
+            estado="SP",
             bairro="Butantã",
         )
         self.client.force_login(self.eu)
@@ -35,6 +36,7 @@ class PerfilPublicoTest(APITestCase):
                 "nome",
                 "iniciais",
                 "cidade",
+                "estado",
                 "preferencias",
                 "membro_desde",
             },
@@ -42,7 +44,8 @@ class PerfilPublicoTest(APITestCase):
         self.assertEqual(dados["id"], str(self.outra.pk))
         self.assertEqual(dados["nome"], "Caio Prado")
         self.assertEqual(dados["iniciais"], "CP")
-        self.assertEqual(dados["cidade"], "São Paulo, SP")
+        self.assertEqual(dados["cidade"], "São Paulo")
+        self.assertEqual(dados["estado"], "SP")
         self.assertEqual(
             dados["membro_desde"],
             timezone.localdate(self.outra.criado_em).isoformat(),

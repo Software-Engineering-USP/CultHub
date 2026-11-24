@@ -9,6 +9,8 @@ from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
 from django.utils import timezone
 
+from localidades.municipios import municipio_oficial
+
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
     DATA_MAXIMA,
@@ -108,24 +110,53 @@ def _preco(valor):
     return _numero(valor, CENTAVO, 0, PRECO_MAXIMO)
 
 
+def _cidade(venue, estado, pais):
+    """Cidade do venue; no Brasil, só se for um município da UF.
+
+    O Ticketmaster quase nunca manda a cidade e às vezes manda lixo
+    ("Nocity"). Com o nome oficial do IBGE, o filtro por cidade das
+    notificações compara nomes escritos do mesmo jeito.
+    """
+    cidade = _texto(_objeto(venue, "city"), "name")
+    if pais not in ("", "BR"):
+        return cidade
+    return municipio_oficial(cidade, estado)
+
+
 def _salvar_local(venue):
     if venue is None:
         return None
     coordenadas = _objeto(venue, "location")
+    estado = _texto(_objeto(venue, "state"), "stateCode")
+    pais = _texto(_objeto(venue, "country"), "countryCode")
+    dados = {
+        "nome": _texto(venue, "name"),
+        "endereco": _texto(_objeto(venue, "address"), "line1"),
+        "cidade": _cidade(venue, estado, pais),
+        "estado": estado,
+        "pais": pais,
+        "latitude": _numero(coordenadas.get("latitude"), GRAU, -90, 90),
+        "longitude": _numero(coordenadas.get("longitude"), GRAU, -180, 180),
+        "geocodificado_em": None,
+    }
+    anterior = Local.objects.filter(
+        provedor=Provedor.TICKETMASTER, id_externo=venue["id"]
+    ).first()
+    # Sem cidade no Ticketmaster, fica a cidade (e a UF) que a
+    # geocodificação já descobriu, enquanto a coordenada for a mesma.
+    if (
+        not dados["cidade"]
+        and anterior is not None
+        and anterior.geocodificado_em is not None
+        and (anterior.latitude, anterior.longitude)
+        == (dados["latitude"], dados["longitude"])
+    ):
+        for campo in ("cidade", "estado", "geocodificado_em"):
+            del dados[campo]
     local, _ = Local.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
         id_externo=venue["id"],
-        defaults={
-            "nome": _texto(venue, "name"),
-            "endereco": _texto(_objeto(venue, "address"), "line1"),
-            "cidade": _texto(_objeto(venue, "city"), "name"),
-            "estado": _texto(_objeto(venue, "state"), "stateCode"),
-            "pais": _texto(_objeto(venue, "country"), "countryCode"),
-            "latitude": _numero(coordenadas.get("latitude"), GRAU, -90, 90),
-            "longitude": _numero(
-                coordenadas.get("longitude"), GRAU, -180, 180
-            ),
-        },
+        defaults=dados,
     )
     return local
 

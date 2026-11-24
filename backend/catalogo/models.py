@@ -73,6 +73,9 @@ class Local(models.Model):
         blank=True,
         validators=[MinValueValidator(-180), MaxValueValidator(180)],
     )
+    # Quando a coordenada foi conferida no Photon para descobrir a cidade
+    # (ver `catalogo/geocodificacao.py`); nulo enquanto falta conferir.
+    geocodificado_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ("nome",)

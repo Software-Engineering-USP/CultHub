@@ -128,3 +128,26 @@ def buscar_endereco_reverso(latitude, longitude):
         return None
     convertida = _converter(dados["features"][0])
     return convertida[0] if convertida else None
+
+
+def buscar_cidade_e_estado(latitude, longitude):
+    """(cidade, estado) do ponto, como o Photon escreve; None fora do BR.
+
+    O estado às vezes vem pelo nome ("São Paulo"), às vezes pela sigla
+    ("SP"); qualquer um dos dois pode faltar e vir como "".
+    """
+    dados = _get_json(
+        "/reverse", {"lat": latitude, "lon": longitude, "limit": 1}
+    )
+    if not dados["features"] or not isinstance(dados["features"][0], dict):
+        return None
+    propriedades = dados["features"][0].get("properties")
+    if (
+        not isinstance(propriedades, dict)
+        or propriedades.get("countrycode") != "BR"
+    ):
+        return None
+    return (
+        _texto(propriedades, "city") or "",
+        _texto(propriedades, "state") or "",
+    )

@@ -14,7 +14,15 @@ class UsuarioAdmin(UserAdmin):
         (None, {"fields": ["email", "password"]}),
         (
             "Dados pessoais",
-            {"fields": ["nome", "cidade", "bairro", "preferencias"]},
+            {
+                "fields": [
+                    "nome",
+                    "estado",
+                    "cidade",
+                    "bairro",
+                    "preferencias",
+                ]
+            },
         ),
         (
             "Permissões",

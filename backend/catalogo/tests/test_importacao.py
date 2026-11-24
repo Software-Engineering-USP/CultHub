@@ -37,6 +37,22 @@ def tm(**filtros):
     return Evento.objects.get(provedor=Provedor.TICKETMASTER, **filtros)
 
 
+def simular_photon(caso, resposta=None):
+    """Photon da geocodificação respondendo `resposta`, sem rede nem espera.
+
+    Devolve o mock de `buscar_cidade_e_estado`.
+    """
+    photon = patch(
+        "catalogo.geocodificacao.buscar_cidade_e_estado",
+        return_value=resposta,
+    )
+    espera = patch("catalogo.geocodificacao.time.sleep")
+    caso.addCleanup(espera.stop)
+    caso.addCleanup(photon.stop)
+    espera.start()
+    return photon.start()
+
+
 class ImportarTest(TestCase):
     def test_cria_eventos_e_locais(self):
         resumo = importar(eventos_da_fixture(), AGORA)
@@ -786,6 +802,9 @@ def _pagina(numero, total_paginas, eventos):
 
 @override_settings(TICKETMASTER_API_KEY="chave-falsa")
 class ComandoTest(TestCase):
+    def setUp(self):
+        self.photon = simular_photon(self)
+
     def test_sem_chave(self):
         with (
             override_settings(TICKETMASTER_API_KEY=""),
@@ -980,6 +999,7 @@ class ComandoTest(TestCase):
             titulo="Velho",
             data_inicio=timezone.localdate(),
         )
+        self.photon.side_effect = [("São Paulo", "SP"), None]
         saida = StringIO()
         with patch(
             "catalogo.ticketmaster.buscar_pagina",
@@ -993,6 +1013,7 @@ class ComandoTest(TestCase):
                 "atualizados: 1",
                 "removidos: 1",
                 "ignorados: 2",
+                "cidades descobertas: 1 de 2 locais conferidos",
                 "notificações de evento novo: 0",
                 "sem categoria: 1",
                 "  - Halloween 2026 | Soho House",
