@@ -18,6 +18,39 @@ interface LocalityFieldsProps {
   defaultState: string
 }
 
+/** O que se sabe da cidade digitada, para decidir as mensagens do campo. */
+interface CityCheck {
+  city: string
+  state: string
+  /** Mesma localidade já gravada (a cidade pode estar com outra caixa ou sem acento). */
+  unchanged: boolean
+  /** Nome oficial da cidade na lista da UF, se ela está lá. */
+  official?: string
+  hasList: boolean
+  loading: boolean
+  listError: string | null
+}
+
+/** Por que a cidade não pode ser enviada; "" se pode. */
+function cityError({ city, state, unchanged, official, hasList, loading, listError }: CityCheck): string {
+  if (!city.trim() || unchanged) return ''
+  if (!state) return 'Escolha o estado da cidade.'
+  if (hasList) return official ? '' : `Não há um município com esse nome em ${state}. Escolha um da lista.`
+  if (loading) return `Espere carregar as cidades de ${state}.`
+  return listError ? 'Não foi possível conferir a cidade.' : ''
+}
+
+/** Texto de ajuda do campo de cidade. */
+function cityHelp({ state, loading, listError }: CityCheck, keptLegacyCity: string | undefined): string {
+  if (!state) {
+    return keptLegacyCity
+      ? `Escolha o estado de ${keptLegacyCity} para confirmar a cidade, ou apague o campo.`
+      : 'Escolha o estado para buscar a cidade.'
+  }
+  if (loading) return 'Carregando as cidades…'
+  return listError ?? ''
+}
+
 /**
  * Estado (`name="estado"`, sigla) e cidade (`name="cidade"`) do perfil. A cidade é buscada
  * entre os municípios do IBGE da UF escolhida; fora da lista, o campo fica inválido e o
@@ -31,29 +64,18 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
 
   // Perfil antigo com cidade e sem UF: o campo fica editável para a pessoa poder apagá-la.
   const legacyCity = !defaultState && defaultCity !== ''
-  // Mesma localidade já gravada (a cidade pode estar com outra caixa ou sem acento).
-  const unchanged = state === defaultState && sameName(city, defaultCity)
-  const official = findCity(cities, city)
-  // Nome que o campo assume ao sair dele ou com Enter: o oficial, ou o gravado se não mudou.
-  const canonical = official ?? (unchanged && city.trim() ? defaultCity : undefined)
-
-  let error = ''
-  if (city.trim() && !unchanged) {
-    if (!state) error = 'Escolha o estado da cidade.'
-    else if (cities.length && !official) {
-      error = `Não há um município com esse nome em ${state}. Escolha um da lista.`
-    } else if (loading) error = `Espere carregar as cidades de ${state}.`
-    else if (citiesError) error = 'Não foi possível conferir a cidade.'
+  const check: CityCheck = {
+    city,
+    state,
+    unchanged: state === defaultState && sameName(city, defaultCity),
+    official: findCity(cities, city),
+    hasList: cities.length > 0,
+    loading,
+    listError: citiesError,
   }
-
-  let help = ''
-  if (!state) {
-    help =
-      legacyCity && unchanged
-        ? `Escolha o estado de ${defaultCity} para confirmar a cidade, ou apague o campo.`
-        : 'Escolha o estado para buscar a cidade.'
-  } else if (loading) help = 'Carregando as cidades…'
-  else if (citiesError) help = citiesError
+  // Nome que o campo assume ao sair dele ou com Enter: o oficial, ou o gravado se não mudou.
+  const canonical = check.official ?? (check.unchanged && city.trim() ? defaultCity : undefined)
+  const help = cityHelp(check, legacyCity && check.unchanged ? defaultCity : undefined)
 
   return (
     <>
@@ -104,7 +126,7 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
         cities={cities}
         readOnly={!state && !legacyCity}
         help={help}
-        error={error}
+        error={cityError(check)}
         onRetry={state && citiesError ? retry : undefined}
       />
     </>
