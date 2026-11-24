@@ -78,10 +78,11 @@ class Command(BaseCommand):
         # Mesma transação: se os avisos falharem, a importação é desfeita e
         # a próxima execução cria os eventos (e os avisos) de novo. Só evento
         # criado gera aviso, então importar sem avisar perderia os avisos.
-        # A cidade dos locais novos é conferida no Photon antes dos avisos,
-        # que filtram por ela, mas só de alguns, para a transação ser
-        # curta; os outros (e todos, com o Photon fora) filtram desta vez
-        # só pelo que o Ticketmaster informou (ver `combinar`).
+        # Os locais dos eventos novos são conferidos no Photon antes dos
+        # avisos, que filtram pela cidade, mas só alguns, para a transação
+        # ser curta. Os outros (e todos, com o Photon fora) filtram desta
+        # vez pelo que o Ticketmaster informou, combinado com a resposta
+        # do Photon que o local já tiver guardada (ver `combinar`).
         try:
             with transaction.atomic():
                 # Depois da geocodificação acima, que pode levar minutos.

@@ -630,7 +630,7 @@ class CidadeNaImportacaoTest(TestCase):
         self.assertEqual(self.photon.call_count, 1)
 
     def test_resposta_provisoria_vale_enquanto_espera_o_photon(self):
-        # Como a 0009 deixa um local que o Photon tinha corrigido:
+        # Como a 0008 deixa um local que o Photon tinha corrigido:
         # Ticketmaster com PB, resposta provisória Medianeira/PR, na fila.
         self.venue["city"] = None
         self.venue["state"] = {"stateCode": "PB"}

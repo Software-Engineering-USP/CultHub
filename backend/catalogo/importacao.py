@@ -174,7 +174,7 @@ def _salvar_local(venue):
         )
     else:
         # Mesma coordenada: a resposta do Photon guardada (vazia se nunca
-        # houve; provisória nos locais que a 0009 devolveu à fila)
+        # houve; provisória nos locais que a 0008 devolveu à fila)
         # continua valendo, combinada com o que o Ticketmaster manda agora,
         # sem consultar de novo.
         geocodificado = (

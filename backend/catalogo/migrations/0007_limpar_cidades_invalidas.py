@@ -1,11 +1,14 @@
 """Confere a cidade e a UF dos locais do Ticketmaster na lista do IBGE.
 
 Antes da importação conferir, ficou gravado o que viesse ("Nocity", um
-bairro como "Pinheiros", UF "XX"). Mesma regra de
-`importacao._cidade_e_estado`: a cidade válida passa a ter o nome
-oficial, a UF que não é estado é apagada (e a válida nunca é trocada), e
-a UF nunca é deduzida pelo nome, que pode ser de um bairro de outro
-estado: sem UF, fica o nome sem UF. O resto é apagado. Os locais com
+bairro como "Pinheiros", UF "XX"). Mesma regra de `geocodificacao.combinar`
+sem resposta do Photon: a cidade passa a ter o nome oficial e só fica se
+for da UF (Curitiba/SP fica só SP), a UF que não é estado é apagada (e a
+válida nunca é trocada), e a UF nunca é deduzida pelo nome, que pode ser
+de um bairro de outro estado: sem UF, fica o nome sem UF. O resto é
+apagado. Uma cidade apagada aqui por não ser da UF do Ticketmaster
+(Medianeira/PB) volta na próxima importação do local, que grava de novo
+o que o Ticketmaster informou. Os locais com
 coordenada são conferidos no Photon nas próximas importações (ver
 `geocodificacao.pendentes`). Locais cadastrados à mão ficam como estão.
 """
