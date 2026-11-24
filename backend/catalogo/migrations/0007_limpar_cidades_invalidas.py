@@ -5,10 +5,9 @@ bairro como "Pinheiros", UF "XX"). Mesma regra de
 `importacao._cidade_e_estado`: a cidade válida passa a ter o nome
 oficial, a UF que não é estado é apagada (e a válida nunca é trocada), e
 a UF nunca é deduzida pelo nome, que pode ser de um bairro de outro
-estado: sem UF, fica o nome sem UF. O resto é apagado. O local com
-coordenada e sem cidade ou UF entra na geocodificação da próxima
-importação, com a cidade que sobrou como palpite. Locais cadastrados à
-mão ficam como estão.
+estado: sem UF, fica o nome sem UF. O resto é apagado. Os locais com
+coordenada são conferidos no Photon nas próximas importações (ver
+`geocodificacao.pendentes`). Locais cadastrados à mão ficam como estão.
 """
 
 from django.db import migrations

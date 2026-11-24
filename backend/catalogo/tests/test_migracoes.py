@@ -171,27 +171,41 @@ class GeocodificarDeNovoTest(TestCase):
         self.assertIsNotNone(sem_coordenada.geocodificado_em)
         self.assertEqual(manual.cidade_informada, "")
 
-    def test_0009_guarda_a_cidade_de_hoje_como_resposta_provisoria(self):
+    def test_0008_guarda_a_resposta_provisoria_so_dos_geocodificados(self):
         coordenada = {
             "latitude": Decimal("-25.3"),
             "longitude": Decimal("-54.1"),
         }
         corrigido = self.criar("a", **coordenada)
-        ja_respondido = self.criar(
-            "b",
-            cidade_geocodificada="Foz do Iguaçu",
-            estado_geocodificado="PR",
+        # Sem UF, `combinar` completaria a UF pelo nome (Pinheiros → ES).
+        sem_uf = Local.objects.create(
+            nome="b",
+            provedor=Provedor.TICKETMASTER,
+            id_externo="b",
+            cidade="Pinheiros",
+            geocodificado_em=timezone.now(),
             **coordenada,
         )
-        sem_coordenada = self.criar("c")
+        nunca_geocodificado = Local.objects.create(
+            nome="c",
+            provedor=Provedor.TICKETMASTER,
+            id_externo="c",
+            cidade="Santos",
+            estado="SP",
+            **coordenada,
+        )
 
+        geocodificar_de_novo(apps, None)
         copiar_e_geocodificar_de_novo(apps, None)
 
-        for local in (corrigido, ja_respondido, sem_coordenada):
+        for local in (corrigido, sem_uf, nunca_geocodificado):
             local.refresh_from_db()
         self.assertEqual(
             (corrigido.cidade_geocodificada, corrigido.estado_geocodificado),
             ("Medianeira", "PR"),
         )
-        self.assertEqual(ja_respondido.cidade_geocodificada, "Foz do Iguaçu")
-        self.assertEqual(sem_coordenada.cidade_geocodificada, "")
+        for local in (sem_uf, nunca_geocodificado):
+            self.assertEqual(
+                (local.cidade_geocodificada, local.estado_geocodificado),
+                ("", ""),
+            )

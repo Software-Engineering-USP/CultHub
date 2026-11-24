@@ -2,22 +2,30 @@
 
 Até aqui a resposta do Photon ia direto para `cidade`/`estado`, misturada
 com o que veio do Ticketmaster, e não há como separá-la. Os locais já
-geocodificados voltam para a fila: na próxima importação são consultados
-de novo, e a cidade/UF gravada hoje entra como o dado do Ticketmaster
-(ver `geocodificacao.combinar`), então nada se perde se o Photon não
-responder.
+geocodificados (com coordenada) voltam para a fila, para serem
+consultados de novo. Até lá, a cidade/UF que a geocodificação antiga
+deixou fica como resposta provisória do Photon (ver
+`geocodificacao.combinar`), para um local corrigido (Medianeira/PR, com
+o Ticketmaster dizendo PB) não voltar aos dados do Ticketmaster se o
+Photon estiver fora. Só com UF: sem ela, `combinar` completaria a UF
+pelo nome, que pode ser um bairro de outro estado.
 """
 
 from django.db import migrations, models
+from django.db.models import F
 
 
 def geocodificar_de_novo(apps, schema_editor):
     modelo = apps.get_model("catalogo", "Local")
-    modelo.objects.filter(
+    geocodificados = modelo.objects.filter(
         geocodificado_em__isnull=False,
         latitude__isnull=False,
         longitude__isnull=False,
-    ).update(geocodificado_em=None)
+    )
+    geocodificados.exclude(estado="").update(
+        cidade_geocodificada=F("cidade"), estado_geocodificado=F("estado")
+    )
+    geocodificados.update(geocodificado_em=None)
 
 
 class Migration(migrations.Migration):
