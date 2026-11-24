@@ -70,10 +70,10 @@ def localidade(texto):
 
 
 def converter_cidades(apps, schema_editor):
-    Usuario = apps.get_model("usuarios", "Usuario")
-    for usuario in Usuario.objects.exclude(cidade="").only("cidade"):
+    modelo = apps.get_model("usuarios", "Usuario")
+    for usuario in modelo.objects.exclude(cidade="").only("cidade"):
         cidade, estado = localidade(usuario.cidade)
-        Usuario.objects.filter(pk=usuario.pk).update(
+        modelo.objects.filter(pk=usuario.pk).update(
             cidade=cidade, estado=estado
         )
 

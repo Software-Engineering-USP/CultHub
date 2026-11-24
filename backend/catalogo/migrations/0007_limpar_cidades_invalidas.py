@@ -12,16 +12,16 @@ from localidades.municipios import municipio_oficial
 
 
 def limpar_cidades(apps, schema_editor):
-    Local = apps.get_model("catalogo", "Local")
+    modelo = apps.get_model("catalogo", "Local")
     locais = (
-        Local.objects.filter(provedor="ticketmaster", pais__in=("", "BR"))
+        modelo.objects.filter(provedor="ticketmaster", pais__in=("", "BR"))
         .exclude(cidade="")
         .only("cidade", "estado")
     )
     for local in locais:
         oficial = municipio_oficial(local.cidade, local.estado)
         if oficial != local.cidade:
-            Local.objects.filter(pk=local.pk).update(cidade=oficial)
+            modelo.objects.filter(pk=local.pk).update(cidade=oficial)
 
 
 class Migration(migrations.Migration):
