@@ -9,6 +9,10 @@ import { cn } from '@/lib/utils'
 
 const MAX_SUGGESTIONS = 8
 
+function sameName(a: string, b: string) {
+  return normalizePlaceName(a) === normalizePlaceName(b)
+}
+
 interface LocalityFieldsProps {
   defaultCity: string
   defaultState: string
@@ -23,24 +27,31 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
   const [state, setState] = useState(defaultState)
   const [city, setCity] = useState(defaultCity)
   const { states, error: statesError } = useStates()
-  const { cities, error: citiesError, loading } = useCities(state)
+  const { cities, error: citiesError, loading, retry } = useCities(state)
 
   // Perfil antigo com cidade e sem UF: o campo fica editável para a pessoa poder apagá-la.
   const legacyCity = !defaultState && defaultCity !== ''
-  const keptLegacyCity = legacyCity && normalizePlaceName(city) === normalizePlaceName(defaultCity)
+  // Mesma localidade já gravada (a cidade pode estar com outra caixa ou sem acento).
+  const unchanged = state === defaultState && sameName(city, defaultCity)
+  const official = findCity(cities, city)
+  // Nome que o campo assume ao sair dele ou com Enter: o oficial, ou o gravado se não mudou.
+  const canonical = official ?? (unchanged && city.trim() ? defaultCity : undefined)
 
   let error = ''
-  if (state && city.trim() && cities.length && !findCity(cities, city)) {
-    error = `Não há um município com esse nome em ${state}. Escolha um da lista.`
-  } else if (!state && city.trim() && !keptLegacyCity) {
-    error = 'Escolha o estado da cidade.'
+  if (city.trim() && !unchanged) {
+    if (!state) error = 'Escolha o estado da cidade.'
+    else if (cities.length && !official) {
+      error = `Não há um município com esse nome em ${state}. Escolha um da lista.`
+    } else if (loading) error = `Espere carregar as cidades de ${state}.`
+    else if (citiesError) error = 'Não foi possível conferir a cidade.'
   }
 
   let help = ''
   if (!state) {
-    help = keptLegacyCity
-      ? `Escolha o estado de ${defaultCity} para confirmar a cidade, ou apague o campo.`
-      : 'Escolha o estado para buscar a cidade.'
+    help =
+      legacyCity && unchanged
+        ? `Escolha o estado de ${defaultCity} para confirmar a cidade, ou apague o campo.`
+        : 'Escolha o estado para buscar a cidade.'
   } else if (loading) help = 'Carregando as cidades…'
   else if (citiesError) help = citiesError
 
@@ -56,9 +67,12 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
             autoComplete="address-level1"
             aria-describedby={statesError ? 'estado-ajuda' : undefined}
             onChange={(event) => {
-              // Trocar de UF invalida a cidade; sem UF antes (perfil antigo), a cidade é conferida na nova.
-              if (state) setCity('')
-              setState(event.target.value)
+              const next = event.target.value
+              // Perfil antigo que volta para "Não informado" recupera a cidade gravada; fora isso,
+              // trocar de UF invalida a cidade (sem UF antes, ela é conferida na nova).
+              if (!next && legacyCity) setCity(defaultCity)
+              else if (state) setCity('')
+              setState(next)
             }}
             className="min-h-11 w-full min-w-0 cursor-pointer appearance-none rounded-xl border border-input bg-card py-3 pr-10 pl-3.5 text-xs text-foreground"
           >
@@ -86,10 +100,12 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
       <CitySearch
         value={city}
         onValueChange={setCity}
+        canonical={canonical}
         cities={cities}
         readOnly={!state && !legacyCity}
         help={help}
         error={error}
+        onRetry={state && citiesError ? retry : undefined}
       />
     </>
   )
@@ -98,55 +114,86 @@ export default function LocalityFields({ defaultCity, defaultState }: Readonly<L
 interface CitySearchProps {
   value: string
   onValueChange: (value: string) => void
+  /** Nome a pôr no campo ao sair dele ou com Enter ("sao paulo" vira "São Paulo"). */
+  canonical?: string
   cities: string[]
   readOnly: boolean
   help: string
-  /** Cidade fora da lista: impede o envio do formulário. */
+  /** Cidade que não pode ser enviada: impede o envio do formulário. */
   error: string
+  /** Mostra "Tentar de novo" (lista de cidades que não carregou). */
+  onRetry?: () => void
 }
 
 /** Campo de cidade com sugestões da lista de municípios enquanto a pessoa digita. */
-function CitySearch({ value, onValueChange, cities, readOnly, help, error }: Readonly<CitySearchProps>) {
+function CitySearch({
+  value,
+  onValueChange,
+  canonical,
+  cities,
+  readOnly,
+  help,
+  error,
+  onRetry,
+}: Readonly<CitySearchProps>) {
   const listId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
-  const official = findCity(cities, value)
-  const suggestions =
-    open && !readOnly && official !== value ? matchCities(cities, value, MAX_SUGGESTIONS) : []
+  const candidates = readOnly ? [] : matchCities(cities, value, MAX_SUGGESTIONS)
+  const suggestions = open ? candidates : []
   const expanded = suggestions.length > 0
-
   // Enquanto a pessoa digita, o erro não aparece (só no envio ou ao sair do campo).
   const shownError = open ? '' : error
+  const message = shownError || help
 
   useEffect(() => {
     inputRef.current?.setCustomValidity(error)
   }, [error])
 
-  function choose(city: string) {
-    onValueChange(city)
+  function close() {
     setOpen(false)
     setActive(-1)
   }
 
+  function choose(city: string) {
+    onValueChange(city)
+    close()
+  }
+
+  function settle() {
+    if (canonical && canonical !== value) onValueChange(canonical)
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Escape') {
-      setOpen(false)
-      setActive(-1)
+      close()
       return
     }
-    if (!expanded) return
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const total = candidates.length
+      if (!total) return
       event.preventDefault()
       const step = event.key === 'ArrowDown' ? 1 : -1
-      const total = suggestions.length
+      // Lista fechada (depois de Esc ou de uma escolha): a seta reabre no primeiro ou no último.
+      if (!expanded) {
+        setOpen(true)
+        setActive(step > 0 ? 0 : total - 1)
+        return
+      }
       setActive((current) => {
         if (current < 0) return step > 0 ? 0 : total - 1
         return (current + step + total) % total
       })
-    } else if (event.key === 'Enter' && active >= 0) {
-      event.preventDefault()
-      choose(suggestions[active])
+    } else if (event.key === 'Enter') {
+      if (expanded && active >= 0) {
+        event.preventDefault()
+        choose(suggestions[active])
+        return
+      }
+      // Enter que envia o formulário: o campo fica com o nome oficial, como ao sair dele.
+      close()
+      settle()
     }
   }
 
@@ -162,7 +209,21 @@ function CitySearch({ value, onValueChange, cities, readOnly, help, error }: Rea
         autoComplete="off"
         maxLength={100}
         readOnly={readOnly}
-        help={shownError || help || undefined}
+        help={
+          message || onRetry ? (
+            <>
+              {message}
+              {onRetry && (
+                <>
+                  {' '}
+                  <button type="button" onClick={onRetry} className="font-semibold text-maroon underline">
+                    Tentar de novo
+                  </button>
+                </>
+              )}
+            </>
+          ) : undefined
+        }
         aria-autocomplete="list"
         aria-expanded={expanded}
         aria-controls={listId}
@@ -176,9 +237,8 @@ function CitySearch({ value, onValueChange, cities, readOnly, help, error }: Rea
         }}
         onKeyDown={onKeyDown}
         onBlur={() => {
-          setOpen(false)
-          // "sao paulo" vira "São Paulo", como o backend gravaria.
-          if (official && official !== value) onValueChange(official)
+          close()
+          settle()
         }}
       />
       <ul

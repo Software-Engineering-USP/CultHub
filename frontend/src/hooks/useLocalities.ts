@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/services/api'
 import type { ApiState } from '@/services/api'
 
@@ -55,37 +55,43 @@ export function useStates() {
 }
 
 interface CitiesState {
-  state: string
+  /** UF e tentativa a que a resposta se refere */
+  key: string
   cities: string[]
   error: string | null
 }
 
-/** Municípios da UF `state`; sem UF, lista vazia. */
+/** Municípios da UF `state`; sem UF, lista vazia. `retry` consulta de novo depois de um erro. */
 export function useCities(state: string) {
-  const [result, setResult] = useState<CitiesState>({ state: '', cities: [], error: null })
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState<CitiesState>({ key: '', cities: [], error: null })
+  const key = `${state}|${attempt}`
 
   useEffect(() => {
     if (!state) return
     let active = true
     loadCities(state)
       .then((cities) => {
-        if (active) setResult({ state, cities, error: null })
+        if (active) setResult({ key, cities, error: null })
       })
       .catch((error: unknown) => {
         if (active) {
-          setResult({ state, cities: [], error: message(error, 'Não foi possível carregar as cidades.') })
+          setResult({ key, cities: [], error: message(error, 'Não foi possível carregar as cidades.') })
         }
       })
     return () => {
       active = false
     }
-  }, [state])
+  }, [state, key])
 
-  // Resposta de outra UF (a anterior) não vale para a atual.
-  const current = state !== '' && result.state === state
+  const retry = useCallback(() => setAttempt((value) => value + 1), [])
+
+  // Resposta de outra UF (ou de uma tentativa anterior) não vale para a atual.
+  const current = state !== '' && result.key === key
   return {
     cities: current ? result.cities : [],
     error: current ? result.error : null,
     loading: state !== '' && !current,
+    retry,
   }
 }

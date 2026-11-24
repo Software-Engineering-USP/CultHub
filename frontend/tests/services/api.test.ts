@@ -1,12 +1,14 @@
 import type { MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, AUTHENTICATION_FAILURE_EVENT } from '@/services/api'
+import type { ProfileResponse } from '@/services/api'
 
-const profile = {
+const profile: ProfileResponse = {
   id: 'user-1',
   nome: 'Lívia Costa',
   email: 'livia.costa@exemplo.com',
-  cidade: 'São Paulo, SP',
+  cidade: 'São Paulo',
+  estado: 'SP',
   bairro: 'Vila Mariana',
   preferencias: ['music', 'art'],
   iniciais: 'LC',

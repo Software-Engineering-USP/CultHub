@@ -22,7 +22,7 @@ import { useSavedEvents } from '@/hooks/useUserEvents'
 import { categories } from '@/lib/categories'
 import { chipClass, peerFocusRing } from '@/lib/classes'
 import { onFormSubmit, text } from '@/lib/forms'
-import { formatLocality } from '@/lib/locality'
+import { formatLocality, normalizePlaceName } from '@/lib/locality'
 import { paths } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 import { api, ApiError } from '@/services/api'
@@ -176,12 +176,15 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
                 setProfileMessage('')
                 const city = text(data, 'cidade').trim()
                 const state = text(data, 'estado')
+                // Sem mudança (a mesma cidade com outra caixa ou sem acento conta como igual), não
+                // reenvia: perfil antigo com cidade sem UF ainda salva o resto.
+                const localityChanged =
+                  state !== user.state || normalizePlaceName(city) !== normalizePlaceName(user.city)
                 try {
                   const profile = await api.profile.update({
                     name: text(data, 'nome'),
                     district: text(data, 'bairro'),
-                    // Sem mudança, não reenvia: perfil antigo com cidade sem UF ainda salva o resto.
-                    ...((city !== user.city || state !== user.state) && { locality: { city, state } }),
+                    ...(localityChanged && { locality: { city, state } }),
                   })
                   updateUser(profile)
                   setProfileMessage('Dados atualizados.')
