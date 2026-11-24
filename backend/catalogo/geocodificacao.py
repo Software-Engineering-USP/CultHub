@@ -4,7 +4,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from django.db.models import F, Q
+from django.db.models import F
 
 from localidades.municipios import (
     localizar_municipio,
@@ -50,13 +50,13 @@ class ResumoGeocodificacao:
 def pendentes():
     """Locais do Ticketmaster no Brasil a conferir no Photon.
 
-    Os que têm coordenada, ainda não foram conferidos e estão sem cidade
-    ou sem UF (cidade de vários estados, como "Bom Jesus"). Os que deram
-    erro vão para o fim, do erro mais antigo para o mais novo, para não
-    travar a fila. Os cadastrados à mão ficam como o admin deixou.
+    Todos os que têm coordenada e ainda não foram conferidos, mesmo com
+    cidade e UF do Ticketmaster: a coordenada erra menos (ver `combinar`).
+    Cada um é conferido uma vez por coordenada. Os que deram erro vão para
+    o fim, do erro mais antigo para o mais novo, para não travar a fila.
+    Os cadastrados à mão ficam como o admin deixou.
     """
     return Local.objects.filter(
-        Q(cidade="") | Q(estado=""),
         provedor=Provedor.TICKETMASTER,
         pais__in=("", "BR"),
         latitude__isnull=False,
@@ -68,10 +68,11 @@ def pendentes():
 def combinar(cidade, uf, cidade_geocodificada, uf_geocodificada):
     """(cidade, UF) do local, do Ticketmaster e do que o Photon respondeu.
 
-    `cidade`/`uf`: do Ticketmaster, já conferidas (ver
-    `importacao._cidade_e_estado`): a cidade é um nome oficial do IBGE ou
-    "", e a UF uma sigla ou "". `cidade_geocodificada`: como o Photon
-    escreveu; `uf_geocodificada`: sigla ou "" (vazias sem geocodificação).
+    `cidade`/`uf`: o que o Ticketmaster informou (ver
+    `importacao._cidade_e_estado`): a cidade é um nome oficial do IBGE,
+    ainda sem conferir com UF nenhuma, ou ""; a UF, uma sigla ou "".
+    `cidade_geocodificada`: como o Photon escreveu; `uf_geocodificada`:
+    sigla ou "" (vazias sem geocodificação).
 
     A coordenada erra menos que o Ticketmaster (já veio um local de
     Medianeira/PR marcado como PB), então, em ordem:
@@ -179,12 +180,10 @@ def _marcar_erro(local, erro, agora, resumo):
 
 
 def _gravar(local, resposta, agora, resumo):
-    """Grava a resposta e a cidade/UF; conferido, o local sai da fila.
-
-    Antes da geocodificação, a cidade/UF do local é a do Ticketmaster
-    (gravada pela importação), e é com ela que a resposta é combinada.
-    """
-    cidade, uf = combinar(local.cidade, local.estado, *resposta)
+    """Grava a resposta e a cidade/UF; conferido, o local sai da fila."""
+    cidade, uf = combinar(
+        local.cidade_informada, local.estado_informado, *resposta
+    )
     if cidade:
         resumo.descobertos += 1
     Local.objects.filter(pk=local.pk).update(

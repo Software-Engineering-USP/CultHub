@@ -32,13 +32,16 @@ def criar_local(nome, **campos):
     campos.setdefault("id_externo", nome)
     campos.setdefault("latitude", Decimal("-23.5"))
     campos.setdefault("longitude", Decimal("-46.6"))
+    # Como a importação grava: a entrada do Ticketmaster e o resultado.
+    campos.setdefault("cidade_informada", campos.get("cidade", ""))
+    campos.setdefault("estado_informado", campos.get("estado", ""))
     return Local.objects.create(nome=nome, **campos)
 
 
 # A regra inteira da cidade/UF dos locais (`combinar`), um caso por
-# entrada: nome, depois Ticketmaster (cidade já conferida, UF), Photon
-# (cidade como veio, UF) e o resultado. Os casos com nome de lugar já
-# apareceram nos dados reais ou na revisão.
+# entrada: nome, depois Ticketmaster (nome oficial ainda sem conferir com
+# a UF, UF), Photon (cidade como veio, UF) e o resultado. Os casos com
+# nome de lugar já apareceram nos dados reais ou na revisão.
 # fmt: off
 CASOS_DE_COMBINAR = {
     # Casos reais.
@@ -46,6 +49,8 @@ CASOS_DE_COMBINAR = {
         (("", "PB"), ("Medianeira", "PR"), ("Medianeira", "PR")),
     "Medianeira/PB, Photon dá a cidade sem estado":
         (("", "PB"), ("Medianeira", ""), ("Medianeira", "PR")),
+    "Medianeira/PB com a cidade, Photon só dá o estado":
+        (("Medianeira", "PB"), ("", "PR"), ("Medianeira", "PR")),
     "Pinheiros sem UF, Photon acha São Paulo":
         (("Pinheiros", ""), ("São Paulo", "SP"), ("São Paulo", "SP")),
     "Pinheiros sem UF, Photon só dá o estado":
@@ -60,6 +65,8 @@ CASOS_DE_COMBINAR = {
         (("Bom Jesus", ""), ("Bom Jesus", ""), ("Bom Jesus", "")),
     "Bom Jesus/RS, Photon sem estado":
         (("Bom Jesus", "RS"), ("Bom Jesus", ""), ("Bom Jesus", "RS")),
+    "Bom Jesus no Photon sem estado, Ticketmaster diz SP":
+        (("", "SP"), ("Bom Jesus", ""), ("", "SP")),
     # O Photon devolve a própria cidade só em `name` (ver
     # `rotas.photon.buscar_cidade_e_estado`); aqui ela já chega como cidade.
     "Curitiba como a própria cidade no Photon":
@@ -79,6 +86,10 @@ CASOS_DE_COMBINAR = {
         (("", "SP"), ("Vila Madalena", ""), ("", "SP")),
     "sem geocodificação vale o Ticketmaster":
         (("Curitiba", "PR"), ("", ""), ("Curitiba", "PR")),
+    "sem geocodificação, cidade que não é da UF do Ticketmaster":
+        (("Medianeira", "PB"), ("", ""), ("", "PB")),
+    "Santos/RJ no Ticketmaster, Photon só dá SP":
+        (("Santos", "RJ"), ("", "SP"), ("Santos", "SP")),
     "UF do Ticketmaster em minúsculas":
         (("", "sp"), ("São Paulo", ""), ("São Paulo", "SP")),
     "nada de lugar nenhum":
@@ -185,15 +196,16 @@ class CompletarCidadesTest(TestCase):
 
     def test_so_consulta_os_pendentes(self):
         pendente = criar_local("Pendente")
-        criar_local("Com cidade", cidade="Santos", estado="SP")
+        # Com cidade e UF do Ticketmaster também: a coordenada erra menos.
+        com_cidade = criar_local("Com cidade", cidade="Santos", estado="SP")
         criar_local("Sem coordenada", latitude=None, longitude=None)
         criar_local("Conferido", geocodificado_em=AGORA)
         criar_local("Em Buenos Aires", pais="AR")
         criar_local("Manual", provedor=Provedor.MANUAL, id_externo="")
 
-        self.assertEqual(list(pendentes()), [pendente])
-        self.assertEqual(completar_cidades(DEPOIS).conferidos, 1)
-        self.assertEqual(self.photon.call_count, 1)
+        self.assertEqual(set(pendentes()), {pendente, com_cidade})
+        self.assertEqual(completar_cidades(DEPOIS).conferidos, 2)
+        self.assertEqual(self.photon.call_count, 2)
 
     def test_espera_entre_as_consultas_mesmo_em_chamadas_separadas(self):
         for nome in ("A", "B", "C"):
@@ -350,12 +362,10 @@ class CompletarCidadesTest(TestCase):
         # Tentados de novo no fim da segunda, ficam com a data dela.
         self.assertEqual(set(falhas), {DEPOIS})
 
-    def test_cidade_sem_uf_tambem_e_pendente(self):
+    def test_cidade_sem_uf_ganha_a_uf_do_photon(self):
         local = criar_local("Bom Jesus", cidade="Bom Jesus")
-        criar_local("Com UF", cidade="Bom Jesus", estado="RS")
         self.photon.return_value = ("Bom Jesus", "Rio Grande do Sul")
 
-        self.assertEqual(list(pendentes()), [local])
         completar_cidades(AGORA)
 
         local.refresh_from_db()
@@ -398,12 +408,27 @@ class CidadeNaImportacaoTest(TestCase):
 
     def test_cidade_do_ticketmaster_vira_o_nome_oficial(self):
         self.venue["city"] = {"name": "sao paulo"}
+        importar([self.dados], AGORA)
+
+        self.assertEqual(self.local().cidade_informada, "São Paulo")
+        self.assertEqual(self.local().cidade, "São Paulo")
+        # Mesmo com cidade e UF, a coordenada é conferida uma vez.
+        self.assertEqual(list(pendentes()), [self.local()])
+
+    def test_cidade_que_nao_e_da_uf_do_ticketmaster_fica_guardada(self):
+        # Caso Medianeira: a cidade não é de PB, mas é da UF do Photon.
+        self.venue["city"] = {"name": "Medianeira"}
+        self.venue["state"] = {"stateCode": "PB"}
+        self.photon.return_value = ("", "Paraná")
+        importar([self.dados], AGORA)
+        self.assertEqual(
+            (self.local().cidade, self.local().estado), ("", "PB")
+        )
+        self.assertEqual(self.local().cidade_informada, "Medianeira")
 
         local = self.importar_e_geocodificar()
 
-        self.assertEqual(local.cidade, "São Paulo")
-        self.assertIsNone(local.geocodificado_em)
-        self.photon.assert_not_called()
+        self.assertEqual((local.cidade, local.estado), ("Medianeira", "PR"))
 
     def test_cidade_invalida_do_ticketmaster_e_descartada(self):
         self.venue["city"] = {"name": "Nocity"}

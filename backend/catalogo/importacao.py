@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
 from django.utils import timezone
 
-from localidades.municipios import localizar_municipio
+from localidades.municipios import localizar_municipio, sigla_do_estado
 
 from .geocodificacao import combinar
 from .mapeamento import categorias_do_evento, genero_do_evento
@@ -112,22 +112,21 @@ def _preco(valor):
 
 
 def _cidade_e_estado(venue, pais):
-    """Cidade e UF do venue; no Brasil, a cidade é um município do IBGE.
+    """Cidade e UF que o venue informa; no Brasil, já no formato do IBGE.
 
     O Ticketmaster quase nunca manda a cidade, às vezes manda lixo
     ("Nocity") ou um bairro ("Pinheiros"), e às vezes omite a UF ou manda
-    uma que não existe; ver `localizar_municipio`, que não troca a UF.
-    A UF nunca é deduzida pelo nome, que pode ser de um bairro de outro
-    estado: sem UF válida, fica o nome oficial sem UF, e o Photon decide
-    se houver coordenada (ver `geocodificacao.combinar`). Com o nome
-    oficial, o filtro por cidade das notificações compara nomes escritos
-    do mesmo jeito.
+    uma que não existe. No Brasil, a cidade vira o nome oficial de um
+    município (ou "") e a UF, uma sigla (ou ""), sem conferir uma com a
+    outra: `geocodificacao.combinar` confere a cidade com a UF final, que
+    pode ser a da coordenada (Medianeira marcada como PB fica no PR).
     """
     cidade = _texto(_objeto(venue, "city"), "name")
     estado = _texto(_objeto(venue, "state"), "stateCode")
     if pais not in ("", "BR"):
         return cidade, estado
-    return localizar_municipio(cidade, estado, completar_uf=False)
+    oficial, _ = localizar_municipio(cidade, "", completar_uf=False)
+    return oficial, sigla_do_estado(estado)
 
 
 def _salvar_local(venue):
@@ -153,8 +152,8 @@ def _salvar_local(venue):
     dados = {
         "nome": _texto(venue, "name"),
         "endereco": _texto(_objeto(venue, "address"), "line1"),
-        "cidade": cidade,
-        "estado": estado,
+        "cidade_informada": cidade,
+        "estado_informado": estado,
         "pais": pais,
         "latitude": latitude,
         "longitude": longitude,
@@ -163,6 +162,7 @@ def _salvar_local(venue):
         anterior.latitude,
         anterior.longitude,
     ) == (latitude, longitude)
+    geocodificado = ("", "")
     if not mesma_coordenada:
         # Coordenada nova: a resposta do Photon e o erro dele não valem
         # mais, e o local volta para a fila da geocodificação.
@@ -172,15 +172,20 @@ def _salvar_local(venue):
             estado_geocodificado="",
             geocodificacao_falhou_em=None,
         )
-    elif anterior.geocodificado_em is not None and pais in ("", "BR"):
+    elif anterior.geocodificado_em is not None:
         # Mesma coordenada já conferida: a resposta do Photon continua
-        # valendo, combinada com o que o Ticketmaster manda agora.
-        dados["cidade"], dados["estado"] = combinar(
-            cidade,
-            estado,
+        # valendo, combinada com o que o Ticketmaster manda agora, sem
+        # consultar de novo.
+        geocodificado = (
             anterior.cidade_geocodificada,
             anterior.estado_geocodificado,
         )
+    if pais in ("", "BR"):
+        dados["cidade"], dados["estado"] = combinar(
+            cidade, estado, *geocodificado
+        )
+    else:
+        dados["cidade"], dados["estado"] = cidade, estado
     local, _ = Local.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
         id_externo=venue["id"],

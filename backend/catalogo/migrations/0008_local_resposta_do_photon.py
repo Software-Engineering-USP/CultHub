@@ -13,9 +13,11 @@ from django.db import migrations, models
 
 def geocodificar_de_novo(apps, schema_editor):
     modelo = apps.get_model("catalogo", "Local")
-    modelo.objects.filter(geocodificado_em__isnull=False).update(
-        geocodificado_em=None
-    )
+    modelo.objects.filter(
+        geocodificado_em__isnull=False,
+        latitude__isnull=False,
+        longitude__isnull=False,
+    ).update(geocodificado_em=None)
 
 
 class Migration(migrations.Migration):

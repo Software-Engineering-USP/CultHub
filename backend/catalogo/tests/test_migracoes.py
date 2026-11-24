@@ -12,6 +12,9 @@ from catalogo.tests.fabrica import criar_evento
 geocodificar_de_novo = import_module(
     "catalogo.migrations.0008_local_resposta_do_photon"
 ).geocodificar_de_novo
+copiar_e_geocodificar_de_novo = import_module(
+    "catalogo.migrations.0009_local_dados_informados"
+).copiar_e_geocodificar_de_novo
 limpar_valores_invalidos = import_module(
     "catalogo.migrations.0005_validar_valores"
 ).limpar_valores_invalidos
@@ -121,25 +124,49 @@ class LimparCidadesInvalidasTest(TestCase):
 
 
 class GeocodificarDeNovoTest(TestCase):
-    def test_locais_ja_geocodificados_voltam_para_a_fila(self):
-        geocodificado = Local.objects.create(
-            nome="a",
+    def criar(self, nome, **campos):
+        return Local.objects.create(
+            nome=nome,
             provedor=Provedor.TICKETMASTER,
-            id_externo="a",
+            id_externo=nome,
             cidade="Medianeira",
             estado="PR",
             geocodificado_em=timezone.now(),
+            **campos,
         )
-        nunca = Local.objects.create(
-            nome="b", provedor=Provedor.TICKETMASTER, id_externo="b"
+
+    def test_0008_devolve_a_fila_so_os_que_tem_coordenada(self):
+        com_coordenada = self.criar(
+            "a", latitude=Decimal("-25.3"), longitude=Decimal("-54.1")
         )
+        sem_coordenada = self.criar("b")
 
         geocodificar_de_novo(apps, None)
 
-        for local in (geocodificado, nunca):
-            local.refresh_from_db()
-            self.assertIsNone(local.geocodificado_em)
-        # A cidade/UF de hoje fica, e entra como o dado do Ticketmaster.
-        self.assertEqual(
-            (geocodificado.cidade, geocodificado.estado), ("Medianeira", "PR")
+        com_coordenada.refresh_from_db()
+        sem_coordenada.refresh_from_db()
+        self.assertIsNone(com_coordenada.geocodificado_em)
+        self.assertIsNotNone(sem_coordenada.geocodificado_em)
+
+    def test_0009_copia_a_entrada_e_devolve_todos_a_fila(self):
+        # Até mesmo com cidade e UF completas: antes, esses ficavam fora da
+        # fila e a importação seguinte gravaria o Ticketmaster por cima.
+        completo = self.criar(
+            "a", latitude=Decimal("-25.3"), longitude=Decimal("-54.1")
         )
+        sem_coordenada = self.criar("b")
+        manual = Local.objects.create(
+            nome="c", provedor=Provedor.MANUAL, cidade="Santos", estado="SP"
+        )
+
+        copiar_e_geocodificar_de_novo(apps, None)
+
+        for local in (completo, sem_coordenada, manual):
+            local.refresh_from_db()
+        self.assertEqual(
+            (completo.cidade_informada, completo.estado_informado),
+            ("Medianeira", "PR"),
+        )
+        self.assertIsNone(completo.geocodificado_em)
+        self.assertIsNotNone(sem_coordenada.geocodificado_em)
+        self.assertEqual(manual.cidade_informada, "")
