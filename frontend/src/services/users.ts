@@ -1,5 +1,5 @@
-import type { ApiPublicProfile } from '@/services/api'
-import type { PublicProfile } from '@/types'
+import type { ApiAttendee, ApiPublicProfile } from '@/services/api'
+import type { Attendee, PublicProfile } from '@/types'
 
 export function toPublicProfile(profile: ApiPublicProfile): PublicProfile {
   return {
@@ -10,6 +10,10 @@ export function toPublicProfile(profile: ApiPublicProfile): PublicProfile {
     preferences: profile.preferencias,
     memberSince: profile.membro_desde,
   }
+}
+
+export function toAttendee(attendee: ApiAttendee): Attendee {
+  return { id: attendee.id, name: attendee.nome, initials: attendee.iniciais }
 }
 
 /** Mês e ano do cadastro, ex.: "novembro de 2026". A data vem sem hora, então é lida em UTC. */

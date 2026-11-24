@@ -27,6 +27,13 @@ export interface ApiPublicProfile {
   membro_desde: string
 }
 
+/** Quem confirmou presença num evento (sem e-mail nem bairro). */
+export interface ApiAttendee {
+  id: string
+  nome: string
+  iniciais: string
+}
+
 export interface ApiComment {
   id: string
   evento: string
@@ -206,6 +213,11 @@ export const api = {
     /** Salvos e presenças que acontecem no período (datas AAAA-MM-DD, até 366 dias). */
     calendar: (from: string, to: string, page = 1) =>
       apiRequest<Paginated<ApiEvent>>(listPath('/eu/agenda/', { de: from, ate: to }, page)),
+    /** Quem confirmou presença no evento, da confirmação mais recente; exige login. */
+    attendees: (eventId: string, page = 1) =>
+      apiRequest<Paginated<ApiAttendee>>(
+        listPath(`/eventos/${encodeURIComponent(eventId)}/presencas/`, {}, page),
+      ),
   },
 
   notifications: {

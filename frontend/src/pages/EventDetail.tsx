@@ -6,6 +6,7 @@ import DemoNote from '@/components/common/DemoNote'
 import IconTile from '@/components/common/IconTile'
 import SectionHeading from '@/components/common/SectionHeading'
 import Surface from '@/components/common/Surface'
+import AttendeesList from '@/components/events/AttendeesList'
 import CommentsSection from '@/components/events/CommentsSection'
 import EventPrice from '@/components/events/EventPrice'
 import RoutePreview from '@/components/events/RoutePreview'
@@ -166,12 +167,13 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
             <p className="mb-2 text-xs text-muted-foreground" aria-live="polite">
               {attendanceCount} {attendanceCount === 1 ? 'pessoa confirmou' : 'pessoas confirmaram'} presença.
             </p>
+            <AttendeesList eventId={event.id} version={attendanceCount} />
             {!user && (
               <p className="mb-2 text-xs text-muted-foreground">
                 <Link to={paths.signIn} className="font-semibold text-maroon underline">
                   Entre na sua conta
                 </Link>{' '}
-                para salvar o evento ou confirmar presença.
+                para salvar o evento, confirmar presença e ver quem vai.
               </p>
             )}
             {actionMessage && (

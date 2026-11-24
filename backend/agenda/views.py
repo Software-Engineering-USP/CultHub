@@ -14,9 +14,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from agenda.consultas import anotar_marcacoes
+from agenda.models import PresencaEmEvento
 from agenda.serializers import (
     EventoDaAgendaSerializer,
     PeriodoSerializer,
+    PessoaPresenteSerializer,
     QuandoSerializer,
 )
 from catalogo.consultas import eventos_com_relacoes
@@ -34,6 +36,8 @@ _ERRO_DETALHE = inline_serializer(
     "ErroDetalhe", {"detail": serializers.CharField()}
 )
 
+_EVENTO_INEXISTENTE = OpenApiResponse(description="Evento inexistente.")
+
 
 class MarcacaoView(APIView):
     """Marca (POST) ou desmarca (DELETE) um evento para o usuário logado.
@@ -50,7 +54,7 @@ class MarcacaoView(APIView):
         responses={
             (200, "application/json"): _CORPO_MARCACAO,
             (201, "application/json"): _CORPO_MARCACAO,
-            404: OpenApiResponse(description="Evento inexistente."),
+            404: _EVENTO_INEXISTENTE,
             409: OpenApiResponse(
                 response=_ERRO_DETALHE,
                 description="Evento removido do catálogo.",
@@ -85,7 +89,7 @@ class MarcacaoView(APIView):
             204: OpenApiResponse(
                 description="Marcação removida (ou ausente)."
             ),
-            404: OpenApiResponse(description="Evento inexistente."),
+            404: _EVENTO_INEXISTENTE,
         },
         description=(
             "Desmarca o evento para o usuário; 204 mesmo se não estava "
@@ -98,6 +102,34 @@ class MarcacaoView(APIView):
             usuario=request.user, evento=evento
         ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(
+    responses={
+        200: PessoaPresenteSerializer(many=True),
+        404: _EVENTO_INEXISTENTE,
+    },
+    description=(
+        "Quem confirmou presença no evento, da confirmação mais recente para "
+        "a mais antiga. Só para quem está logado; vale também para eventos "
+        "removidos. Contas desativadas ficam de fora."
+    ),
+)
+class PresentesView(ListAPIView):
+    """Pessoas que vão ao evento (só nome e iniciais)."""
+
+    serializer_class = PessoaPresenteSerializer
+    pagination_class = PaginacaoEventos
+
+    def get_queryset(self):
+        evento = get_object_or_404(Evento, pk=self.kwargs["pk"])
+        return (
+            PresencaEmEvento.objects.filter(
+                evento=evento, usuario__is_active=True
+            )
+            .select_related("usuario")
+            .order_by("-marcado_em", "id")
+        )
 
 
 class ListaDoUsuarioView(ListAPIView):
