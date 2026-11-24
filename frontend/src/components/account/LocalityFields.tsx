@@ -103,7 +103,8 @@ function CitySearch({ value, onValueChange, cities, readOnly, help, error }: Rea
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const official = findCity(cities, value)
-  const suggestions = open && !readOnly && official !== value ? matchCities(cities, value, MAX_SUGGESTIONS) : []
+  const suggestions =
+    open && !readOnly && official !== value ? matchCities(cities, value, MAX_SUGGESTIONS) : []
   const expanded = suggestions.length > 0
 
   // Enquanto a pessoa digita, o erro não aparece (só no envio ou ao sair do campo).

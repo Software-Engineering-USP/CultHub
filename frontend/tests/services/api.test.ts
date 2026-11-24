@@ -231,9 +231,9 @@ describe('api', () => {
       }),
     )
 
-    await expect(
-      api.profile.update({ name: 'Lívia', district: 'Centro' }),
-    ).rejects.toMatchObject({ status: 403 })
+    await expect(api.profile.update({ name: 'Lívia', district: 'Centro' })).rejects.toMatchObject({
+      status: 403,
+    })
 
     expect(dispatchEvent.mock.calls.some(([event]) => event.type === AUTHENTICATION_FAILURE_EVENT)).toBe(true)
   })
