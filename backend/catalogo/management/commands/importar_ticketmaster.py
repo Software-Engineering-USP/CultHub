@@ -15,18 +15,22 @@ from catalogo.models import Evento, Provedor
 from catalogo.ticketmaster import ErroTicketmaster, buscar_todos
 from notificacoes.servicos import notificar_eventos_novos
 
-# Locais novos geocodificados dentro da transação da importação, por
-# execução (cada um leva pouco mais de 1 s; ver `geocodificacao.INTERVALO`).
+# Locais geocodificados por execução (cada um leva pouco mais de 1 s; ver
+# `geocodificacao.INTERVALO`): antes da transação, os que ficaram de
+# importações anteriores (uns 4 minutos no pior caso, para uma execução
+# não encostar na seguinte); dentro dela, os dos eventos novos.
+LIMITE_ANTES_DA_TRANSACAO = 200
 LIMITE_NA_TRANSACAO = 10
 
 
-def _completar_cidades_novas(agora, anteriores):
-    """Geocodificação dos locais novos, dentro da transação.
+def _completar_cidades_novas(agora, anteriores, ids_criados):
+    """Geocodificação dos locais dos eventos criados, dentro da transação.
 
-    Com o Photon fora (falha passageira antes), nem tenta. Os locais que
-    já deram erro (antes ou em `anteriores`) ficam de fora: este lote é
-    para os novos. Para no primeiro erro, para não segurar a transação;
-    os que faltarem ficam para a etapa fora dela, na próxima importação.
+    São os locais que vão aparecer nos avisos. Com o Photon fora (falha
+    passageira antes), nem tenta. Os locais que já deram erro (antes ou em
+    `anteriores`) ficam de fora. Para no primeiro erro, para não segurar a
+    transação; os que faltarem ficam para a etapa fora dela, na próxima
+    importação.
     """
     if anteriores.passageira:
         return ResumoGeocodificacao()
@@ -35,6 +39,7 @@ def _completar_cidades_novas(agora, anteriores):
         LIMITE_NA_TRANSACAO,
         so_sem_erro=True,
         maximo_erros_seguidos=1,
+        eventos=ids_criados,
     )
 
 
@@ -67,7 +72,9 @@ class Command(BaseCommand):
         # transação, cada um gravado logo após a consulta, para não segurar
         # o banco durante as consultas ao Photon nem perder o que foi
         # descoberto se algo falhar depois.
-        anteriores = completar_cidades(timezone.now())
+        anteriores = completar_cidades(
+            timezone.now(), LIMITE_ANTES_DA_TRANSACAO
+        )
         # Mesma transação: se os avisos falharem, a importação é desfeita e
         # a próxima execução cria os eventos (e os avisos) de novo. Só evento
         # criado gera aviso, então importar sem avisar perderia os avisos.
@@ -79,7 +86,9 @@ class Command(BaseCommand):
                 # Depois da geocodificação acima, que pode levar minutos.
                 agora = timezone.now()
                 resumo = importar(eventos, agora)
-                novos = _completar_cidades_novas(agora, anteriores)
+                novos = _completar_cidades_novas(
+                    agora, anteriores, resumo.ids_criados
+                )
                 notificacoes = notificar_eventos_novos(resumo.ids_criados)
         except ErroImportacao as erro:
             raise CommandError(str(erro)) from None

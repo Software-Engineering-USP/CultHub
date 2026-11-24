@@ -19,7 +19,12 @@ class LocalAdmin(admin.ModelAdmin):
     list_display = ("nome", "cidade", "estado", "provedor")
     search_fields = ("nome",)
     list_filter = ("provedor",)
-    readonly_fields = ("geocodificado_em", "geocodificacao_falhou_em")
+    readonly_fields = (
+        "geocodificado_em",
+        "cidade_geocodificada",
+        "estado_geocodificado",
+        "geocodificacao_falhou_em",
+    )
 
 
 class FaixaPrecoInline(admin.TabularInline):

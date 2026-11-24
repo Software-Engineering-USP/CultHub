@@ -9,8 +9,9 @@ from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
 from django.utils import timezone
 
-from localidades.municipios import localizar_municipio, municipio_oficial
+from localidades.municipios import localizar_municipio
 
+from .geocodificacao import combinar
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
     DATA_MAXIMA,
@@ -110,46 +111,23 @@ def _preco(valor):
     return _numero(valor, CENTAVO, 0, PRECO_MAXIMO)
 
 
-def _cidade_e_estado(venue, pais, tem_coordenada):
+def _cidade_e_estado(venue, pais):
     """Cidade e UF do venue; no Brasil, a cidade é um município do IBGE.
 
     O Ticketmaster quase nunca manda a cidade, às vezes manda lixo
     ("Nocity") ou um bairro ("Pinheiros"), e às vezes omite a UF ou manda
     uma que não existe; ver `localizar_municipio`, que não troca a UF.
-    Sem UF válida, a cidade só completa a UF se não houver coordenada; com
-    coordenada, o local fica com o nome e sem UF, e o Photon decide (o
-    nome pode ser de um bairro de outro estado), usando o nome como
-    palpite se não achar nada (ver `geocodificacao._localidade`). Com o
-    nome oficial, o filtro por cidade das notificações compara nomes
-    escritos do mesmo jeito.
+    A UF nunca é deduzida pelo nome, que pode ser de um bairro de outro
+    estado: sem UF válida, fica o nome oficial sem UF, e o Photon decide
+    se houver coordenada (ver `geocodificacao.combinar`). Com o nome
+    oficial, o filtro por cidade das notificações compara nomes escritos
+    do mesmo jeito.
     """
     cidade = _texto(_objeto(venue, "city"), "name")
     estado = _texto(_objeto(venue, "state"), "stateCode")
     if pais not in ("", "BR"):
         return cidade, estado
-    return localizar_municipio(cidade, estado, completar_uf=not tem_coordenada)
-
-
-def _manter_geocodificacao(anterior, dados):
-    """Ajusta `dados` para manter o que a geocodificação de `anterior` achou.
-
-    - O Photon achou a cidade: ficam a cidade e a UF dela.
-    - Não achou, e o Ticketmaster agora manda um nome (palpite, sem UF):
-      com a UF da geocodificação, o nome vale se for dela; sem UF
-      nenhuma, o local volta para o Photon, que usa o palpite.
-    - Não achou, e o Ticketmaster não manda nome: vale a UF dele, que pode
-      ter sido corrigida; sem ela, fica a da geocodificação.
-    """
-    if anterior.cidade:
-        del dados["cidade"], dados["estado"]
-    elif dados["cidade"]:
-        if not anterior.estado:
-            return
-        dados["cidade"] = municipio_oficial(dados["cidade"], anterior.estado)
-        dados["estado"] = anterior.estado
-    elif not dados["estado"]:
-        del dados["cidade"], dados["estado"]
-    del dados["geocodificado_em"]
+    return localizar_municipio(cidade, estado, completar_uf=False)
 
 
 def _salvar_local(venue):
@@ -171,11 +149,7 @@ def _salvar_local(venue):
         and longitude is None
     ):
         latitude, longitude = anterior.latitude, anterior.longitude
-    cidade, estado = _cidade_e_estado(
-        venue,
-        pais,
-        tem_coordenada=latitude is not None and longitude is not None,
-    )
+    cidade, estado = _cidade_e_estado(venue, pais)
     dados = {
         "nome": _texto(venue, "name"),
         "endereco": _texto(_objeto(venue, "address"), "line1"),
@@ -184,26 +158,29 @@ def _salvar_local(venue):
         "pais": pais,
         "latitude": latitude,
         "longitude": longitude,
-        "geocodificado_em": None,
-        "geocodificacao_falhou_em": None,
     }
     mesma_coordenada = anterior is not None and (
         anterior.latitude,
         anterior.longitude,
     ) == (latitude, longitude)
-    # Com a mesma coordenada, o erro anterior no Photon continua valendo
-    # (o local segue no fim da fila de geocodificação).
-    if mesma_coordenada:
-        del dados["geocodificacao_falhou_em"]
-    # Sem cidade e UF no Ticketmaster (o que mandaria o local de novo para o
-    # Photon) e com a mesma coordenada, a conferência no Photon continua
-    # valendo.
-    if (
-        mesma_coordenada
-        and not (dados["cidade"] and dados["estado"])
-        and anterior.geocodificado_em is not None
-    ):
-        _manter_geocodificacao(anterior, dados)
+    if not mesma_coordenada:
+        # Coordenada nova: a resposta do Photon e o erro dele não valem
+        # mais, e o local volta para a fila da geocodificação.
+        dados.update(
+            geocodificado_em=None,
+            cidade_geocodificada="",
+            estado_geocodificado="",
+            geocodificacao_falhou_em=None,
+        )
+    elif anterior.geocodificado_em is not None and pais in ("", "BR"):
+        # Mesma coordenada já conferida: a resposta do Photon continua
+        # valendo, combinada com o que o Ticketmaster manda agora.
+        dados["cidade"], dados["estado"] = combinar(
+            cidade,
+            estado,
+            anterior.cidade_geocodificada,
+            anterior.estado_geocodificado,
+        )
     local, _ = Local.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
         id_externo=venue["id"],

@@ -2,12 +2,13 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from catalogo import geocodificacao
 from catalogo.geocodificacao import (
     INTERVALO,
     MAXIMO_ERROS_SEGUIDOS,
+    combinar,
     completar_cidades,
     pendentes,
 )
@@ -34,6 +35,69 @@ def criar_local(nome, **campos):
     return Local.objects.create(nome=nome, **campos)
 
 
+# A regra inteira da cidade/UF dos locais (`combinar`), um caso por
+# entrada: nome, depois Ticketmaster (cidade já conferida, UF), Photon
+# (cidade como veio, UF) e o resultado. Os casos com nome de lugar já
+# apareceram nos dados reais ou na revisão.
+# fmt: off
+CASOS_DE_COMBINAR = {
+    # Casos reais.
+    "Medianeira/PB, Photon dá cidade e estado":
+        (("", "PB"), ("Medianeira", "PR"), ("Medianeira", "PR")),
+    "Medianeira/PB, Photon dá a cidade sem estado":
+        (("", "PB"), ("Medianeira", ""), ("Medianeira", "PR")),
+    "Pinheiros sem UF, Photon acha São Paulo":
+        (("Pinheiros", ""), ("São Paulo", "SP"), ("São Paulo", "SP")),
+    "Pinheiros sem UF, Photon só dá o estado":
+        (("Pinheiros", ""), ("", "SP"), ("", "SP")),
+    "Pinheiros sem UF, Photon sem resposta (nunca vira ES)":
+        (("Pinheiros", ""), ("", ""), ("Pinheiros", "")),
+    "Guarulhos no Photon, Ticketmaster diz São Paulo":
+        (("São Paulo", "SP"), ("Guarulhos", "SP"), ("Guarulhos", "SP")),
+    "Bom Jesus sem UF, Photon dá o estado":
+        (("Bom Jesus", ""), ("Bom Jesus", "RS"), ("Bom Jesus", "RS")),
+    "Bom Jesus sem UF, Photon sem estado":
+        (("Bom Jesus", ""), ("Bom Jesus", ""), ("Bom Jesus", "")),
+    "Bom Jesus/RS, Photon sem estado":
+        (("Bom Jesus", "RS"), ("Bom Jesus", ""), ("Bom Jesus", "RS")),
+    # O Photon devolve a própria cidade só em `name` (ver
+    # `rotas.photon.buscar_cidade_e_estado`); aqui ela já chega como cidade.
+    "Curitiba como a própria cidade no Photon":
+        (("", ""), ("Curitiba", "PR"), ("Curitiba", "PR")),
+    "Curitiba do Ticketmaster, Photon só dá o estado":
+        (("Curitiba", ""), ("", "PR"), ("Curitiba", "PR")),
+    # Regras gerais.
+    "UF do Photon vale mais que a do Ticketmaster":
+        (("", "PB"), ("", "PR"), ("", "PR")),
+    "cidade do Photon que não é da UF dele é descartada":
+        (("", ""), ("Curitiba", "SP"), ("", "SP")),
+    "cidade do Photon descartada, vale a do Ticketmaster":
+        (("Santos", ""), ("Curitiba", "SP"), ("Santos", "SP")),
+    "cidade do Photon sem acento":
+        (("", "SP"), ("sao paulo", ""), ("São Paulo", "SP")),
+    "cidade do Photon que não é município":
+        (("", "SP"), ("Vila Madalena", ""), ("", "SP")),
+    "sem geocodificação vale o Ticketmaster":
+        (("Curitiba", "PR"), ("", ""), ("Curitiba", "PR")),
+    "UF do Ticketmaster em minúsculas":
+        (("", "sp"), ("São Paulo", ""), ("São Paulo", "SP")),
+    "nada de lugar nenhum":
+        (("", ""), ("", ""), ("", "")),
+}
+# fmt: on
+
+
+class CombinarTest(SimpleTestCase):
+    def test_casos(self):
+        for nome, (
+            ticketmaster,
+            photon,
+            esperado,
+        ) in CASOS_DE_COMBINAR.items():
+            with self.subTest(nome):
+                self.assertEqual(combinar(*ticketmaster, *photon), esperado)
+
+
 class CompletarCidadesTest(TestCase):
     def setUp(self):
         self.photon = simular_photon(self)
@@ -46,6 +110,10 @@ class CompletarCidadesTest(TestCase):
 
         local.refresh_from_db()
         self.assertEqual((local.cidade, local.estado), ("São Paulo", "SP"))
+        self.assertEqual(
+            (local.cidade_geocodificada, local.estado_geocodificado),
+            ("sao paulo", "SP"),
+        )
         self.assertEqual(local.geocodificado_em, AGORA)
         self.assertEqual((resumo.conferidos, resumo.descobertos), (1, 1))
         self.photon.assert_called_once_with(
@@ -256,14 +324,14 @@ class CompletarCidadesTest(TestCase):
             return ("Santos", "SP")
 
         consultados = []
-        original = geocodificacao._localidade
+        original = geocodificacao._consultar
 
-        def localidade(local):
+        def consultar(local):
             consultados.append(local.pk)
             return original(local)
 
         self.photon.side_effect = photon
-        with patch("catalogo.geocodificacao._localidade", localidade):
+        with patch("catalogo.geocodificacao._consultar", consultar):
             primeira = completar_cidades(AGORA)
             segunda = completar_cidades(DEPOIS)
 
@@ -386,16 +454,42 @@ class CidadeNaImportacaoTest(TestCase):
         )
         self.assertEqual(local.geocodificado_em, DEPOIS)
 
-    def test_cidade_vinda_do_ticketmaster_substitui_a_descoberta(self):
+    def test_photon_vale_mais_que_a_cidade_que_o_ticketmaster_manda_depois(
+        self,
+    ):
+        # Caso Guarulhos: com a mesma coordenada, a cidade do Photon fica.
+        self.photon.return_value = ("Guarulhos", "SP")
         self.importar_e_geocodificar()
-        self.venue["city"] = {"name": "Osasco"}
+        self.venue["city"] = {"name": "São Paulo"}
+        self.venue["state"] = {"stateCode": "SP"}
 
         local = self.importar_e_geocodificar(DEPOIS)
 
-        self.assertEqual((local.cidade, local.estado), ("Osasco", "SP"))
-        self.assertIsNone(local.geocodificado_em)
+        self.assertEqual((local.cidade, local.estado), ("Guarulhos", "SP"))
+        self.assertEqual(local.geocodificado_em, AGORA)
+        self.assertEqual(self.photon.call_count, 1)
 
-    def test_cidade_do_ticketmaster_corrige_ou_completa_a_uf(self):
+    def test_coordenada_nova_apaga_a_resposta_do_photon(self):
+        self.photon.return_value = ("Guarulhos", "SP")
+        self.importar_e_geocodificar()
+        self.assertEqual(self.local().cidade_geocodificada, "Guarulhos")
+        self.venue["location"] = {"latitude": "-22.9", "longitude": "-43.2"}
+        self.venue["city"] = {"name": "Rio de Janeiro"}
+        self.venue["state"] = {"stateCode": "RJ"}
+
+        importar([self.dados], DEPOIS)
+
+        local = self.local()
+        self.assertIsNone(local.geocodificado_em)
+        self.assertEqual(
+            (local.cidade_geocodificada, local.estado_geocodificado), ("", "")
+        )
+        # Sem a resposta antiga, valem os dados novos do Ticketmaster.
+        self.assertEqual(
+            (local.cidade, local.estado), ("Rio de Janeiro", "RJ")
+        )
+
+    def test_cidade_do_ticketmaster_sem_coordenada(self):
         # Sem coordenada, esses locais nunca passariam pelo Photon.
         self.venue["location"] = None
         for estado, cidade, esperado in (
@@ -403,7 +497,9 @@ class CidadeNaImportacaoTest(TestCase):
             ({"stateCode": "PB"}, "Medianeira", ("", "PB")),
             ({"stateCode": "SP"}, "Pinheiros", ("", "SP")),
             ({"stateCode": "RJ"}, "Ipanema", ("", "RJ")),
-            (None, "Curitiba", ("Curitiba", "PR")),
+            # O nome nunca completa a UF: pode ser um bairro.
+            (None, "Curitiba", ("Curitiba", "")),
+            (None, "Pinheiros", ("Pinheiros", "")),
             (None, "Bom Jesus", ("Bom Jesus", "")),
             ({"stateCode": "XX"}, "Nocity", ("", "")),
         ):
@@ -477,13 +573,12 @@ class CidadeNaImportacaoTest(TestCase):
         local = self.importar_e_geocodificar()
         self.assertEqual((local.cidade, local.estado), ("", ""))
 
-        # Sem UF nenhuma: o local volta para o Photon, que usa o palpite.
+        # Combinado com a resposta guardada, sem consultar o Photon de novo.
         self.venue["city"] = {"name": "curitiba"}
-        importar([self.dados], DEPOIS)
-        self.assertEqual(list(pendentes()), [self.local()])
         local = self.importar_e_geocodificar(DEPOIS)
         self.assertEqual((local.cidade, local.estado), ("Curitiba", ""))
-        self.assertEqual(self.photon.call_count, 2)
+        self.assertEqual(local.geocodificado_em, AGORA)
+        self.assertEqual(self.photon.call_count, 1)
 
     def test_palpite_que_chega_depois_vale_se_for_da_uf_achada(self):
         self.venue["state"] = None
@@ -516,7 +611,7 @@ class CidadeNaImportacaoTest(TestCase):
 
         local = self.importar_e_geocodificar()
 
-        self.assertEqual((local.cidade, local.estado), ("Curitiba", "PR"))
+        self.assertEqual((local.cidade, local.estado), ("Curitiba", ""))
         self.photon.assert_not_called()
 
     def test_cidade_de_varios_estados_sem_uf_com_coordenada_vai_para_o_photon(

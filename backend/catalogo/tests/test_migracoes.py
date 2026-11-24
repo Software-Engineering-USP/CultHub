@@ -4,10 +4,14 @@ from importlib import import_module
 from django.apps import apps
 from django.db import connection
 from django.test import TestCase
+from django.utils import timezone
 
 from catalogo.models import FaixaPreco, Local, Provedor
 from catalogo.tests.fabrica import criar_evento
 
+geocodificar_de_novo = import_module(
+    "catalogo.migrations.0008_local_resposta_do_photon"
+).geocodificar_de_novo
 limpar_valores_invalidos = import_module(
     "catalogo.migrations.0005_validar_valores"
 ).limpar_valores_invalidos
@@ -103,15 +107,39 @@ class LimparCidadesInvalidasTest(TestCase):
             (ambigua_errada, ("", "SP")),
             (bairro, ("", "SP")),
             (sem_estado_com_coordenada, ("Bom Jesus", "")),
-            # Sem coordenada, o nome é tudo o que há.
-            (bairro_sem_estado, ("Pinheiros", "ES")),
+            # O nome nunca completa a UF, com ou sem coordenada.
+            (bairro_sem_estado, ("Pinheiros", "")),
             # Com coordenada, fica o nome como palpite para o Photon.
             (bairro_sem_estado_com_coordenada, ("Pinheiros", "")),
             (uf_invalida, ("", "")),
             (uf_minuscula, ("Santos", "SP")),
-            # Meia coordenada não entra na geocodificação.
-            (so_latitude, ("Curitiba", "PR")),
+            (so_latitude, ("Curitiba", "")),
             (curitiba_com_coordenada, ("Curitiba", "")),
         ):
             local.refresh_from_db()
             self.assertEqual((local.cidade, local.estado), esperada)
+
+
+class GeocodificarDeNovoTest(TestCase):
+    def test_locais_ja_geocodificados_voltam_para_a_fila(self):
+        geocodificado = Local.objects.create(
+            nome="a",
+            provedor=Provedor.TICKETMASTER,
+            id_externo="a",
+            cidade="Medianeira",
+            estado="PR",
+            geocodificado_em=timezone.now(),
+        )
+        nunca = Local.objects.create(
+            nome="b", provedor=Provedor.TICKETMASTER, id_externo="b"
+        )
+
+        geocodificar_de_novo(apps, None)
+
+        for local in (geocodificado, nunca):
+            local.refresh_from_db()
+            self.assertIsNone(local.geocodificado_em)
+        # A cidade/UF de hoje fica, e entra como o dado do Ticketmaster.
+        self.assertEqual(
+            (geocodificado.cidade, geocodificado.estado), ("Medianeira", "PR")
+        )

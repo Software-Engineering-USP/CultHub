@@ -49,18 +49,19 @@ def _mesma_regiao(cidade, uf, local):
 
     O perfil tem estado e, opcionalmente, a cidade (nome do IBGE, o mesmo
     da cidade dos locais). Com o estado dos dois lados, ele precisa bater;
-    com a cidade dos dois lados, ela também. O local sem cidade (o
-    Ticketmaster raramente manda e a geocodificação pode não achar) fica
-    só com a UF; sem nenhuma das duas, não há como excluir e o aviso vai.
-    Perfil sem estado nem cidade recebe de qualquer lugar; com cidade e
-    sem estado (só pelo `create_user`, que não valida), vale a cidade.
+    com a cidade dos dois lados, ela também. Região desconhecida não exclui
+    ninguém: o aviso vai. É desconhecida a de quem não tem estado (perfil
+    ou local), mesmo com cidade, porque a cidade sem estado pode ser um
+    bairro de outro lugar ("Pinheiros", "Moema") ou ser de vários estados
+    ("Bom Jesus"). O local sem cidade (o Ticketmaster raramente manda e a
+    geocodificação pode não achar) filtra só pela UF.
     """
-    if not uf and not cidade:
-        return True
-    cidade_evento = normalizar_texto(local.cidade.strip()) if local else ""
     uf_evento = local.estado.strip().upper() if local else ""
-    if uf and uf_evento and uf != uf_evento:
+    if not uf or not uf_evento:
+        return True
+    if uf != uf_evento:
         return False
+    cidade_evento = normalizar_texto(local.cidade.strip())
     if cidade and cidade_evento:
         return cidade == cidade_evento
     return True

@@ -8,12 +8,13 @@ from django.db.models import F, Q
 
 from localidades.municipios import (
     localizar_municipio,
+    municipio_oficial,
     sigla_do_estado,
 )
 from rotas.photon import ErroPhoton, buscar_cidade_e_estado
 from rotas.transporte import Espacador
 
-from .models import Local, Provedor
+from .models import Evento, Local, Provedor
 
 # O servidor público do Photon pede uso "razoável": uma consulta por vez,
 # com folga de mais de um segundo entre elas.
@@ -64,29 +65,46 @@ def pendentes():
     ).order_by(F("geocodificacao_falhou_em").asc(nulls_first=True), "pk")
 
 
-def _localidade(local):
-    """(município oficial, UF) do local pela coordenada.
+def combinar(cidade, uf, cidade_geocodificada, uf_geocodificada):
+    """(cidade, UF) do local, do Ticketmaster e do que o Photon respondeu.
 
-    Só vale o par que existe na lista do IBGE. A UF vem do Photon, e não do
-    Ticketmaster, porque a coordenada erra menos que o estado informado
-    (já veio um local de Medianeira/PR marcado como PB). Sem estado na
-    resposta do Photon, vale a UF que o local já tinha. Sem cidade na
-    resposta, a cidade que o local já tinha (o palpite do Ticketmaster)
-    vale se for dessa UF. Sem UF nenhuma, a cidade do Photon completa a
-    UF quando o nome é de um estado só; o palpite não, porque pode ser um
-    bairro de outro estado (ver `localizar_municipio`).
+    `cidade`/`uf`: do Ticketmaster, já conferidas (ver
+    `importacao._cidade_e_estado`): a cidade é um nome oficial do IBGE ou
+    "", e a UF uma sigla ou "". `cidade_geocodificada`: como o Photon
+    escreveu; `uf_geocodificada`: sigla ou "" (vazias sem geocodificação).
+
+    A coordenada erra menos que o Ticketmaster (já veio um local de
+    Medianeira/PR marcado como PB), então, em ordem:
+
+    1. UF: a do Photon; sem ela, a do Ticketmaster.
+    2. Cidade do Photon, se for município dessa UF. Se o Photon não deu
+       UF, ela pode completá-la quando o nome é de um estado só. Se ele
+       deu UF e a cidade não é dela, a cidade é descartada e a UF fica.
+    3. Sem cidade do Photon que valha: a do Ticketmaster, se for da UF.
+       Sem UF de lugar nenhum, fica o nome sem UF: o nome do Ticketmaster
+       nunca completa a UF, porque pode ser um bairro de outro estado
+       ("Pinheiros", bairro de São Paulo, só é município no ES).
     """
+    uf_final = uf_geocodificada or sigla_do_estado(uf)
+    oficial = municipio_oficial(cidade_geocodificada, uf_final)
+    if oficial:
+        return oficial, uf_final
+    if not uf_geocodificada:
+        oficial, completada = localizar_municipio(cidade_geocodificada, "")
+        if oficial and (completada or not uf_final):
+            return oficial, completada
+    return localizar_municipio(cidade, uf_final, completar_uf=False)
+
+
+def _consultar(local):
+    """(cidade, UF em sigla) que o Photon dá para a coordenada do local."""
     resposta = buscar_cidade_e_estado(
         float(local.latitude),
         float(local.longitude),
         antes_de_tentar=_vez.aguardar,
     )
     cidade, estado = resposta or ("", "")
-    uf = sigla_do_estado(estado) or sigla_do_estado(local.estado)
-    oficial, uf_do_nome = localizar_municipio(cidade, uf)
-    if oficial:
-        return oficial, uf_do_nome
-    return localizar_municipio(local.cidade, uf, completar_uf=False)
+    return cidade[:100], sigla_do_estado(estado)
 
 
 def completar_cidades(
@@ -94,12 +112,14 @@ def completar_cidades(
     limite=None,
     so_sem_erro=False,
     maximo_erros_seguidos=MAXIMO_ERROS_SEGUIDOS,
+    eventos=None,
 ):
     """Descobre a cidade de até `limite` locais pendentes (todos se None).
 
     `so_sem_erro`: deixa de fora os locais que já deram erro no Photon
-    (inclusive nesta execução). Cada local é gravado logo depois da
-    consulta.
+    (inclusive nesta execução). `eventos`: só os locais desses eventos
+    (ex.: os criados nesta importação). Cada local é gravado logo depois
+    da consulta.
     Local conferido (com ou sem cidade descoberta) não é consultado de
     novo enquanto a coordenada não mudar (ver `_salvar_local`).
 
@@ -113,14 +133,11 @@ def completar_cidades(
     toda importação.
     """
     resumo = ResumoGeocodificacao()
-    fila = pendentes()
-    if so_sem_erro:
-        fila = fila.filter(geocodificacao_falhou_em__isnull=True)
-    locais = list(fila[:limite])
+    locais = list(_fila(so_sem_erro, eventos)[:limite])
     erros_seguidos = 0
     for posicao, local in enumerate(locais, start=1):
         try:
-            cidade, uf = _localidade(local)
+            resposta = _consultar(local)
         except ErroPhoton as erro:
             if erro.passageira:
                 _interromper(resumo, erro, passageira=True)
@@ -133,8 +150,19 @@ def completar_cidades(
                 break
             continue
         erros_seguidos = 0
-        _gravar(local, cidade, uf, agora, resumo)
+        _gravar(local, resposta, agora, resumo)
     return resumo
+
+
+def _fila(so_sem_erro, eventos):
+    fila = pendentes()
+    if so_sem_erro:
+        fila = fila.filter(geocodificacao_falhou_em__isnull=True)
+    if eventos is not None:
+        fila = fila.filter(
+            pk__in=Evento.objects.filter(pk__in=eventos).values("local")
+        )
+    return fila
 
 
 def _interromper(resumo, erro, passageira=False):
@@ -150,11 +178,20 @@ def _marcar_erro(local, erro, agora, resumo):
     resumo.com_erro.append(local.pk)
 
 
-def _gravar(local, cidade, uf, agora, resumo):
-    """Grava o resultado da consulta; conferido, o local sai da fila."""
+def _gravar(local, resposta, agora, resumo):
+    """Grava a resposta e a cidade/UF; conferido, o local sai da fila.
+
+    Antes da geocodificação, a cidade/UF do local é a do Ticketmaster
+    (gravada pela importação), e é com ela que a resposta é combinada.
+    """
+    cidade, uf = combinar(local.cidade, local.estado, *resposta)
     if cidade:
         resumo.descobertos += 1
     Local.objects.filter(pk=local.pk).update(
-        cidade=cidade, estado=uf, geocodificado_em=agora
+        cidade=cidade,
+        estado=uf,
+        cidade_geocodificada=resposta[0],
+        estado_geocodificado=resposta[1],
+        geocodificado_em=agora,
     )
     resumo.conferidos += 1

@@ -76,6 +76,11 @@ class Local(models.Model):
     # Quando a coordenada foi conferida no Photon para descobrir a cidade
     # (ver `catalogo/geocodificacao.py`); nulo enquanto falta conferir.
     geocodificado_em = models.DateTimeField(null=True, blank=True)
+    # O que o Photon respondeu para a coordenada (cidade como veio, UF em
+    # sigla; "" quando não veio). A cidade e a UF do local saem daqui e do
+    # Ticketmaster por `geocodificacao.combinar`. Coordenada nova apaga.
+    cidade_geocodificada = models.CharField(max_length=100, blank=True)
+    estado_geocodificado = models.CharField(max_length=2, blank=True)
     # Última consulta ao Photon que deu erro deste local: ele vai para o
     # fim da fila, para não travar os outros.
     geocodificacao_falhou_em = models.DateTimeField(null=True, blank=True)

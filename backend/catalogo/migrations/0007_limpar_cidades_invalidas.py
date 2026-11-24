@@ -4,10 +4,11 @@ Antes da importação conferir, ficou gravado o que viesse ("Nocity", um
 bairro como "Pinheiros", UF "XX"). Mesma regra de
 `importacao._cidade_e_estado`: a cidade válida passa a ter o nome
 oficial, a UF que não é estado é apagada (e a válida nunca é trocada), e
-sem UF a cidade só a completa se o local não tiver coordenada. O resto é
-apagado. O local com coordenada e sem cidade ou UF entra na
-geocodificação da próxima importação, com a cidade que sobrou como
-palpite. Locais cadastrados à mão ficam como estão.
+a UF nunca é deduzida pelo nome, que pode ser de um bairro de outro
+estado: sem UF, fica o nome sem UF. O resto é apagado. O local com
+coordenada e sem cidade ou UF entra na geocodificação da próxima
+importação, com a cidade que sobrou como palpite. Locais cadastrados à
+mão ficam como estão.
 """
 
 from django.db import migrations
@@ -19,12 +20,10 @@ def limpar_cidades(apps, schema_editor):
     modelo = apps.get_model("catalogo", "Local")
     locais = modelo.objects.filter(
         provedor="ticketmaster", pais__in=("", "BR")
-    ).only("cidade", "estado", "latitude", "longitude")
+    ).only("cidade", "estado")
     for local in locais:
         cidade, estado = localizar_municipio(
-            local.cidade,
-            local.estado,
-            completar_uf=local.latitude is None or local.longitude is None,
+            local.cidade, local.estado, completar_uf=False
         )
         if (cidade, estado) != (local.cidade, local.estado):
             modelo.objects.filter(pk=local.pk).update(
