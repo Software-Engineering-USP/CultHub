@@ -68,6 +68,11 @@ describe('rotasApi', () => {
     [
       502,
       { detail: 'Não foi possível calcular a rota.' },
+      'O serviço de rotas está fora do ar agora. Tente de novo mais tarde.',
+    ],
+    [
+      503,
+      { detail: 'O serviço de rotas está ocupado agora. Tente de novo em alguns segundos.' },
       'O serviço de rotas está ocupado agora. Tente de novo em alguns segundos.',
     ],
     [

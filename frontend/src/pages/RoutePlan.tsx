@@ -20,7 +20,7 @@ const dotBase =
 function cardSummary(mode: RouteMode, state: RouteState | undefined): { main: string; detail: string } {
   if (mode === 'onibus') return { main: 'Ver', detail: 'no Google Maps' }
   if (!state || state.status === 'loading') return { main: '…', detail: 'calculando' }
-  if (state.status === 'error') return { main: '—', detail: 'indisponível' }
+  if (state.status === 'error') return { main: '—', detail: state.short ?? 'indisponível' }
   const [route] = state.routes
   if (!route) return { main: '—', detail: 'sem trajeto' }
   return { main: formatDuration(route.duracao_segundos), detail: formatDistance(route.distancia_metros) }
@@ -30,7 +30,7 @@ export default function RoutePlan({ event }: { event: EventWithDetails }) {
   const [searchParams] = useSearchParams()
   const origin = parseOrigin(searchParams)
   const mode = parseMode(searchParams) ?? 'carro'
-  const calculation = useEventRoutes(event.id, origin)
+  const calculation = useEventRoutes(event.id, origin, event.location)
   const routes = calculation?.routes
   useDocumentTitle('Rota até o evento | CultHub')
 
@@ -141,7 +141,7 @@ function RouteSummary({
     return (
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-maroon">{state.message}</p>
-        {onRetry && (
+        {onRetry && state.retryable && (
           <Button variant="outline" size="sm" onClick={onRetry} className="shrink-0">
             Tentar de novo
           </Button>

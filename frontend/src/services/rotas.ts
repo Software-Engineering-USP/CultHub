@@ -36,9 +36,9 @@ const enderecos = {
   padrao: 'Não foi possível consultar o endereço.',
 }
 
-// No 400 e no 422 o `detail` já é uma mensagem pronta; o do 502 é genérico.
+// No 400, 422 e 503 o `detail` já é uma mensagem pronta; o do 502 é genérico.
 const calculoDeRota = {
-  extras: { 502: 'O serviço de rotas está ocupado agora. Tente de novo em alguns segundos.' },
+  extras: { 502: 'O serviço de rotas está fora do ar agora. Tente de novo mais tarde.' },
   padrao: 'Não foi possível calcular a rota.',
 }
 

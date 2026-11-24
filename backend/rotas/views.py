@@ -18,7 +18,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from catalogo.models import Evento
-from rotas.osrm import MODOS, ErroOSRM, calcular_rotas
+from rotas.osrm import MODOS, ErroOSRM, FilaCheia, calcular_rotas
 from rotas.osrm import PRAZO as PRAZO_OSRM
 from rotas.photon import (
     ErroPhoton,
@@ -30,6 +30,12 @@ ERRO_UPSTREAM = {
     "detail": "Não foi possível consultar o serviço de endereços."
 }
 ERRO_ROTA = {"detail": "Não foi possível calcular a rota."}
+ROTAS_OCUPADO = {
+    "detail": (
+        "O serviço de rotas está ocupado agora. Tente de novo em alguns "
+        "segundos."
+    )
+}
 LOCAL_SEM_COORDENADAS = {"detail": "O local deste evento não tem coordenadas."}
 LOCAL_FORA_DO_MAPA = {
     "detail": "Não foi possível localizar o local deste evento no mapa."
@@ -323,6 +329,9 @@ class RotaEventoSerializer(serializers.Serializer):
         ),
         429: LIMITE_DE_PEDIDOS,
         502: OpenApiResponse(description="Falha no serviço de rotas."),
+        503: OpenApiResponse(
+            description="Fila do serviço de rotas cheia; tente de novo."
+        ),
     },
 )
 class RotaEventoView(_PublicoComLimite):
@@ -364,6 +373,12 @@ class RotaEventoView(_PublicoComLimite):
         try:
             rotas = _rotas_do_cache(
                 chave, lambda: calcular_rotas(modo, origem, destino)
+            )
+        except FilaCheia:
+            # Só a fila cheia: o serviço responde, e repetir logo costuma dar
+            # certo. O front repete sozinho só neste caso.
+            return Response(
+                ROTAS_OCUPADO, status=503, headers={"Retry-After": "2"}
             )
         except ErroOSRM as erro:
             logger.warning("OSRM falhou: %s", erro)

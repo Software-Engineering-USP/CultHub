@@ -138,6 +138,20 @@ describe('RoutePlan', () => {
 
     await user.click(panel.getByRole('link', { name: /A pé/ }))
     expect(await panel.findByText(/a até 30 km do local do evento/)).toBeInTheDocument()
+    // Repetir não muda um 400: o botão não aparece.
+    expect(panel.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+  })
+
+  it('com o serviço fora do ar, oferece tentar de novo', async () => {
+    mockRoutes(
+      () => Promise.reject(new ApiError('O serviço de rotas está fora do ar agora.', 502)),
+      () => Promise.resolve([rota(600, 1000)]),
+    )
+    renderRoutePlan()
+    const panel = within(await screen.findByRole('region', { name: 'Seu trajeto' }))
+
+    expect(await panel.findByText('O serviço de rotas está fora do ar agora.')).toBeInTheDocument()
+    expect(panel.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
   })
 
   it('sem partida, manda para a página de origem', async () => {

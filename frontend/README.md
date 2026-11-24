@@ -101,7 +101,7 @@ A página `/eventos/:id/rota` recebe a partida pela URL (`latitude`, `longitude`
 - **Atribuição obrigatória:** o mapa mostra "© OpenStreetMap contributors" e o link [Corrigir o mapa](https://www.openstreetmap.org/fixthemap), exigidos pela licença dos dados (ODbL) e pela política do servidor de rotas (`routing.openstreetmap.de`).
 - **Ordem das coordenadas:** `geometria` é um GeoJSON `LineString`, com pares `[longitude, latitude]`; o `L.geoJSON` do Leaflet já lê nesse formato.
 - **Lista vazia:** `rotas` pode vir `[]` quando não há trajeto a partir daquele ponto. Não é erro: a página avisa e sugere mudar a partida.
-- **Erros:** em 400 (partida longe demais), 422 (local sem coordenadas ou fora do mapa) e 502 (serviço de rotas fora do ar), o `detail` do backend já é uma mensagem pronta e é mostrado como está. O 429 (30 rotas por minuto por IP) usa uma mensagem própria, porque o `detail` vem com a tradução padrão do DRF.
+- **Erros:** em 400 (partida longe demais) e 422 (local sem coordenadas ou fora do mapa), o `detail` do backend já é uma mensagem pronta e é mostrado como está; como repetir não muda nada, não aparece "Tentar de novo". Modos além do limite de distância (150 km de carro, 30 km a pé) e eventos sem coordenadas nem chegam a chamar o backend. O 503 é a fila do servidor de rotas cheia: o front tenta de novo sozinho uma vez, depois de 2 s (o `Retry-After`). O 502 (serviço fora do ar) e o 429 (30 rotas por minuto por IP) usam mensagens próprias e oferecem "Tentar de novo".
 - **Duração sem trânsito:** o tempo de carro é estimado pela velocidade das vias, e a página avisa que não considera o trânsito em tempo real.
 
 ## Cores, tamanhos e Tailwind
