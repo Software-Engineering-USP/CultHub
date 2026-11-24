@@ -1,4 +1,5 @@
 import { ExternalLink } from 'lucide-react'
+import { showsOfficialLink } from '@/lib/events'
 import type { CultEvent } from '@/types'
 
 interface EventPriceProps {
@@ -9,7 +10,7 @@ interface EventPriceProps {
 
 /** Mostra o preço cadastrado ou direciona para a página oficial quando desconhecido. */
 export default function EventPrice({ event, className = '', block = false }: Readonly<EventPriceProps>) {
-  if (event.price === 'Preço não informado' && event.officialUrl) {
+  if (showsOfficialLink(event)) {
     return (
       <a
         href={event.officialUrl}

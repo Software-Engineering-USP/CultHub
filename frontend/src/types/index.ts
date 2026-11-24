@@ -6,6 +6,7 @@ export interface EventDetails {
 }
 
 export type EventAvailability = 'removed' | 'cancelled' | 'ended'
+export type EventPriceStatus = 'gratuito' | 'pago' | 'desconhecido'
 
 /** Ponto em WGS84, no padrão do backend (`latitude`/`longitude`). */
 export interface Coordinates {
@@ -34,6 +35,7 @@ export interface CultEvent {
   /* Preço em texto para exibição na UI */
   price: string
   priceValue: number
+  priceStatus: EventPriceStatus
   /** Página oficial do evento no provedor, quando disponível. */
   officialUrl?: string
   /** Caminho em public/assets */

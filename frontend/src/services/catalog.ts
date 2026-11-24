@@ -1,4 +1,4 @@
-import type { CategoryId, EventAvailability, EventWithDetails } from '@/types'
+import type { CategoryId, EventAvailability, EventPriceStatus, EventWithDetails } from '@/types'
 import { AUTHENTICATION_FAILURE_EVENT } from './api'
 
 const knownCategories = new Set<CategoryId>(['music', 'festival', 'theater', 'sport', 'art'])
@@ -30,7 +30,7 @@ export interface ApiEvent {
     latitude?: number | null
     longitude?: number | null
   } | null
-  situacao_preco: 'gratuito' | 'pago' | 'desconhecido'
+  situacao_preco: EventPriceStatus
   faixas_preco: { minimo: number | null; maximo: number | null; moeda: string }[]
   imagens: { url: string; proporcao: string; largura: number | null; altura: number | null }[]
   avisos?: string
@@ -221,6 +221,7 @@ export function toCultEvent(event: ApiEvent, preferredCategory?: CategoryId): Ev
     schedule: formatSchedule(event),
     price,
     priceValue,
+    priceStatus: event.situacao_preco,
     officialUrl: event.url_externa || undefined,
     image: image?.url ?? '/assets/event-placeholder.svg',
     imageAlt: `Imagem do evento ${event.titulo}`,

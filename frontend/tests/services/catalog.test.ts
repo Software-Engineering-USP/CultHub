@@ -127,6 +127,7 @@ describe('toCultEvent', () => {
       venue: 'Parque Central',
       location: { latitude: -23.5874, longitude: -46.6576 },
       priceValue: 80,
+      priceStatus: 'pago',
       image: 'https://img.example/jazz.jpg',
       officialUrl: 'https://www.ticketmaster.com.br/evento',
       eventStartsAt: '2040-03-10T20:00:00-03:00',
@@ -179,6 +180,7 @@ describe('toCultEvent', () => {
   it('não confunde preço desconhecido com evento gratuito', () => {
     const event = toCultEvent(apiEvent({ situacao_preco: 'desconhecido', faixas_preco: [] }))
     expect(event.price).toBe('Preço não informado')
+    expect(event.priceStatus).toBe('desconhecido')
     expect(event.priceValue).toBe(0)
   })
 

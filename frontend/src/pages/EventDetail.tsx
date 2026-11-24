@@ -24,7 +24,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { categories } from '@/lib/categories'
 import { logDemoAction } from '@/lib/demo'
-import { shortName } from '@/lib/events'
+import { shortName, showsOfficialLink } from '@/lib/events'
 import { paths } from '@/lib/paths'
 import { api, ApiError } from '@/services/api'
 import type { EventAvailability, EventWithDetails } from '@/types'
@@ -222,7 +222,7 @@ export default function EventDetail({ event }: { event: EventWithDetails }) {
               className="mt-5.5 text-4xl font-bold tracking-tighter text-maroon max-md:mt-3.5 max-sm:text-3xl"
             />
             <p className="text-xs text-muted-foreground">
-              {event.price === 'Preço não informado' && event.officialUrl
+              {showsOfficialLink(event)
                 ? 'Consulte o preço no site oficial.'
                 : 'Valor cadastrado no catálogo'}
             </p>
