@@ -123,29 +123,38 @@ def completar_cidades(
             cidade, uf = _localidade(local)
         except ErroPhoton as erro:
             if erro.passageira:
-                logger.warning("Geocodificação interrompida: %s", erro)
-                resumo.falha = str(erro)
-                resumo.passageira = True
+                _interromper(resumo, erro, passageira=True)
                 break
-            logger.warning(
-                "Local %s pulado na geocodificação: %s", local.pk, erro
-            )
-            Local.objects.filter(pk=local.pk).update(
-                geocodificacao_falhou_em=agora
-            )
-            resumo.com_erro.append(local.pk)
+            _marcar_erro(local, erro, agora, resumo)
             erros_seguidos += 1
             if erros_seguidos >= maximo_erros_seguidos:
                 if posicao < len(locais):
-                    logger.warning("Geocodificação interrompida: %s", erro)
-                    resumo.falha = str(erro)
+                    _interromper(resumo, erro)
                 break
             continue
         erros_seguidos = 0
-        if cidade:
-            resumo.descobertos += 1
-        Local.objects.filter(pk=local.pk).update(
-            cidade=cidade, estado=uf, geocodificado_em=agora
-        )
-        resumo.conferidos += 1
+        _gravar(local, cidade, uf, agora, resumo)
     return resumo
+
+
+def _interromper(resumo, erro, passageira=False):
+    logger.warning("Geocodificação interrompida: %s", erro)
+    resumo.falha = str(erro)
+    resumo.passageira = passageira
+
+
+def _marcar_erro(local, erro, agora, resumo):
+    """Erro de um local só: vai para o fim da fila e continua pendente."""
+    logger.warning("Local %s pulado na geocodificação: %s", local.pk, erro)
+    Local.objects.filter(pk=local.pk).update(geocodificacao_falhou_em=agora)
+    resumo.com_erro.append(local.pk)
+
+
+def _gravar(local, cidade, uf, agora, resumo):
+    """Grava o resultado da consulta; conferido, o local sai da fila."""
+    if cidade:
+        resumo.descobertos += 1
+    Local.objects.filter(pk=local.pk).update(
+        cidade=cidade, estado=uf, geocodificado_em=agora
+    )
+    resumo.conferidos += 1
