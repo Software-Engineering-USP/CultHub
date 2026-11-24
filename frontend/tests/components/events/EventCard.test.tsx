@@ -51,6 +51,26 @@ describe('EventCard', () => {
     expect(screen.getByText('Preço não informado')).toHaveClass('text-maroon')
   })
 
+  it('oferece o link oficial do evento quando o preço não foi informado', () => {
+    const event = toCultEvent(
+      apiEvent({
+        situacao_preco: 'desconhecido',
+        faixas_preco: [],
+        url_externa: 'https://www.ticketmaster.com.br/evento',
+      }),
+    )
+    renderWithRouter(<EventCard event={event} />)
+
+    expect(screen.getByRole('link', { name: 'Link oficial para Jazz no Parque' })).toHaveAttribute(
+      'href',
+      'https://www.ticketmaster.com.br/evento',
+    )
+    expect(screen.getByRole('link', { name: 'Link oficial para Jazz no Parque' })).toHaveAttribute(
+      'target',
+      '_blank',
+    )
+  })
+
   it('mostra um selo quando o evento foi cancelado ou removido', () => {
     renderWithRouter(<EventCard event={toCultEvent(apiEvent({ removido: true }))} />)
     expect(screen.getByText('Removido')).toBeInTheDocument()

@@ -1,4 +1,5 @@
 import Eyebrow from '@/components/common/Eyebrow'
+import EventPrice from '@/components/events/EventPrice'
 import { categories } from '@/lib/categories'
 import { shortName } from '@/lib/events'
 import { cn } from '@/lib/utils'
@@ -30,7 +31,7 @@ export default function EventStrip({ event }: Readonly<{ event: CultEvent }>) {
         </p>
       </div>
       <div className="ml-auto shrink-0 text-right max-sm:flex max-sm:w-full max-sm:items-center max-sm:justify-between max-sm:border-t max-sm:border-border max-sm:pt-2.5">
-        <strong className="block text-2xl tracking-tighter text-maroon max-sm:text-xl">{event.price}</strong>
+        <EventPrice event={event} className="block text-2xl tracking-tighter text-maroon max-sm:text-xl" />
       </div>
     </section>
   )

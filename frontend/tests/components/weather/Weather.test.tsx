@@ -16,6 +16,7 @@ const event: CultEvent = {
   schedule: '10 de março, 20:00',
   price: 'Gratuito',
   priceValue: 0,
+  priceStatus: 'gratuito',
   image: '',
   imageAlt: '',
   eventDate: '2040-03-10',

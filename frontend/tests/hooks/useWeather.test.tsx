@@ -18,6 +18,7 @@ const event: CultEvent = {
   schedule: '10 de março, 20:00',
   price: 'Gratuito',
   priceValue: 0,
+  priceStatus: 'gratuito',
   image: '',
   imageAlt: '',
   weatherLocation: { latitude: -23.55, longitude: -46.63, city: 'São Paulo' },

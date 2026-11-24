@@ -61,7 +61,7 @@ export default function Home() {
     ...(hasNearbyFilter ? { lat: latitude, lng: longitude, raio: radius } : {}),
   }
   const { events, count, loading, error, hasMore, loadMore } = useCatalog(query)
-  useDocumentTitle('CultHub | Explore São Paulo')
+  useDocumentTitle('CultHub Brasil | Explore eventos culturais')
   const featured = events.slice(0, 5)
   const pinned = events.filter((event) => event.location).length
 
@@ -79,7 +79,7 @@ export default function Home() {
           as="h1"
           id="mapa-titulo"
           title="Mapa de Eventos"
-          description="Explore atividades e shows acontecendo ao seu redor em São Paulo"
+          description="Explore atividades e shows acontecendo ao seu redor por todo o Brasil"
         >
           <div className="max-w-61 text-right max-sm:max-w-none max-sm:text-left">
             <Button

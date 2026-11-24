@@ -1,5 +1,6 @@
 import { ArrowUpRight, Calendar, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import EventPrice from '@/components/events/EventPrice'
 import { Badge } from '@/components/ui/badge'
 import { categories } from '@/lib/categories'
 import { shortName, unavailableLabel } from '@/lib/events'
@@ -80,14 +81,13 @@ export default function EventCard({
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-maroon/10 pt-3">
-          <span
+          <EventPrice
+            event={event}
             className={cn(
               'text-base font-bold',
               event.price === 'Gratuito' ? 'text-success-foreground' : 'text-maroon',
             )}
-          >
-            {event.price}
-          </span>
+          />
           {detailsLink && (
             <Link to={href} aria-label={`Ver detalhes do ${shortName(event)}`} className="text-maroon">
               <ArrowUpRight className="size-4" />

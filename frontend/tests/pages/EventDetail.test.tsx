@@ -75,6 +75,21 @@ describe('EventDetail', () => {
     expect(screen.getByRole('heading', { name: 'Clima no horário do evento' })).toBeInTheDocument()
   })
 
+  it('mostra o link oficial no lugar do preço desconhecido', async () => {
+    renderEvent(undefined, undefined, {
+      situacao_preco: 'desconhecido',
+      faixas_preco: [],
+      url_externa: 'https://www.ticketmaster.com.br/evento',
+    })
+
+    const link = await screen.findByRole('link', {
+      name: 'Link oficial para São Paulo Jazz & Blues Festival',
+    })
+    expect(link).toHaveAttribute('href', 'https://www.ticketmaster.com.br/evento')
+    expect(link).toHaveClass('flex', 'w-fit')
+    expect(screen.queryByText('Preço não informado')).not.toBeInTheDocument()
+  })
+
   it('mostra aviso apenas quando a API responde que o evento não existe', async () => {
     vi.spyOn(catalogApi, 'event').mockRejectedValue(new CatalogApiError('Não encontrado.', 404))
     renderWithRouter(

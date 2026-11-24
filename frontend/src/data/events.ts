@@ -6,6 +6,7 @@ import type { CultEvent } from '@/types'
 export const events: CultEvent[] = [
   {
     id: 'sp-jazz-blues-festival',
+    priceStatus: 'pago',
     title: 'São Paulo Jazz & Blues Festival',
     shortTitle: 'Jazz & Blues',
     category: 'music',
@@ -28,6 +29,7 @@ export const events: CultEvent[] = [
   },
   {
     id: 'fantasma-da-opera',
+    priceStatus: 'pago',
     title: 'O Fantasma da Ópera - Espetáculo',
     category: 'theater',
     description:
@@ -42,6 +44,7 @@ export const events: CultEvent[] = [
   },
   {
     id: 'van-gogh-imersivo',
+    priceStatus: 'pago',
     title: 'Van Gogh Imersivo 360°',
     category: 'art',
     description:
@@ -56,6 +59,7 @@ export const events: CultEvent[] = [
   },
   {
     id: 'derby-paulista',
+    priceStatus: 'pago',
     title: 'Derby Paulista: COR x PAL',
     category: 'sport',
     description: 'O clássico mais disputado da cidade em uma tarde decisiva repleta de emoção no campeonato.',
@@ -69,6 +73,7 @@ export const events: CultEvent[] = [
   },
   {
     id: 'virada-cultural',
+    priceStatus: 'gratuito',
     title: 'Virada Cultural SP 24h',
     category: 'festival',
     description:
@@ -83,6 +88,7 @@ export const events: CultEvent[] = [
   },
   {
     id: 'samba-feijoada-bixiga',
+    priceStatus: 'gratuito',
     title: 'Samba e Feijoada no Bixiga',
     category: 'music',
     description:
@@ -96,6 +102,7 @@ export const events: CultEvent[] = [
   },
   {
     id: 'sp-arte',
+    priceStatus: 'pago',
     title: 'SP-Arte: Feira Internacional',
     category: 'art',
     description:
@@ -109,6 +116,7 @@ export const events: CultEvent[] = [
   },
   {
     id: 'street-food-truck-fair',
+    priceStatus: 'gratuito',
     title: 'Street Food & Truck Fair',
     category: 'festival',
     description: 'Mais de 40 food trucks servindo o melhor da culinária de rua mundial com DJs ao vivo.',

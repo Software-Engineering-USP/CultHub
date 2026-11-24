@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { events, findEvent } from '@/data/events'
-import { shortName, unavailableLabel } from '@/lib/events'
+import { shortName, showsOfficialLink, unavailableLabel } from '@/lib/events'
 
 const jazz = findEvent('sp-jazz-blues-festival')!
 const semDetalhes = findEvent('derby-paulista')!
@@ -14,6 +14,16 @@ describe('lib/events', () => {
   it('shortName usa shortTitle e cai para o título', () => {
     expect(shortName(jazz)).toBe('Jazz & Blues')
     expect(shortName(semDetalhes)).toBe(semDetalhes.title)
+  })
+
+  it('showsOfficialLink usa o status do preço e exige uma URL oficial', () => {
+    expect(
+      showsOfficialLink({ ...jazz, priceStatus: 'desconhecido', officialUrl: 'https://example.com/evento' }),
+    ).toBe(true)
+    expect(
+      showsOfficialLink({ ...jazz, priceStatus: 'pago', officialUrl: 'https://example.com/evento' }),
+    ).toBe(false)
+    expect(showsOfficialLink({ ...jazz, priceStatus: 'desconhecido', officialUrl: undefined })).toBe(false)
   })
 
   it('unavailableLabel marca removidos e cancelados, mas não encerrados', () => {

@@ -83,7 +83,7 @@ function AccountContent({ user }: Readonly<{ user: User }>) {
         as="h1"
         variant="page"
         title="Minha conta"
-        description="Seu jeito de viver a cultura de São Paulo."
+        description="Seu jeito de viver a cultura do Brasil."
       >
         <Button asChild variant="outline">
           <Link to={paths.home}>
