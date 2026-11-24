@@ -4,6 +4,10 @@ O CultHub é uma aplicação web que reúne e apresenta eventos culturais – co
 
 A aplicação permite que o usuário descubra eventos de acordo com critérios como localização, distância a partir de onde ele se encontra e período de interesse (um dia específico, a semana ou o mês). A partir dessas informações, a plataforma também poderá sugerir rotas até os eventos e apresentar a previsão do tempo para o dia escolhido, ajudando o usuário a planejar melhor seus momentos de lazer.
 
+## Contribuições
+
+Este é um projeto da disciplina MAC0332 (Engenharia de Software) da USP e só recebe contribuições dos integrantes do grupo. Pull requests de fora do time serão fechados, e as issues são trabalhadas pelos próprios integrantes.
+
 ## O que tem no repositório
 
 | Pasta | O que é |
@@ -153,3 +157,7 @@ Para testar a imagem localmente:
 docker build -t culthub-producao .
 docker run --rm -p 127.0.0.1:10000:10000 -e DATABASE_URL=<url-do-postgres> -e DJANGO_SECRET_KEY=<chave> -e DJANGO_ALLOWED_HOSTS=localhost -e FRONTEND_URL=http://localhost:10000 -e DJANGO_NUM_PROXIES=0 culthub-producao
 ```
+
+## Licença
+
+Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE).
