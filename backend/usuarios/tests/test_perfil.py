@@ -138,6 +138,12 @@ class LocalidadeDoPerfilTest(APITestCase):
             resposta.json(), {"estado": ["Escolha o estado da cidade."]}
         )
 
+    def test_estado_em_minusculas_ou_com_espacos(self):
+        resposta = self.patch({"cidade": "Campinas", "estado": " sp "})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["estado"], "SP")
+        self.assertLocalidade("Campinas", "SP")
+
     def test_recusa_estado_inexistente(self):
         resposta = self.patch({"estado": "XX"})
         self.assertEqual(resposta.status_code, 400)

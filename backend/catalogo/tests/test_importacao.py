@@ -16,6 +16,7 @@ from catalogo import importacao
 from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, ImagemEvento, Local, Provedor
 from catalogo.ticketmaster import ErroTicketmaster
+from rotas.photon import ErroPhoton
 
 FIXTURE = Path(__file__).parent / "dados" / "ticketmaster_pagina.json"
 AGORA = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
@@ -1021,3 +1022,71 @@ class ComandoTest(TestCase):
                 f"  - {ruim['id']}: TESTE PORTAL",
             ],
         )
+
+
+@override_settings(TICKETMASTER_API_KEY="chave-falsa")
+class ComandoGeocodificaTest(TestCase):
+    comando = "catalogo.management.commands.importar_ticketmaster"
+
+    def setUp(self):
+        self.photon = simular_photon(self, ("São Paulo", "SP"))
+        self.antigo = Local.objects.create(
+            provedor=Provedor.TICKETMASTER,
+            id_externo="antigo",
+            nome="Antigo",
+            estado="SP",
+            latitude=Decimal("-23.5"),
+            longitude=Decimal("-46.6"),
+        )
+
+    def importar(self, eventos=None):
+        saida = StringIO()
+        with patch(
+            f"{self.comando}.buscar_todos",
+            return_value=eventos or eventos_da_fixture(),
+        ):
+            call_command("importar_ticketmaster", stdout=saida)
+        return saida.getvalue().splitlines()
+
+    def test_pendentes_antigos_ficam_gravados_mesmo_se_a_importacao_falha(
+        self,
+    ):
+        with (
+            patch(
+                f"{self.comando}.notificar_eventos_novos",
+                side_effect=OperationalError("banco fora"),
+            ),
+            self.assertRaises(OperationalError),
+        ):
+            self.importar()
+
+        self.assertFalse(Evento.objects.exists())
+        self.antigo.refresh_from_db()
+        self.assertEqual(self.antigo.cidade, "São Paulo")
+        self.assertIsNotNone(self.antigo.geocodificado_em)
+
+    def test_poucos_locais_novos_por_importacao(self):
+        with patch(f"{self.comando}.LIMITE_NA_TRANSACAO", 2):
+            saida = self.importar()
+
+        # O antigo (fora da transação) e 2 dos novos; os outros ficam.
+        restantes = Local.objects.filter(
+            cidade="", latitude__isnull=False
+        ).count()
+        self.assertGreater(restantes, 0)
+        self.assertIn("cidades descobertas: 3 de 3 locais conferidos", saida)
+        self.assertIn(
+            f"locais sem cidade para a próxima importação: {restantes}",
+            saida,
+        )
+
+    def test_photon_fora_nao_e_consultado_de_novo_na_transacao(self):
+        self.photon.side_effect = ErroPhoton("Photon respondeu HTTP 503")
+
+        saida = self.importar()
+
+        self.assertEqual(self.photon.call_count, 1)
+        self.assertIn(
+            "geocodificação interrompida (Photon respondeu HTTP 503)", saida
+        )
+        self.assertGreater(Evento.objects.count(), 0)

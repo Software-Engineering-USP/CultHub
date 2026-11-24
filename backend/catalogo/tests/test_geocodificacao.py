@@ -19,6 +19,8 @@ DEPOIS = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
 
 
 def criar_local(nome, **campos):
+    campos.setdefault("provedor", Provedor.TICKETMASTER)
+    campos.setdefault("id_externo", nome)
     campos.setdefault("latitude", Decimal("-23.5"))
     campos.setdefault("longitude", Decimal("-46.6"))
     return Local.objects.create(nome=nome, **campos)
@@ -49,11 +51,32 @@ class CompletarCidadesTest(TestCase):
         local.refresh_from_db()
         self.assertEqual((local.cidade, local.estado), ("Medianeira", "PR"))
 
+    def test_sem_estado_no_photon_vale_a_uf_do_local(self):
+        com_uf = criar_local("Com UF", estado="sp")
+        sem_uf = criar_local("Sem UF")
+        self.photon.return_value = ("São Paulo", "")
+
+        completar_cidades(AGORA)
+
+        com_uf.refresh_from_db()
+        self.assertEqual((com_uf.cidade, com_uf.estado), ("São Paulo", "SP"))
+        sem_uf.refresh_from_db()
+        self.assertEqual((sem_uf.cidade, sem_uf.estado), ("", ""))
+        self.assertEqual(sem_uf.geocodificado_em, AGORA)
+
+    def test_limite_por_execucao(self):
+        for nome in ("A", "B", "C"):
+            criar_local(nome)
+
+        resumo = completar_cidades(AGORA, limite=2)
+
+        self.assertEqual(resumo.conferidos, 2)
+        self.assertEqual(pendentes().count(), 1)
+
     def test_cidade_fora_do_ibge_fica_conferida_e_sem_cidade(self):
         casos = {
             "distrito": ("Moema", "São Paulo"),
             "outra UF": ("Curitiba", "São Paulo"),
-            "sem estado": ("São Paulo", ""),
             "sem cidade": ("", "São Paulo"),
             "fora do Brasil": None,
         }
@@ -77,6 +100,7 @@ class CompletarCidadesTest(TestCase):
         criar_local("Sem coordenada", latitude=None, longitude=None)
         criar_local("Conferido", geocodificado_em=AGORA)
         criar_local("Em Buenos Aires", pais="AR")
+        criar_local("Manual", provedor=Provedor.MANUAL, id_externo="")
 
         self.assertEqual(list(pendentes()), [pendente])
         self.assertEqual(completar_cidades(DEPOIS).conferidos, 1)
@@ -152,6 +176,18 @@ class CidadeNaImportacaoTest(TestCase):
         local = self.importar_e_geocodificar(DEPOIS)
 
         self.assertEqual((local.cidade, local.estado), ("São Paulo", "SP"))
+        self.assertEqual(local.geocodificado_em, AGORA)
+        self.assertEqual(self.photon.call_count, 1)
+
+    def test_reimportar_aceita_uf_nova_quando_o_photon_nao_achou_cidade(self):
+        self.venue["state"] = {"stateCode": "PB"}
+        self.photon.return_value = None
+        self.importar_e_geocodificar()
+        self.venue["state"] = {"stateCode": "PR"}
+
+        local = self.importar_e_geocodificar(DEPOIS)
+
+        self.assertEqual((local.cidade, local.estado), ("", "PR"))
         self.assertEqual(local.geocodificado_em, AGORA)
         self.assertEqual(self.photon.call_count, 1)
 

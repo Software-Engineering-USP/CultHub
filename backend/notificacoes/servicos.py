@@ -52,13 +52,14 @@ def _mesma_regiao(cidade, uf, local):
     com a cidade dos dois lados, ela também. O local sem cidade (o
     Ticketmaster raramente manda e a geocodificação pode não achar) fica
     só com a UF; sem nenhuma das duas, não há como excluir e o aviso vai.
-    Perfil sem estado recebe de qualquer lugar.
+    Perfil sem estado nem cidade recebe de qualquer lugar; com cidade e
+    sem estado (só pelo `create_user`, que não valida), vale a cidade.
     """
-    if not uf:
+    if not uf and not cidade:
         return True
     cidade_evento = normalizar_texto(local.cidade.strip()) if local else ""
     uf_evento = local.estado.strip().upper() if local else ""
-    if uf_evento and uf != uf_evento:
+    if uf and uf_evento and uf != uf_evento:
         return False
     if cidade and cidade_evento:
         return cidade == cidade_evento

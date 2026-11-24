@@ -2,9 +2,30 @@ import uuid
 
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 
-from localidades.municipios import estados
+from localidades.municipios import estados, municipio_oficial
+
+
+def conferir_localidade(cidade, estado):
+    """Nome oficial (IBGE) da cidade no estado; "" se não há cidade.
+
+    Cidade exige estado e precisa ser município dele ("sao paulo", "SP"
+    dá "São Paulo"). Estado sem cidade vale. Erro por campo em
+    `ValidationError`.
+    """
+    cidade = " ".join(cidade.split())
+    if not cidade:
+        return ""
+    if not estado:
+        raise ValidationError({"estado": "Escolha o estado da cidade."})
+    oficial = municipio_oficial(cidade, estado)
+    if not oficial:
+        raise ValidationError(
+            {"cidade": f"Não há um município com esse nome em {estado}."}
+        )
+    return oficial
 
 
 class UsuarioManager(BaseUserManager):
@@ -31,7 +52,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     nome = models.CharField(max_length=150)
     # Nome oficial do município (IBGE), sempre junto com o estado; ver
-    # `PerfilSerializer.validate`.
+    # `conferir_localidade` (usado pelo perfil e pelo admin).
     cidade = models.CharField(max_length=100, blank=True)
     estado = models.CharField(
         max_length=2, blank=True, choices=tuple(estados().items())
@@ -63,6 +84,10 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     @classmethod
     def normalize_username(cls, username):
         return super().normalize_username(username).strip().lower()
+
+    def clean(self):
+        super().clean()
+        self.cidade = conferir_localidade(self.cidade, self.estado)
 
     def save(self, *args, **kwargs):
         self.email = self.normalize_username(self.email)

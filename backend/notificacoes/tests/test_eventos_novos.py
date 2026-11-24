@@ -135,6 +135,22 @@ class NotificarEventosNovosTest(TestCase):
 
         self.assertEqual(destinatarios(evento), {"Ana", "Caio"})
 
+    def test_perfil_com_cidade_e_sem_estado_filtra_pela_cidade(self):
+        # Só o `create_user` grava assim; o perfil e o admin exigem o estado.
+        criar_usuario("Ana", ["music"], cidade="Campinas")
+        evento = criar_evento(
+            categorias=["music"], local=local_em("São Paulo", "SP")
+        )
+        sem_cidade = criar_evento(
+            categorias=["music"],
+            local=Local.objects.create(nome="MorumBis", estado="SP"),
+        )
+
+        notificar_eventos_novos([evento.pk, sem_cidade.pk])
+
+        self.assertEqual(destinatarios(evento), set())
+        self.assertEqual(destinatarios(sem_cidade), {"Ana"})
+
     def test_evento_sem_cidade_nem_estado_vai_para_todos(self):
         criar_usuario("Ana", ["music"], cidade="São Paulo", estado="SP")
         criar_usuario("Caio", ["music"])

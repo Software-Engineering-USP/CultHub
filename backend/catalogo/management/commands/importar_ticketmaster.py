@@ -5,11 +5,19 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from catalogo.geocodificacao import completar_cidades
+from catalogo.geocodificacao import (
+    ResumoGeocodificacao,
+    completar_cidades,
+    pendentes,
+)
 from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, Provedor
 from catalogo.ticketmaster import ErroTicketmaster, buscar_todos
 from notificacoes.servicos import notificar_eventos_novos
+
+# Locais novos geocodificados dentro da transação da importação, por
+# execução (cada um leva pouco mais de 1 s; ver `geocodificacao.INTERVALO`).
+LIMITE_NA_TRANSACAO = 10
 
 
 class Command(BaseCommand):
@@ -37,16 +45,26 @@ class Command(BaseCommand):
                 "O Ticketmaster não retornou nenhum evento; nada foi "
                 "alterado para não remover o catálogo inteiro."
             )
+        agora = timezone.now()
+        # Locais que ficaram sem cidade em importações anteriores: fora da
+        # transação, cada um gravado logo após a consulta, para não segurar
+        # o banco durante as consultas ao Photon nem perder o que foi
+        # descoberto se algo falhar depois.
+        anteriores = completar_cidades(agora)
         # Mesma transação: se os avisos falharem, a importação é desfeita e
         # a próxima execução cria os eventos (e os avisos) de novo. Só evento
         # criado gera aviso, então importar sem avisar perderia os avisos.
         # A cidade dos locais novos é descoberta antes dos avisos, que
-        # filtram por ela; com o Photon fora, eles filtram só pela UF.
+        # filtram por ela, mas só de alguns, para a transação ser curta; os
+        # outros (e todos, com o Photon fora) filtram só pela UF desta vez.
         try:
             with transaction.atomic():
-                agora = timezone.now()
                 resumo = importar(eventos, agora)
-                geocodificacao = completar_cidades(agora)
+                novos = (
+                    ResumoGeocodificacao()
+                    if anteriores.falha
+                    else completar_cidades(agora, LIMITE_NA_TRANSACAO)
+                )
                 notificacoes = notificar_eventos_novos(resumo.ids_criados)
         except ErroImportacao as erro:
             raise CommandError(str(erro)) from None
@@ -55,13 +73,16 @@ class Command(BaseCommand):
         self.stdout.write(f"removidos: {resumo.removidos}")
         self.stdout.write(f"ignorados: {resumo.ignorados}")
         self.stdout.write(
-            f"cidades descobertas: {geocodificacao.descobertos} de "
-            f"{geocodificacao.conferidos} locais conferidos"
+            "cidades descobertas: "
+            f"{anteriores.descobertos + novos.descobertos} de "
+            f"{anteriores.conferidos + novos.conferidos} locais conferidos"
         )
-        if geocodificacao.falha:
+        falha = anteriores.falha or novos.falha
+        if falha:
+            self.stdout.write(f"geocodificação interrompida ({falha})")
+        if restantes := pendentes().count():
             self.stdout.write(
-                f"geocodificação interrompida ({geocodificacao.falha}); os "
-                "locais restantes ficam para a próxima importação."
+                f"locais sem cidade para a próxima importação: {restantes}"
             )
         self.stdout.write(f"notificações de evento novo: {notificacoes}")
         self.stdout.write(f"sem categoria: {len(resumo.sem_categoria)}")

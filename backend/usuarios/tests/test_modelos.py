@@ -2,6 +2,7 @@ import os
 from io import StringIO
 from unittest import mock
 
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase
 
@@ -68,3 +69,32 @@ class ComandosTest(TestCase):
             )
         except SystemExit:
             self.fail("Há mudanças de modelo sem migração.")
+
+
+class LocalidadeDoModeloTest(TestCase):
+    """`clean()` confere a cidade, como o perfil (vale para o admin)."""
+
+    def usuario(self, **campos):
+        return Usuario(email="a@exemplo.com", nome="A", **campos)
+
+    def test_grava_o_nome_oficial(self):
+        usuario = self.usuario(cidade="campinas", estado="SP")
+        usuario.clean()
+        self.assertEqual(usuario.cidade, "Campinas")
+
+    def test_cidade_sem_estado_ou_fora_do_estado(self):
+        for campos, campo in (
+            ({"cidade": "Campinas"}, "estado"),
+            ({"cidade": "Campinas", "estado": "RJ"}, "cidade"),
+        ):
+            with self.subTest(**campos):
+                with self.assertRaises(ValidationError) as contexto:
+                    self.usuario(**campos).clean()
+                self.assertEqual(
+                    list(contexto.exception.message_dict), [campo]
+                )
+
+    def test_sem_cidade_vale(self):
+        for campos in ({}, {"estado": "MG"}):
+            with self.subTest(**campos):
+                self.usuario(**campos).clean()

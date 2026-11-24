@@ -5,15 +5,35 @@
 baixada em 24/11/2026), reduzida a sigla → nome do estado e sigla →
 nomes dos municípios. Os nomes são os oficiais, os mesmos que o
 OpenStreetMap (e portanto o Photon) usa.
+
+As migrações de dados `usuarios.0003` e `catalogo.0007` usam
+`estados`, `municipio_oficial` e `ufs_com_municipio`: mudar o que elas
+devolvem muda o que essas migrações fazem num banco novo.
 """
 
 import json
+import unicodedata
 from functools import cache
 from pathlib import Path
 
-from catalogo.filtros import normalizar_texto
-
 ARQUIVO = Path(__file__).resolve().parent / "dados" / "municipios.json"
+
+# Apóstrofos que o celular ou outra fonte põe no lugar do ' do IBGE
+# ("Dias d’Ávila").
+APOSTROFOS = str.maketrans(dict.fromkeys("’‘ʼ`´", "'"))
+
+
+def _chave(texto):
+    """Texto para comparar nomes: sem caixa, acento e espaços repetidos.
+
+    Não usa `catalogo.filtros.normalizar_texto` de propósito: as migrações
+    de dados dependem deste módulo, que não pode puxar o resto do app.
+    """
+    # Antes do NFKD, que transforma o "´" solto em espaço + acento.
+    texto = texto.translate(APOSTROFOS).casefold()
+    decomposto = unicodedata.normalize("NFKD", texto)
+    sem_acento = "".join(c for c in decomposto if not unicodedata.combining(c))
+    return " ".join(sem_acento.split())
 
 
 @cache
@@ -21,17 +41,13 @@ def _dados():
     with ARQUIVO.open(encoding="utf-8") as arquivo:
         dados = json.load(arquivo)
     indice = {
-        uf: {normalizar_texto(nome): nome for nome in nomes}
+        uf: {_chave(nome): nome for nome in nomes}
         for uf, nomes in dados["municipios"].items()
     }
     por_nome_do_estado = {
-        normalizar_texto(nome): uf for uf, nome in dados["estados"].items()
+        _chave(nome): uf for uf, nome in dados["estados"].items()
     }
     return dados, indice, por_nome_do_estado
-
-
-def _chave(texto):
-    return " ".join(normalizar_texto(texto).split())
 
 
 def estados():
@@ -60,8 +76,8 @@ def sigla_do_estado(texto):
 def municipio_oficial(nome, uf):
     """Nome oficial do município `nome` da UF, ou "" se não existir lá.
 
-    Ignora caixa, acentos e espaços repetidos: ("sao  paulo", "sp") dá
-    "São Paulo".
+    Ignora caixa, acentos, espaços repetidos e o tipo de apóstrofo:
+    ("sao  paulo", "sp") dá "São Paulo".
     """
     if not isinstance(nome, str) or not isinstance(uf, str):
         return ""

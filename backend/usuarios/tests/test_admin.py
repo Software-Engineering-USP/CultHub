@@ -45,3 +45,22 @@ class UsuarioAdminTest(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertTrue(resposta.context["adminform"].form.errors["email"])
         self.assertEqual(Usuario.objects.count(), 1)
+
+    def test_admin_confere_a_cidade(self):
+        url = f"/admin/usuarios/usuario/{self.admin.pk}/change/"
+        dados = {"email": self.admin.email, "nome": "Adm", "is_active": "on"}
+
+        resposta = self.client.post(
+            url, {**dados, "cidade": "Campinas", "estado": "RJ"}
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.context["adminform"].form.errors["cidade"])
+
+        resposta = self.client.post(
+            url, {**dados, "cidade": "campinas", "estado": "SP"}
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.admin.refresh_from_db()
+        self.assertEqual(
+            (self.admin.cidade, self.admin.estado), ("Campinas", "SP")
+        )

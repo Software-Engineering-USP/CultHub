@@ -6,15 +6,21 @@ fica em branco e a pessoa escolhe de novo em Minha conta.
 """
 
 import re
+import unicodedata
 
 from django.db import migrations
 
-from catalogo.filtros import normalizar_texto
 from localidades.municipios import (
     estados,
     municipio_oficial,
     ufs_com_municipio,
 )
+
+
+def normalizar_texto(texto):
+    """Cópia fixa de `catalogo.filtros.normalizar_texto` (sem acento/caixa)."""
+    decomposto = unicodedata.normalize("NFKD", texto.casefold())
+    return "".join(c for c in decomposto if not unicodedata.combining(c))
 
 
 def _cidade_e_uf(texto):

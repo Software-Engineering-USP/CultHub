@@ -142,8 +142,10 @@ def _salvar_local(venue):
     anterior = Local.objects.filter(
         provedor=Provedor.TICKETMASTER, id_externo=venue["id"]
     ).first()
-    # Sem cidade no Ticketmaster, fica a cidade (e a UF) que a
-    # geocodificação já descobriu, enquanto a coordenada for a mesma.
+    # Sem cidade no Ticketmaster e com a mesma coordenada, a conferência no
+    # Photon continua valendo. Se ela achou a cidade, ficam a cidade e a UF
+    # dela; se não achou, a UF continua sendo a do Ticketmaster, que pode
+    # ter sido corrigida.
     if (
         not dados["cidade"]
         and anterior is not None
@@ -151,8 +153,9 @@ def _salvar_local(venue):
         and (anterior.latitude, anterior.longitude)
         == (dados["latitude"], dados["longitude"])
     ):
-        for campo in ("cidade", "estado", "geocodificado_em"):
-            del dados[campo]
+        del dados["geocodificado_em"]
+        if anterior.cidade:
+            del dados["cidade"], dados["estado"]
     local, _ = Local.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
         id_externo=venue["id"],

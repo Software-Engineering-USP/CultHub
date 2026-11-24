@@ -1,5 +1,9 @@
+import ast
+from pathlib import Path
+
 from django.test import SimpleTestCase
 
+from localidades import municipios
 from localidades.municipios import (
     estados,
     municipio_oficial,
@@ -30,6 +34,11 @@ class MunicipioOficialTest(SimpleTestCase):
     def test_ignora_caixa_acento_e_espacos(self):
         self.assertEqual(municipio_oficial(" sao   PAULO", "sp"), "São Paulo")
         self.assertEqual(municipio_oficial("embu-guacu", "SP"), "Embu-Guaçu")
+
+    def test_qualquer_apostrofo(self):
+        for nome in ("Dias d'Ávila", "Dias d’Ávila", "dias d´avila"):
+            with self.subTest(nome=nome):
+                self.assertEqual(municipio_oficial(nome, "BA"), "Dias d'Ávila")
 
     def test_precisa_existir_na_uf(self):
         self.assertEqual(municipio_oficial("Campinas", "RJ"), "")
@@ -68,3 +77,18 @@ class SiglaDoEstadoTest(SimpleTestCase):
         for texto in ("", "BR", "Paulista", None):
             with self.subTest(texto=texto):
                 self.assertEqual(sigla_do_estado(texto), "")
+
+
+class SemDependenciasTest(SimpleTestCase):
+    def test_modulo_nao_importa_outros_apps(self):
+        # As migrações de dados usam este módulo; ver a docstring dele.
+        arvore = ast.parse(Path(municipios.__file__).read_text())
+        modulos = set()
+        for no in ast.walk(arvore):
+            if isinstance(no, ast.ImportFrom):
+                modulos.add(no.module)
+            elif isinstance(no, ast.Import):
+                modulos.update(nome.name for nome in no.names)
+        self.assertEqual(
+            modulos, {"json", "unicodedata", "functools", "pathlib"}
+        )
