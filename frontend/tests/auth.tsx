@@ -14,6 +14,7 @@ function userFromProfile(profile: ProfileResponse): User {
     initials: profile.iniciais,
     email: profile.email,
     city: profile.cidade,
+    state: profile.estado,
     district: profile.bairro,
     preferences: profile.preferencias,
     savedEventIds: [],

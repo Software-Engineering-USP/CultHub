@@ -9,6 +9,7 @@ describe('toPublicProfile', () => {
         nome: 'Caio Prado',
         iniciais: 'CP',
         cidade: '',
+        estado: '',
         preferencias: ['art'],
         membro_desde: '2026-11-05',
       }),
@@ -17,6 +18,7 @@ describe('toPublicProfile', () => {
       name: 'Caio Prado',
       initials: 'CP',
       city: '',
+      state: '',
       preferences: ['art'],
       memberSince: '2026-11-05',
     })

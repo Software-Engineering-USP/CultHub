@@ -15,6 +15,7 @@ function toUser(profile: ProfileResponse): User {
     initials: profile.iniciais,
     email: profile.email,
     city: profile.cidade,
+    state: profile.estado,
     district: profile.bairro,
     preferences: profile.preferencias,
     // Persistência de eventos salvos ainda não existe no backend.

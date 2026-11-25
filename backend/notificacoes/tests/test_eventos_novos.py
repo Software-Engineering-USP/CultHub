@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.core.management import call_command
 from django.db import OperationalError
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -12,9 +12,16 @@ from rest_framework.test import APITestCase
 from agenda.models import InteresseEmEvento
 from catalogo.models import CategoriaCultural, Evento, Local
 from catalogo.tests.fabrica import criar_evento
-from catalogo.tests.test_importacao import eventos_da_fixture
+from catalogo.tests.test_importacao import (
+    eventos_da_fixture,
+    simular_photon,
+)
 from notificacoes.models import Notificacao, TipoNotificacao
-from notificacoes.servicos import LIMITE_POR_USUARIO, notificar_eventos_novos
+from notificacoes.servicos import (
+    LIMITE_POR_USUARIO,
+    _mesma_regiao,
+    notificar_eventos_novos,
+)
 from usuarios.models import Usuario
 
 
@@ -28,8 +35,10 @@ def criar_usuario(nome, preferencias=(), **campos):
     return usuario
 
 
-def local_em(cidade):
-    return Local.objects.create(nome=f"Casa em {cidade}", cidade=cidade)
+def local_em(cidade, estado=""):
+    return Local.objects.create(
+        nome=f"Casa em {cidade}", cidade=cidade, estado=estado
+    )
 
 
 def destinatarios(evento):
@@ -38,6 +47,17 @@ def destinatarios(evento):
             evento=evento, tipo=TipoNotificacao.EVENTO_NOVO
         ).values_list("usuario__nome", flat=True)
     )
+
+
+class MesmaRegiaoTest(SimpleTestCase):
+    def test_cidade_sem_estado_dos_dois_lados_e_regiao_desconhecida(self):
+        # Perfil "Moema" (bairro de São Paulo, município de MG) e local
+        # "Pinheiros" (bairro de São Paulo, município do ES), ambos sem
+        # estado: os nomes não dizem onde é, então o aviso vai.
+        local = Local(nome="Casa", cidade="Pinheiros", estado="")
+
+        self.assertTrue(_mesma_regiao("moema", "", local))
+        self.assertTrue(_mesma_regiao("pinheiros", "", local))
 
 
 class NotificarEventosNovosTest(TestCase):
@@ -59,80 +79,34 @@ class NotificarEventosNovosTest(TestCase):
 
         self.assertEqual(notificar_eventos_novos([evento.pk]), 1)
 
-    def test_cidade_do_perfil_filtra_ignorando_caixa_acento_e_estado(self):
-        criar_usuario("Ana", ["music"], cidade="sao paulo, SP")
-        criar_usuario("Bia", ["music"], cidade="Campinas")
+    def test_perfil_com_cidade_recebe_so_eventos_da_cidade(self):
+        criar_usuario("Ana", ["music"], cidade="São Paulo", estado="SP")
+        criar_usuario("Bia", ["music"], cidade="Campinas", estado="SP")
         criar_usuario("Caio", ["music"])
         evento = criar_evento(
-            categorias=["music"], local=local_em("São Paulo")
+            categorias=["music"], local=local_em("São Paulo", "SP")
         )
 
         notificar_eventos_novos([evento.pk])
 
         self.assertEqual(destinatarios(evento), {"Ana", "Caio"})
 
-    def test_cidade_do_perfil_aceita_outros_separadores(self):
-        criar_usuario("Ana", ["music"], cidade="São Paulo - SP")
-        criar_usuario("Bia", ["music"], cidade="são paulo/sp")
-        criar_usuario("Caio", ["music"], cidade="Rio de Janeiro - RJ")
+    def test_cidade_do_local_compara_sem_caixa_nem_acento(self):
+        # Local cadastrado à mão no admin, sem passar pelo IBGE.
+        criar_usuario("Ana", ["music"], cidade="São Paulo", estado="SP")
         evento = criar_evento(
-            categorias=["music"], local=local_em("São Paulo")
-        )
-
-        notificar_eventos_novos([evento.pk])
-
-        self.assertEqual(destinatarios(evento), {"Ana", "Bia"})
-
-    def test_cidade_do_perfil_aceita_hifen_e_travessao_colados(self):
-        criar_usuario("Ana", ["music"], cidade="São Paulo-SP")
-        criar_usuario("Bia", ["music"], cidade="São Paulo – SP")
-        criar_usuario("Caio", ["music"], cidade="Embu-Guaçu")
-        evento = criar_evento(
-            categorias=["music"], local=local_em("São Paulo")
-        )
-        embu = criar_evento(categorias=["music"], local=local_em("Embu-Guaçu"))
-
-        notificar_eventos_novos([evento.pk, embu.pk])
-
-        self.assertEqual(destinatarios(evento), {"Ana", "Bia"})
-        self.assertEqual(destinatarios(embu), {"Caio"})
-
-    def test_cidade_do_perfil_aceita_uf_separada_por_espaco(self):
-        criar_usuario("Ana", ["music"], cidade="São Paulo SP")
-        criar_usuario("Bia", ["music"], cidade="São Paulo RJ")
-        evento = criar_evento(
-            categorias=["music"],
-            local=Local.objects.create(
-                nome="Casa", cidade="São Paulo", estado="SP"
-            ),
+            categorias=["music"], local=local_em(" sao paulo ", "sp")
         )
 
         notificar_eventos_novos([evento.pk])
 
         self.assertEqual(destinatarios(evento), {"Ana"})
 
-    def test_sigla_que_nao_e_estado_nao_vira_uf(self):
-        criar_usuario("Ana", ["music"], cidade="São Paulo, BR")
-        criar_usuario("Bia", ["music"], cidade="BR")
+    def test_perfil_so_com_o_estado_filtra_pelo_estado(self):
+        criar_usuario("Ana", ["music"], estado="SP")
+        criar_usuario("Bia", ["music"], estado="RJ")
         evento = criar_evento(
-            categorias=["music"],
-            local=Local.objects.create(
-                nome="Casa", cidade="São Paulo", estado="SP"
-            ),
-        )
-
-        notificar_eventos_novos([evento.pk])
-
-        self.assertEqual(destinatarios(evento), {"Ana"})
-
-    def test_perfil_so_com_a_uf_filtra_pelo_estado(self):
-        criar_usuario("Ana", ["music"], cidade="SP")
-        criar_usuario("Bia", ["music"], cidade="rj")
-        evento = criar_evento(
-            categorias=["music"],
-            local=Local.objects.create(
-                nome="Casa", cidade="Santos", estado="SP"
-            ),
+            categorias=["music"], local=local_em("Santos", "SP")
         )
 
         notificar_eventos_novos([evento.pk])
@@ -140,24 +114,20 @@ class NotificarEventosNovosTest(TestCase):
         self.assertEqual(destinatarios(evento), {"Ana"})
 
     def test_uf_diferente_exclui_cidade_de_mesmo_nome(self):
-        criar_usuario("Ana", ["music"], cidade="Bom Jesus, PI")
-        criar_usuario("Bia", ["music"], cidade="Bom Jesus, RS")
-        criar_usuario("Caio", ["music"], cidade="Bom Jesus")
+        criar_usuario("Ana", ["music"], cidade="Bom Jesus", estado="PI")
+        criar_usuario("Bia", ["music"], cidade="Bom Jesus", estado="RS")
         evento = criar_evento(
-            categorias=["music"],
-            local=Local.objects.create(
-                nome="Casa", cidade="Bom Jesus", estado="RS"
-            ),
+            categorias=["music"], local=local_em("Bom Jesus", "RS")
         )
 
         notificar_eventos_novos([evento.pk])
 
-        self.assertEqual(destinatarios(evento), {"Bia", "Caio"})
+        self.assertEqual(destinatarios(evento), {"Bia"})
 
     def test_evento_sem_cidade_filtra_pelo_estado(self):
-        criar_usuario("Ana", ["music"], cidade="São Paulo, SP")
-        criar_usuario("Bia", ["music"], cidade="Rio de Janeiro, RJ")
-        criar_usuario("Caio", ["music"], cidade="São Paulo")
+        criar_usuario("Ana", ["music"], cidade="São Paulo", estado="SP")
+        criar_usuario("Bia", ["music"], cidade="Rio de Janeiro", estado="RJ")
+        criar_usuario("Caio", ["music"], estado="SP")
         criar_usuario("Davi", ["music"])
         evento = criar_evento(
             categorias=["music"],
@@ -168,8 +138,40 @@ class NotificarEventosNovosTest(TestCase):
 
         self.assertEqual(destinatarios(evento), {"Ana", "Caio", "Davi"})
 
+    def test_evento_com_cidade_e_sem_estado_e_regiao_desconhecida(self):
+        # Cidade sem estado pode ser um bairro de outro lugar (o palpite
+        # "Pinheiros" do Ticketmaster): o aviso vai para todos.
+        criar_usuario("Ana", ["music"], cidade="São Paulo", estado="SP")
+        criar_usuario("Bia", ["music"], cidade="Pinheiros", estado="ES")
+        criar_usuario("Caio", ["music"], estado="RJ")
+        evento = criar_evento(
+            categorias=["music"], local=local_em("Pinheiros")
+        )
+
+        notificar_eventos_novos([evento.pk])
+
+        self.assertEqual(destinatarios(evento), {"Ana", "Bia", "Caio"})
+
+    def test_perfil_com_cidade_e_sem_estado_e_regiao_desconhecida(self):
+        # Só a migração e o `create_user` gravam assim ("Moema", que é
+        # bairro de São Paulo e município de MG); o perfil e o admin
+        # exigem o estado.
+        criar_usuario("Ana", ["music"], cidade="Moema")
+        evento = criar_evento(
+            categorias=["music"], local=local_em("São Paulo", "SP")
+        )
+        sem_cidade = criar_evento(
+            categorias=["music"],
+            local=Local.objects.create(nome="MorumBis", estado="SP"),
+        )
+
+        notificar_eventos_novos([evento.pk, sem_cidade.pk])
+
+        self.assertEqual(destinatarios(evento), {"Ana"})
+        self.assertEqual(destinatarios(sem_cidade), {"Ana"})
+
     def test_evento_sem_cidade_nem_estado_vai_para_todos(self):
-        criar_usuario("Ana", ["music"], cidade="São Paulo, SP")
+        criar_usuario("Ana", ["music"], cidade="São Paulo", estado="SP")
         criar_usuario("Caio", ["music"])
         sem_local = criar_evento(categorias=["music"], local=None)
         sem_regiao = criar_evento(categorias=["music"], local=local_em(""))
@@ -332,6 +334,9 @@ class NotificarEventosNovosTest(TestCase):
 
 
 class ImportacaoNotificaTest(TestCase):
+    def setUp(self):
+        self.photon = simular_photon(self)
+
     @override_settings(TICKETMASTER_API_KEY="chave")
     def test_comando_avisa_so_dos_eventos_criados(self):
         ana = criar_usuario("Ana", ["music"])
@@ -358,6 +363,34 @@ class ImportacaoNotificaTest(TestCase):
         self.assertFalse(
             ana.notificacoes.exclude(tipo=TipoNotificacao.EVENTO_NOVO).exists()
         )
+
+    @override_settings(TICKETMASTER_API_KEY="chave")
+    def test_avisos_usam_a_cidade_descoberta_pela_coordenada(self):
+        criar_usuario("Ana", ["music"], cidade="São Paulo", estado="SP")
+        criar_usuario("Bia", ["music"], cidade="Campinas", estado="SP")
+        # Os locais da fixture só trazem a UF e a coordenada: sem a
+        # geocodificação, Bia receberia os avisos dos eventos de SP.
+        self.photon.return_value = ("São Paulo", "São Paulo")
+        eventos = []
+        for dados in eventos_da_fixture():
+            venue = dados["_embedded"]["venues"][0]
+            if venue["state"]["stateCode"] == "SP" and venue.get("location"):
+                eventos.append(dados)
+        for dados in eventos:
+            dados["dates"]["start"]["localDate"] = (
+                timezone.localdate() + timedelta(days=3)
+            ).isoformat()
+        caminho = (
+            "catalogo.management.commands.importar_ticketmaster.buscar_todos"
+        )
+        with patch(caminho, return_value=eventos):
+            call_command("importar_ticketmaster", stdout=StringIO())
+
+        avisados = set(
+            Notificacao.objects.values_list("usuario__nome", flat=True)
+        )
+        self.assertEqual(avisados, {"Ana"})
+        self.assertFalse(Local.objects.filter(cidade="").exists())
 
     @override_settings(TICKETMASTER_API_KEY="chave")
     def test_falha_nos_avisos_desfaz_a_importacao(self):

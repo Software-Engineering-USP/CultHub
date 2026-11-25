@@ -27,7 +27,8 @@ function publicProfile(overrides: Partial<ApiPublicProfile> = {}): ApiPublicProf
     id: 'caio-prado',
     nome: 'Caio Prado',
     iniciais: 'CP',
-    cidade: 'Campinas, SP',
+    cidade: 'Campinas',
+    estado: 'SP',
     preferencias: ['theater', 'music'],
     membro_desde: '2026-10-28',
     ...overrides,
@@ -76,7 +77,7 @@ describe('UserProfile', () => {
   })
 
   it('trata cidade vazia e nenhuma preferência', async () => {
-    profile.mockResolvedValue(publicProfile({ cidade: '', preferencias: [] }))
+    profile.mockResolvedValue(publicProfile({ cidade: '', estado: '', preferencias: [] }))
     renderProfile()
 
     expect(await screen.findByText('Cidade não informada')).toBeInTheDocument()

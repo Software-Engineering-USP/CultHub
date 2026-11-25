@@ -1,12 +1,14 @@
 import type { MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, AUTHENTICATION_FAILURE_EVENT } from '@/services/api'
+import type { ProfileResponse } from '@/services/api'
 
-const profile = {
+const profile: ProfileResponse = {
   id: 'user-1',
   nome: 'Lívia Costa',
   email: 'livia.costa@exemplo.com',
-  cidade: 'São Paulo, SP',
+  cidade: 'São Paulo',
+  estado: 'SP',
   bairro: 'Vila Mariana',
   preferencias: ['music', 'art'],
   iniciais: 'LC',
@@ -37,7 +39,11 @@ describe('api', () => {
   })
 
   it('envia a atualização do perfil com sessão e token CSRF', async () => {
-    await api.profile.update({ name: 'Lívia Costa', city: 'São Paulo, SP', district: 'Vila Mariana' })
+    await api.profile.update({
+      name: 'Lívia Costa',
+      district: 'Vila Mariana',
+      locality: { city: 'São Paulo', state: 'SP' },
+    })
 
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('/api/eu/')
@@ -46,9 +52,40 @@ describe('api', () => {
     expect(options.headers).toMatchObject({ 'X-CSRFToken': 'test-token' })
     expect(JSON.parse(options.body as string)).toEqual({
       nome: 'Lívia Costa',
-      cidade: 'São Paulo, SP',
       bairro: 'Vila Mariana',
+      cidade: 'São Paulo',
+      estado: 'SP',
     })
+  })
+
+  it('sem localidade, a atualização do perfil não envia cidade nem estado', async () => {
+    await api.profile.update({ name: 'Lívia Costa', district: 'Vila Mariana' })
+
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(options.body as string)).toEqual({ nome: 'Lívia Costa', bairro: 'Vila Mariana' })
+  })
+
+  it('erro de validação guarda as mensagens por campo', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ cidade: ['Não há um município com esse nome em SP.'], detail: 'x' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(
+      api.profile.update({ name: 'Lívia', district: '', locality: { city: 'Sampa', state: 'SP' } }),
+    ).rejects.toMatchObject({ status: 400, fields: { cidade: ['Não há um município com esse nome em SP.'] } })
+  })
+
+  it('consulta os estados e os municípios de uma UF', async () => {
+    await api.localities.states()
+    await api.localities.cities('SP')
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/api/localidades/estados/',
+      '/api/localidades/municipios/?uf=SP',
+    ])
   })
 
   it('usa as rotas de salvar, presença e lista paginada da agenda', async () => {
@@ -209,9 +246,9 @@ describe('api', () => {
       }),
     )
 
-    await expect(
-      api.profile.update({ name: 'Lívia', city: 'São Paulo', district: 'Centro' }),
-    ).rejects.toMatchObject({ status: 403 })
+    await expect(api.profile.update({ name: 'Lívia', district: 'Centro' })).rejects.toMatchObject({
+      status: 403,
+    })
 
     expect(dispatchEvent.mock.calls.some(([event]) => event.type === AUTHENTICATION_FAILURE_EVENT)).toBe(true)
   })

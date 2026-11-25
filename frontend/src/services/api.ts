@@ -9,7 +9,10 @@ export interface ProfileResponse {
   id: string
   nome: string
   email: string
+  /** Nome oficial do município (IBGE). */
   cidade: string
+  /** Sigla da UF. */
+  estado: string
   bairro: string
   preferencias: CategoryId[]
   iniciais: string
@@ -22,6 +25,8 @@ export interface ApiPublicProfile {
   iniciais: string
   /** Pode vir vazia. */
   cidade: string
+  /** Sigla da UF; pode vir vazia. */
+  estado: string
   preferencias: CategoryId[]
   /** Só a data do cadastro, AAAA-MM-DD. */
   membro_desde: string
@@ -79,14 +84,35 @@ export interface NotificationsResponse {
   resultados: ApiNotification[]
 }
 
+export interface ApiState {
+  sigla: string
+  nome: string
+}
+
 export class ApiError extends Error {
   readonly status: number
+  /** Mensagens de validação por campo (ex.: `cidade`), quando o backend as manda. */
+  readonly fields: Record<string, string[]>
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, fields: Record<string, string[]> = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.fields = fields
   }
+}
+
+function fieldErrors(data: unknown): Record<string, string[]> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {}
+  const fields: Record<string, string[]> = {}
+  for (const [field, value] of Object.entries(data as Record<string, unknown>)) {
+    if (field === 'detail' || field === 'non_field_errors') continue
+    const messages = (Array.isArray(value) ? value : [value]).filter(
+      (message): message is string => typeof message === 'string',
+    )
+    if (messages.length) fields[field] = messages
+  }
+  return fields
 }
 
 function csrfCookie(): string | undefined {
@@ -139,7 +165,7 @@ async function apiRequest<T>(path: string, method: Method = 'GET', body?: object
     ) {
       window.dispatchEvent(new Event(AUTHENTICATION_FAILURE_EVENT))
     }
-    throw new ApiError(errorMessage(data), response.status)
+    throw new ApiError(errorMessage(data), response.status, fieldErrors(data))
   }
   return data as T
 }
@@ -189,15 +215,26 @@ export const api = {
   },
 
   profile: {
-    /** O e-mail não é editável no backend, então não é enviado. */
-    update: (data: { name: string; city: string; district: string }) =>
+    /**
+     * O e-mail não é editável no backend, então não é enviado. Cidade e estado vão juntos
+     * (o backend confere a cidade na UF e devolve o nome oficial); sem `locality`, ficam como estão.
+     */
+    update: (data: { name: string; district: string; locality?: { city: string; state: string } }) =>
       apiRequest<ProfileResponse>('/eu/', 'PATCH', {
         nome: data.name,
-        cidade: data.city,
         bairro: data.district,
+        ...(data.locality && { cidade: data.locality.city, estado: data.locality.state }),
       }),
     updatePreferences: (categories: CategoryId[]) =>
       apiRequest<ProfileResponse>('/eu/', 'PATCH', { preferencias: categories }),
+  },
+
+  localities: {
+    /** As 27 UFs, em ordem de sigla. */
+    states: () => apiRequest<ApiState[]>('/localidades/estados/'),
+    /** Nomes oficiais (IBGE) dos municípios da UF, em ordem alfabética. */
+    cities: (state: string) =>
+      apiRequest<string[]>(`/localidades/municipios/?uf=${encodeURIComponent(state)}`),
   },
 
   users: {

@@ -33,6 +33,7 @@ describe('rotas', () => {
       nome: 'Caio Prado',
       iniciais: 'CP',
       cidade: '',
+      estado: '',
       preferencias: [],
       membro_desde: '2026-10-28',
     })

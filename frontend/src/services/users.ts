@@ -7,6 +7,7 @@ export function toPublicProfile(profile: ApiPublicProfile): PublicProfile {
     name: profile.nome,
     initials: profile.iniciais,
     city: profile.cidade,
+    state: profile.estado,
     preferences: profile.preferencias,
     memberSince: profile.membro_desde,
   }

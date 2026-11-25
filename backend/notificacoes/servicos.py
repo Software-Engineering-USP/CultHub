@@ -1,6 +1,5 @@
 """Criação das notificações de evento novo, depois da importação."""
 
-import re
 from collections import defaultdict
 
 from django.contrib.auth import get_user_model
@@ -14,14 +13,6 @@ from notificacoes.models import Notificacao, TipoNotificacao
 # Uma importação pode trazer dezenas de eventos: cada pessoa recebe no
 # máximo este tanto por execução, começando pelos que acontecem antes.
 LIMITE_POR_USUARIO = 5
-
-UFS = frozenset(
-    {
-        "ac", "al", "ap", "am", "ba", "ce", "df", "es", "go", "ma", "mt",
-        "ms", "mg", "pa", "pb", "pr", "pe", "pi", "rj", "rn", "rs", "ro",
-        "rr", "sc", "sp", "se", "to",
-    }
-)  # fmt: skip
 
 
 def ainda_nao_comecou(agora, prefixo=""):
@@ -38,59 +29,39 @@ def ainda_nao_comecou(agora, prefixo=""):
     )
 
 
-def _cidade_e_uf(texto):
-    """("sao paulo", "sp") a partir de "São Paulo, SP"; a UF é opcional.
-
-    A cidade do perfil é texto livre: aceita "Cidade, UF", "Cidade - UF",
-    "Cidade-UF", "Cidade – UF", "Cidade/UF" e "Cidade UF", sem caixa nem
-    acento. Só as 27 siglas de estado contam como UF ("São Paulo, BR"
-    fica sem UF), e uma sigla isolada ("SP") é só a UF.
-    """
-    partes = [
-        parte.strip()
-        for parte in re.split(r"[,/]", normalizar_texto(texto))
-        if parte.strip()
-    ]
-    if not partes:
-        return "", ""
-    # Espaço, hífen ou travessão só separam uma UF no fim, para não
-    # quebrar cidades como "Embu-Guaçu".
-    ultima = partes[-1]
-    resto = ultima[:-2]
-    cidade = resto.rstrip(" \t-–—")
-    if ultima[-2:] in UFS and cidade and cidade != resto:
-        partes[-1:] = [cidade, ultima[-2:]]
-    if len(partes) == 1 and partes[0] in UFS:
-        return "", partes[0]
-    uf = partes[-1] if len(partes) > 1 and partes[-1] in UFS else ""
-    return partes[0], uf
-
-
 def _interessados_por_categoria(categorias):
     """Categoria -> [(usuário, cidade, UF)] de quem a escolheu."""
     por_categoria = defaultdict(list)
     linhas = (
         get_user_model()
         .objects.filter(is_active=True, preferencias__in=categorias)
-        .values_list("pk", "cidade", "preferencias")
+        .values_list("pk", "cidade", "estado", "preferencias")
     )
-    for usuario_id, cidade, categoria_id in linhas:
-        por_categoria[categoria_id].append((usuario_id, *_cidade_e_uf(cidade)))
+    for usuario_id, cidade, uf, categoria_id in linhas:
+        por_categoria[categoria_id].append(
+            (usuario_id, normalizar_texto(cidade), uf.upper())
+        )
     return por_categoria
 
 
 def _mesma_regiao(cidade, uf, local):
-    """Se o evento é da região de quem informou a cidade no perfil.
+    """Se o evento é da região que a pessoa escolheu no perfil.
 
-    Quando os dois lados têm UF, ela precisa bater ("Bom Jesus, PI" não
-    recebe evento de Bom Jesus/RS). O Ticketmaster quase nunca manda a
-    cidade do local, só o estado; sem a cidade de um dos lados, vale só a
-    UF, e sem nenhuma das duas não há como excluir e o aviso é enviado.
+    O perfil tem estado e, opcionalmente, a cidade (nome do IBGE, o mesmo
+    da cidade dos locais). Com o estado dos dois lados, ele precisa bater;
+    com a cidade dos dois lados, ela também. Região desconhecida não exclui
+    ninguém: o aviso vai. É desconhecida a de quem não tem estado (perfil
+    ou local), mesmo com cidade, porque a cidade sem estado pode ser um
+    bairro de outro lugar ("Pinheiros", "Moema") ou ser de vários estados
+    ("Bom Jesus"). O local sem cidade (o Ticketmaster raramente manda e a
+    geocodificação pode não achar) filtra só pela UF.
     """
-    cidade_evento = normalizar_texto(local.cidade.strip()) if local else ""
-    uf_evento = local.estado.strip().casefold() if local else ""
-    if uf and uf_evento and uf != uf_evento:
+    uf_evento = local.estado.strip().upper() if local else ""
+    if not uf or not uf_evento:
+        return True
+    if uf != uf_evento:
         return False
+    cidade_evento = normalizar_texto(local.cidade.strip())
     if cidade and cidade_evento:
         return cidade == cidade_evento
     return True
@@ -146,7 +117,7 @@ def notificar_eventos_novos(ids_eventos):
     """Avisa quem tem a categoria do evento nas preferências.
 
     Só entram eventos que ainda não começaram, os mesmos que a lista de
-    notificações mostra. Quem preencheu a cidade no perfil só recebe
+    notificações mostra. Quem escolheu estado (e cidade) no perfil só recebe
     eventos de lá (ver `_mesma_regiao`); quem não escolheu nenhuma
     preferência não recebe nada. Devolve quantas notificações foram criadas.
     """

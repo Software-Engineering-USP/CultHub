@@ -41,6 +41,7 @@ COPY backend/clima ./clima
 COPY backend/rotas ./rotas
 COPY backend/comentarios ./comentarios
 COPY backend/notificacoes ./notificacoes
+COPY backend/localidades ./localidades
 COPY --from=frontend /app/dist ./frontend_dist
 
 # Estas variáveis só existem neste comando; as de verdade vêm do ambiente

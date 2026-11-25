@@ -72,7 +72,10 @@ export interface User {
   name: string
   initials: string
   email: string
+  /** Nome oficial do município (IBGE); vazia quando a pessoa não informou. */
   city: string
+  /** Sigla da UF; vazia quando a pessoa não informou. */
+  state: string
   district: string
   preferences: CategoryId[]
   savedEventIds: string[]
@@ -85,6 +88,8 @@ export interface PublicProfile {
   initials: string
   /** Vazia quando a pessoa não informou. */
   city: string
+  /** Sigla da UF; vazia quando a pessoa não informou. */
+  state: string
   preferences: CategoryId[]
   /** Data do cadastro, AAAA-MM-DD. */
   memberSince: string

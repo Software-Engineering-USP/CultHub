@@ -13,9 +13,12 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from catalogo import importacao
+from catalogo.geocodificacao import INTERVALO, MAXIMO_ERROS_SEGUIDOS
 from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, ImagemEvento, Local, Provedor
 from catalogo.ticketmaster import ErroTicketmaster
+from rotas.photon import ErroPhoton
+from rotas.transporte import Espacador
 
 FIXTURE = Path(__file__).parent / "dados" / "ticketmaster_pagina.json"
 AGORA = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
@@ -35,6 +38,32 @@ def achar(eventos, nome):
 
 def tm(**filtros):
     return Evento.objects.get(provedor=Provedor.TICKETMASTER, **filtros)
+
+
+def simular_photon(caso, resposta=None):
+    """Photon da geocodificação respondendo `resposta`, sem rede nem espera.
+
+    Devolve o mock de `buscar_cidade_e_estado`.
+    """
+    photon = patch(
+        "catalogo.geocodificacao.buscar_cidade_e_estado",
+        return_value=resposta,
+    )
+    # Espaçador novo, sem espera: o do módulo guarda a vez entre testes.
+    vez = patch(
+        "catalogo.geocodificacao._vez",
+        Espacador(INTERVALO, float("inf"), dormir=lambda _segundos: None),
+    )
+    caso.addCleanup(vez.stop)
+    caso.addCleanup(photon.stop)
+    vez.start()
+    return photon.start()
+
+
+def erro_passageiro(mensagem):
+    erro = ErroPhoton(mensagem)
+    erro.passageira = True
+    return erro
 
 
 class ImportarTest(TestCase):
@@ -786,6 +815,9 @@ def _pagina(numero, total_paginas, eventos):
 
 @override_settings(TICKETMASTER_API_KEY="chave-falsa")
 class ComandoTest(TestCase):
+    def setUp(self):
+        self.photon = simular_photon(self)
+
     def test_sem_chave(self):
         with (
             override_settings(TICKETMASTER_API_KEY=""),
@@ -980,6 +1012,7 @@ class ComandoTest(TestCase):
             titulo="Velho",
             data_inicio=timezone.localdate(),
         )
+        self.photon.side_effect = [("São Paulo", "SP"), None]
         saida = StringIO()
         with patch(
             "catalogo.ticketmaster.buscar_pagina",
@@ -993,6 +1026,7 @@ class ComandoTest(TestCase):
                 "atualizados: 1",
                 "removidos: 1",
                 "ignorados: 2",
+                "cidades achadas pelo Photon: 1 de 2 locais conferidos",
                 "notificações de evento novo: 0",
                 "sem categoria: 1",
                 "  - Halloween 2026 | Soho House",
@@ -1000,3 +1034,150 @@ class ComandoTest(TestCase):
                 f"  - {ruim['id']}: TESTE PORTAL",
             ],
         )
+
+
+@override_settings(TICKETMASTER_API_KEY="chave-falsa")
+class ComandoGeocodificaTest(TestCase):
+    comando = "catalogo.management.commands.importar_ticketmaster"
+
+    def setUp(self):
+        self.photon = simular_photon(self, ("São Paulo", "SP"))
+        self.antigo = Local.objects.create(
+            provedor=Provedor.TICKETMASTER,
+            id_externo="antigo",
+            nome="Antigo",
+            estado="SP",
+            latitude=Decimal("-23.5"),
+            longitude=Decimal("-46.6"),
+        )
+
+    def importar(self, eventos=None):
+        saida = StringIO()
+        with patch(
+            f"{self.comando}.buscar_todos",
+            return_value=eventos or eventos_da_fixture(),
+        ):
+            call_command("importar_ticketmaster", stdout=saida)
+        return saida.getvalue().splitlines()
+
+    def test_pendentes_antigos_ficam_gravados_mesmo_se_a_importacao_falha(
+        self,
+    ):
+        with (
+            patch(
+                f"{self.comando}.notificar_eventos_novos",
+                side_effect=OperationalError("banco fora"),
+            ),
+            self.assertRaises(OperationalError),
+        ):
+            self.importar()
+
+        self.assertFalse(Evento.objects.exists())
+        self.antigo.refresh_from_db()
+        self.assertEqual(self.antigo.cidade, "São Paulo")
+        self.assertIsNotNone(self.antigo.geocodificado_em)
+
+    def test_poucos_locais_novos_por_importacao(self):
+        with patch(f"{self.comando}.LIMITE_NA_TRANSACAO", 2):
+            saida = self.importar()
+
+        # O antigo (fora da transação) e 2 dos novos; os outros ficam.
+        restantes = Local.objects.filter(
+            cidade="", latitude__isnull=False
+        ).count()
+        self.assertGreater(restantes, 0)
+        self.assertIn(
+            "cidades achadas pelo Photon: 3 de 3 locais conferidos", saida
+        )
+        self.assertIn(
+            f"locais a conferir no Photon na próxima importação: {restantes}",
+            saida,
+        )
+
+    def test_local_com_erro_nao_e_consultado_de_novo_na_transacao(self):
+        respostas = iter([ErroPhoton("Photon respondeu HTTP 400")])
+
+        def photon(*_coordenada, antes_de_tentar):
+            erro = next(respostas, None)
+            if erro:
+                raise erro
+
+        self.photon.side_effect = photon
+
+        with patch(f"{self.comando}.LIMITE_NA_TRANSACAO", 1):
+            saida = self.importar()
+
+        consultados = [chamada.args for chamada in self.photon.call_args_list]
+        self.assertEqual(len(consultados), 2)
+        self.assertNotEqual(consultados[0], consultados[1])
+        self.assertIn("locais com erro no Photon: 1", saida)
+        self.antigo.refresh_from_db()
+        self.assertIsNone(self.antigo.geocodificado_em)
+
+    def test_locais_antigos_com_erro_nao_impedem_os_novos(self):
+        # Os antigos que sempre dão erro não param a geocodificação nem
+        # impedem que os locais novos sejam conferidos na transação.
+        self.antigo.delete()
+        ruins = set()
+        for numero in range(MAXIMO_ERROS_SEGUIDOS):
+            ruins.add(
+                Local.objects.create(
+                    provedor=Provedor.TICKETMASTER,
+                    id_externo=f"ruim{numero}",
+                    nome="Ruim",
+                    latitude=Decimal(-10),
+                    longitude=Decimal(numero),
+                    geocodificacao_falhou_em=AGORA,
+                ).pk
+            )
+
+        def photon(latitude, longitude, antes_de_tentar):
+            if latitude == -10:
+                raise ErroPhoton("Photon respondeu HTTP 400")
+            return ("São Paulo", "SP")
+
+        self.photon.side_effect = photon
+        with patch(f"{self.comando}.LIMITE_NA_TRANSACAO", 2):
+            saida = self.importar()
+
+        self.assertIn(
+            "cidades achadas pelo Photon: 2 de 2 locais conferidos", saida
+        )
+        self.assertEqual(
+            Local.objects.exclude(pk__in=ruins)
+            .filter(cidade="São Paulo")
+            .count(),
+            2,
+        )
+        self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS + 2)
+
+    def test_servidor_recusando_tudo_freia_os_locais_novos(self):
+        # Erros seguidos em locais que nunca falharam: na transação, a
+        # geocodificação para no primeiro erro.
+        for numero in range(MAXIMO_ERROS_SEGUIDOS - 1):
+            Local.objects.create(
+                provedor=Provedor.TICKETMASTER,
+                id_externo=f"outro{numero}",
+                nome="Outro",
+                latitude=Decimal("-23.5"),
+                longitude=Decimal(numero),
+            )
+        self.photon.side_effect = ErroPhoton("Photon respondeu HTTP 403")
+
+        saida = self.importar()
+
+        self.assertEqual(self.photon.call_count, MAXIMO_ERROS_SEGUIDOS + 1)
+        self.assertIn(
+            "geocodificação interrompida (Photon respondeu HTTP 403)", saida
+        )
+
+    def test_photon_fora_nao_e_consultado_de_novo_na_transacao(self):
+        self.photon.side_effect = erro_passageiro("Photon respondeu HTTP 503")
+
+        saida = self.importar()
+
+        self.assertEqual(self.photon.call_count, 1)
+        self.assertIn(
+            "geocodificação interrompida (Photon respondeu HTTP 503)", saida
+        )
+        self.assertGreater(Evento.objects.count(), 0)

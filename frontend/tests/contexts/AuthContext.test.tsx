@@ -13,6 +13,7 @@ const profile: ProfileResponse = {
   nome: 'Rita Silva',
   email: 'rita@example.com',
   cidade: 'São Paulo',
+  estado: 'SP',
   bairro: 'Pinheiros',
   preferencias: ['music'],
   iniciais: 'RS',

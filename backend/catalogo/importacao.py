@@ -9,6 +9,9 @@ from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
 from django.utils import timezone
 
+from localidades.municipios import localizar_municipio, sigla_do_estado
+
+from .geocodificacao import combinar
 from .mapeamento import categorias_do_evento, genero_do_evento
 from .models import (
     DATA_MAXIMA,
@@ -108,24 +111,86 @@ def _preco(valor):
     return _numero(valor, CENTAVO, 0, PRECO_MAXIMO)
 
 
+def _cidade_e_estado(venue, pais):
+    """Cidade e UF que o venue informa; no Brasil, já no formato do IBGE.
+
+    O Ticketmaster quase nunca manda a cidade, às vezes manda lixo
+    ("Nocity") ou um bairro ("Pinheiros"), e às vezes omite a UF ou manda
+    uma que não existe. No Brasil, a cidade vira o nome oficial de um
+    município (ou "") e a UF, uma sigla (ou ""), sem conferir uma com a
+    outra: `geocodificacao.combinar` confere a cidade com a UF final, que
+    pode ser a da coordenada (Medianeira marcada como PB fica no PR).
+    """
+    cidade = _texto(_objeto(venue, "city"), "name")
+    estado = _texto(_objeto(venue, "state"), "stateCode")
+    if pais not in ("", "BR"):
+        return cidade, estado
+    oficial, _ = localizar_municipio(cidade, "", completar_uf=False)
+    return oficial, sigla_do_estado(estado)
+
+
 def _salvar_local(venue):
     if venue is None:
         return None
     coordenadas = _objeto(venue, "location")
+    pais = _texto(_objeto(venue, "country"), "countryCode")
+    latitude = _numero(coordenadas.get("latitude"), GRAU, -90, 90)
+    longitude = _numero(coordenadas.get("longitude"), GRAU, -180, 180)
+    anterior = Local.objects.filter(
+        provedor=Provedor.TICKETMASTER, id_externo=venue["id"]
+    ).first()
+    # Venue que veio sem `location` fica com a coordenada que já tinha (e
+    # com o que a geocodificação descobriu a partir dela).
+    if (
+        anterior is not None
+        and anterior.latitude is not None
+        and latitude is None
+        and longitude is None
+    ):
+        latitude, longitude = anterior.latitude, anterior.longitude
+    cidade, estado = _cidade_e_estado(venue, pais)
+    dados = {
+        "nome": _texto(venue, "name"),
+        "endereco": _texto(_objeto(venue, "address"), "line1"),
+        "cidade_informada": cidade,
+        "estado_informado": estado,
+        "pais": pais,
+        "latitude": latitude,
+        "longitude": longitude,
+    }
+    mesma_coordenada = anterior is not None and (
+        anterior.latitude,
+        anterior.longitude,
+    ) == (latitude, longitude)
+    geocodificado = ("", "")
+    if not mesma_coordenada:
+        # Coordenada nova: a resposta do Photon e o erro dele não valem
+        # mais, e o local volta para a fila da geocodificação.
+        dados.update(
+            geocodificado_em=None,
+            cidade_geocodificada="",
+            estado_geocodificado="",
+            geocodificacao_falhou_em=None,
+        )
+    else:
+        # Mesma coordenada: a resposta do Photon guardada (vazia se nunca
+        # houve; provisória nos locais que a 0008 devolveu à fila)
+        # continua valendo, combinada com o que o Ticketmaster manda agora,
+        # sem consultar de novo.
+        geocodificado = (
+            anterior.cidade_geocodificada,
+            anterior.estado_geocodificado,
+        )
+    if pais in ("", "BR"):
+        dados["cidade"], dados["estado"] = combinar(
+            cidade, estado, *geocodificado
+        )
+    else:
+        dados["cidade"], dados["estado"] = cidade, estado
     local, _ = Local.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
         id_externo=venue["id"],
-        defaults={
-            "nome": _texto(venue, "name"),
-            "endereco": _texto(_objeto(venue, "address"), "line1"),
-            "cidade": _texto(_objeto(venue, "city"), "name"),
-            "estado": _texto(_objeto(venue, "state"), "stateCode"),
-            "pais": _texto(_objeto(venue, "country"), "countryCode"),
-            "latitude": _numero(coordenadas.get("latitude"), GRAU, -90, 90),
-            "longitude": _numero(
-                coordenadas.get("longitude"), GRAU, -180, 180
-            ),
-        },
+        defaults=dados,
     )
     return local
 
