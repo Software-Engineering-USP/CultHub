@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
@@ -70,6 +70,7 @@ class ContratoDaApiTest(APITestCase):
             "genero": "Opera",
             "categorias": ["music", "theater"],
             "url_externa": "https://ingressos.test/opera",
+            "situacao": "onsale",
             "data_inicio": "2040-03-10",
             "hora_inicio": "20:00:00",
             "inicio": "2040-03-10T20:00:00-03:00",
@@ -118,7 +119,6 @@ class ContratoDaApiTest(APITestCase):
             {
                 **self.esperado,
                 "avisos": "Chegue cedo",
-                "situacao": "onsale",
                 "removido": False,
                 "presenca": False,
                 "total_presencas": 0,
@@ -181,8 +181,8 @@ class EventoListagemTest(APITestCase):
         self.assertEqual(self.titulos(), ["Hoje"])
 
     def test_mostra_o_dia_inteiro_no_fuso_de_sp(self):
-        # 22:00 em SP de 20/11 já é 21/11 em UTC.
-        agora = datetime(2026, 11, 20, 22, 0, tzinfo=SP)
+        # 22:00 em SP de 20/11 já é 21/11 em UTC (o Django devolve UTC).
+        agora = datetime(2026, 11, 21, 1, 0, tzinfo=UTC)
         criar_evento(
             titulo="Dentro",
             data_inicio=date(2026, 11, 20),
@@ -191,6 +191,22 @@ class EventoListagemTest(APITestCase):
         criar_evento(titulo="Fora", data_inicio=date(2026, 11, 19))
         with patch("django.utils.timezone.now", return_value=agora):
             self.assertEqual(self.titulos(), ["Dentro"])
+
+    def test_sem_fim_vale_ate_acabar_o_dia_no_fuso_do_evento(self):
+        # 1h de 21/11 em SP é 23h de 20/11 em Rio Branco (UTC-5).
+        agora = datetime(2026, 11, 21, 4, 0, tzinfo=UTC)
+        criar_evento(
+            titulo="Rio Branco",
+            data_inicio=date(2026, 11, 20),
+            hora_inicio=time(22, 0),
+            fuso="America/Rio_Branco",
+        )
+        criar_evento(titulo="São Paulo", data_inicio=date(2026, 11, 20))
+        with patch("django.utils.timezone.now", return_value=agora):
+            self.assertEqual(self.titulos(), ["Rio Branco"])
+        depois = datetime(2026, 11, 21, 5, 0, tzinfo=UTC)
+        with patch("django.utils.timezone.now", return_value=depois):
+            self.assertEqual(self.titulos(), [])
 
     def test_fim_no_futuro_mantem(self):
         criar_evento(
@@ -372,7 +388,10 @@ class EventoListagemTest(APITestCase):
             },
         )
         componentes = schema["components"]["schemas"]
-        self.assertIn("distancia_km", componentes["Evento"]["properties"])
+        self.assertLessEqual(
+            {"distancia_km", "situacao"},
+            set(componentes["Evento"]["properties"]),
+        )
         detalhe = componentes["EventoDetalhe"]["properties"]
         self.assertLessEqual(
             {"avisos", "situacao", "removido", "distancia_km"}, set(detalhe)

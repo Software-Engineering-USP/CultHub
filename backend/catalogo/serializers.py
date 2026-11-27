@@ -80,6 +80,9 @@ class EventoSerializer(serializers.ModelSerializer):
             "genero",
             "categorias",
             "url_externa",
+            # Código do Ticketmaster ("onsale", "postponed", "rescheduled"…);
+            # vazio no cadastro manual.
+            "situacao",
             "data_inicio",
             "hora_inicio",
             "inicio",
@@ -134,7 +137,6 @@ class EventoDetalheSerializer(MarcacoesMixin, EventoSerializer):
         fields = (
             *EventoSerializer.Meta.fields,
             "avisos",
-            "situacao",
             "removido",
             "presenca",
             "total_presencas",
