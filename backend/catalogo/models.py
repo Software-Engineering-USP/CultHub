@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -110,7 +110,8 @@ class SituacaoPreco(models.TextChoices):
     DESCONHECIDO = "desconhecido", "Desconhecido"
 
 
-# Campos dos quais `inicio`/`fim` dependem (ver `Evento.save`).
+# Campos dos quais `inicio`, `fim` e `fim_do_ultimo_dia` dependem
+# (ver `Evento.save`).
 CAMPOS_DO_MOMENTO = {
     "data_inicio",
     "hora_inicio",
@@ -146,6 +147,10 @@ class Evento(models.Model):
     data_fim = models.DateField(null=True, blank=True, validators=VALIDAR_DATA)
     hora_fim = models.TimeField(null=True, blank=True)
     fim = models.DateTimeField(null=True, editable=False)
+    # Calculado em `save()`: meia-noite do dia seguinte ao último dia
+    # (`data_fim` ou `data_inicio`) no `fuso` do evento. É quando termina o
+    # evento sem `fim` (ver `filtros.filtrar_terminados`).
+    fim_do_ultimo_dia = models.DateTimeField(null=True, editable=False)
     fuso = models.CharField(max_length=50, default="America/Sao_Paulo")
     # Só o cadastro manual liga; `False` não quer dizer que o evento é pago
     # (ver `situacao_preco`).
@@ -223,9 +228,20 @@ class Evento(models.Model):
     def save(self, *args, **kwargs):
         self.inicio = self._momento(self.data_inicio, self.hora_inicio)
         self.fim = self._momento(self.data_fim, self.hora_fim)
+        ultimo_dia = self.data_fim or self.data_inicio
+        self.fim_do_ultimo_dia = (
+            None
+            if ultimo_dia is None
+            else self._momento(ultimo_dia + timedelta(days=1), time.min)
+        )
         campos = kwargs.get("update_fields")
         if campos is not None and CAMPOS_DO_MOMENTO & set(campos):
-            kwargs["update_fields"] = {*campos, "inicio", "fim"}
+            kwargs["update_fields"] = {
+                *campos,
+                "inicio",
+                "fim",
+                "fim_do_ultimo_dia",
+            }
         super().save(*args, **kwargs)
 
 

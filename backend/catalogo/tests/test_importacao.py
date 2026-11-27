@@ -1,6 +1,6 @@
 import copy
 import json
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from io import StringIO
 from pathlib import Path
@@ -13,6 +13,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from catalogo import importacao
+from catalogo.filtros import visiveis
 from catalogo.geocodificacao import INTERVALO, MAXIMO_ERROS_SEGUIDOS
 from catalogo.importacao import ErroImportacao, importar
 from catalogo.models import Evento, ImagemEvento, Local, Provedor
@@ -218,6 +219,137 @@ class ImportarTest(TestCase):
         resumo = importar(eventos, DEPOIS)
         self.assertEqual(resumo.removidos, 1)
         self.assertEqual(tm(titulo="Mink Slide").removido_em, DEPOIS)
+
+    def test_cancelado_nas_duas_grafias_vira_removido(self):
+        for codigo in ("cancelled", "canceled", "Canceled"):
+            with self.subTest(codigo=codigo):
+                importar(eventos_da_fixture(), AGORA)
+                eventos = eventos_da_fixture()
+                achar(eventos, "Mink Slide")["dates"]["status"]["code"] = (
+                    codigo
+                )
+                resumo = importar(eventos, DEPOIS)
+                self.assertEqual(resumo.removidos, 1)
+                mink = tm(titulo="Mink Slide")
+                self.assertEqual(mink.removido_em, DEPOIS)
+                self.assertEqual(mink.situacao, codigo)
+                self.assertEqual(mink.sincronizado_em, DEPOIS)
+
+    def test_cancelado_que_ja_comecou_tambem_sai(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = eventos_da_fixture()
+        bts = achar(eventos, "BTS WORLD TOUR ARIRANG")
+        bts["dates"]["status"]["code"] = "canceled"
+        # Começou em 28/10; `_remover_ausentes` não tiraria pela ausência.
+        resumo = importar(eventos, DEPOIS)
+        self.assertEqual(resumo.removidos, 1)
+        self.assertEqual(tm(titulo=bts["name"]).removido_em, DEPOIS)
+
+    def test_cancelado_ja_removido_mantem_a_data_e_atualiza_a_situacao(self):
+        importar(eventos_da_fixture(), AGORA)
+        eventos = eventos_da_fixture()
+        achar(eventos, "Mink Slide")["dates"]["status"]["code"] = "cancelled"
+        importar(eventos, DEPOIS)
+        achar(eventos, "Mink Slide")["dates"]["status"]["code"] = "canceled"
+        resumo = importar(eventos, DEPOIS + timedelta(days=1))
+        self.assertEqual(resumo.removidos, 0)
+        mink = tm(titulo="Mink Slide")
+        self.assertEqual(mink.removido_em, DEPOIS)
+        self.assertEqual(mink.situacao, "canceled")
+
+    def test_cancelado_que_nunca_foi_importado_nao_e_criado(self):
+        eventos = eventos_da_fixture()
+        achar(eventos, "Mink Slide")["dates"]["status"]["code"] = "cancelled"
+        resumo = importar(eventos, AGORA)
+        self.assertEqual(resumo.ignorados, 1)
+        self.assertEqual(resumo.removidos, 0)
+        self.assertFalse(Evento.objects.filter(titulo="Mink Slide").exists())
+
+    def test_adiado_fica_no_catalogo_com_a_situacao(self):
+        eventos = eventos_da_fixture()
+        achar(eventos, "Mink Slide")["dates"]["status"]["code"] = "postponed"
+        importar(eventos, AGORA)
+        mink = tm(titulo="Mink Slide")
+        self.assertEqual(mink.situacao, "postponed")
+        self.assertIsNone(mink.removido_em)
+
+    def test_data_de_fim_vem_de_dates_end(self):
+        eventos = eventos_da_fixture()
+        achar(eventos, "Carioca Matsuri 2026")["dates"]["end"] = {
+            "localDate": "2026-11-02",
+            "localTime": "23:00:00",
+        }
+        importar(eventos, AGORA)
+        evento = tm(titulo="Carioca Matsuri 2026")
+        self.assertEqual(evento.data_fim, date(2026, 11, 2))
+        self.assertEqual(evento.hora_fim, time(23, 0))
+        self.assertEqual(evento.fim, datetime(2026, 11, 3, 2, 0, tzinfo=UTC))
+
+    def test_data_de_fim_sem_hora(self):
+        eventos = eventos_da_fixture()
+        achar(eventos, "Carioca Matsuri 2026")["dates"]["end"] = {
+            "localDate": "2026-11-02",
+            "noSpecificTime": True,
+            "localTime": "23:00:00",
+        }
+        importar(eventos, AGORA)
+        evento = tm(titulo="Carioca Matsuri 2026")
+        self.assertEqual(evento.data_fim, date(2026, 11, 2))
+        self.assertIsNone(evento.hora_fim)
+        self.assertIsNone(evento.fim)
+
+    def test_data_de_fim_invalida_ou_antes_do_inicio_e_descartada(self):
+        inicio = achar(eventos_da_fixture(), "BTS WORLD TOUR ARIRANG")[
+            "dates"
+        ]["start"]
+        casos = {
+            "sem data": {"localTime": "23:00:00"},
+            "data inválida": {"localDate": "31/10/2026"},
+            "hora inválida": {"localDate": "2026-10-31", "localTime": "25h"},
+            "dia anterior": {"localDate": "2026-10-27"},
+            "mesmo dia, hora anterior": {
+                "localDate": inicio["localDate"],
+                "localTime": "19:00:00",
+            },
+            "não é objeto": "2026-10-31",
+        }
+        for caso, fim in casos.items():
+            with self.subTest(caso):
+                eventos = eventos_da_fixture()
+                bts = achar(eventos, "BTS WORLD TOUR ARIRANG")
+                bts["dates"]["end"] = fim
+                resumo = importar(eventos, AGORA)
+                self.assertEqual(resumo.com_erro, [])
+                evento = tm(titulo=bts["name"])
+                self.assertIsNone(evento.data_fim)
+                self.assertIsNone(evento.hora_fim)
+
+    def test_festival_de_varios_dias_continua_visivel(self):
+        eventos = eventos_da_fixture()
+        achar(eventos, "Carioca Matsuri 2026")["dates"]["end"] = {
+            "localDate": "2026-11-02"
+        }
+        importar(eventos, AGORA)
+        festival = Evento.objects.filter(titulo="Carioca Matsuri 2026")
+        # Último dia, 23h59 em São Paulo; depois, meia-noite de 03/11.
+        ultimo_dia = datetime(2026, 11, 3, 2, 59, tzinfo=UTC)
+        acabou = datetime(2026, 11, 3, 3, 0, tzinfo=UTC)
+        self.assertTrue(visiveis(festival, ultimo_dia).exists())
+        self.assertFalse(visiveis(festival, acabou).exists())
+
+    def test_reimportar_desfaz_edicao_manual_de_gratuito_e_fim(self):
+        importar(eventos_da_fixture(), AGORA)
+        evento = tm(titulo="Mink Slide")
+        evento.gratuito = True
+        evento.data_fim = evento.data_inicio + timedelta(days=2)
+        evento.hora_fim = time(23, 0)
+        evento.save()
+        importar(eventos_da_fixture(), DEPOIS)
+        evento.refresh_from_db()
+        self.assertFalse(evento.gratuito)
+        self.assertIsNone(evento.data_fim)
+        self.assertIsNone(evento.hora_fim)
+        self.assertIsNone(evento.fim)
 
     def test_manual_intocado(self):
         manual = Evento.objects.create(
@@ -463,18 +595,15 @@ class ImportarTest(TestCase):
 
     def test_todos_cancelados_sem_erro_continua_removendo(self):
         importar(eventos_da_fixture(), AGORA)
-        ativos = Evento.objects.filter(
-            removido_em__isnull=True, data_inicio__gte=DEPOIS.date()
-        ).count()
+        # Inclusive os que já começaram: o cancelamento vem pelo id.
+        ativos = Evento.objects.filter(removido_em__isnull=True).count()
         cancelados = eventos_da_fixture()
         for evento in cancelados:
             evento["dates"]["status"]["code"] = "cancelled"
         resumo = importar(cancelados, DEPOIS)
         self.assertEqual(resumo.removidos, ativos)
         self.assertFalse(
-            Evento.objects.filter(
-                removido_em__isnull=True, data_inicio__gte=DEPOIS.date()
-            ).exists()
+            Evento.objects.filter(removido_em__isnull=True).exists()
         )
 
     def test_erro_nao_deixa_gravacao_parcial(self):

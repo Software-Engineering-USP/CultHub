@@ -22,7 +22,6 @@ from django.db.models.functions import (
     Radians,
     Sin,
 )
-from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from catalogo.models import CategoriaCultural, FaixaPreco, SituacaoPreco
@@ -31,12 +30,13 @@ DATA_FIM_EFETIVA = Coalesce("data_fim", "data_inicio")
 
 
 def filtrar_terminados(queryset, agora, terminados):
-    """Só os eventos já encerrados (`terminados=True`) ou só os que não."""
-    hoje = timezone.localdate(agora)
+    """Só os eventos já encerrados (`terminados=True`) ou só os que não.
+
+    Sem horário de fim, o evento vale até acabar o último dia no fuso dele.
+    """
     terminou = Q(fim__lt=agora) | Q(
-        fim__isnull=True, data_fim_efetiva__lt=hoje
+        fim__isnull=True, fim_do_ultimo_dia__lte=agora
     )
-    queryset = queryset.alias(data_fim_efetiva=DATA_FIM_EFETIVA)
     if terminados:
         return queryset.filter(terminou)
     return queryset.exclude(terminou)

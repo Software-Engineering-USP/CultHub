@@ -27,6 +27,10 @@ from .models import (
 
 FUSO_PADRAO = Evento._meta.get_field("fuso").default
 
+# Não sabemos qual grafia o Ticketmaster usa (as respostas gravadas só
+# trazem "onsale" e "offsale"): aceitamos as duas.
+CANCELADO = frozenset({"cancelled", "canceled"})
+
 # Dado ruim em um evento não derruba a importação inteira. Falha do próprio
 # banco (ex.: OperationalError) continua interrompendo.
 ERROS_DE_DADO = (
@@ -202,6 +206,47 @@ def _hora(inicio):
     return time.fromisoformat(hora) if hora else None
 
 
+def _data_e_hora_fim(datas, data_inicio, hora_inicio):
+    """`dates.end` em (data, hora); ausente, inválido ou antes do início
+    vira (None, None), para o evento seguir valendo só pelo início.
+    """
+    fim = _objeto(datas, "end")
+    if not isinstance(fim, dict) or not fim.get("localDate"):
+        return None, None
+    try:
+        dia = _data(fim["localDate"])
+        hora = _hora(fim)
+    except ERROS_DE_DADO:
+        return None, None
+    if dia < data_inicio or (
+        dia == data_inicio
+        and None not in (hora, hora_inicio)
+        and hora < hora_inicio
+    ):
+        return None, None
+    return dia, hora
+
+
+def _situacao(dados):
+    return _texto(_objeto(_objeto(dados, "dates"), "status"), "code")
+
+
+def _cancelar(dados, agora):
+    """Grava a situação do evento cancelado e o tira do catálogo.
+
+    Devolve 1 se ele estava no catálogo e saiu agora. Vale também para o
+    evento que já começou, que `_remover_ausentes` não remove.
+    """
+    id_externo = _id_externo(dados)
+    if id_externo is None:
+        return 0
+    evento = Evento.objects.filter(
+        provedor=Provedor.TICKETMASTER, id_externo=id_externo
+    )
+    evento.update(situacao=_situacao(dados), sincronizado_em=agora)
+    return evento.filter(removido_em__isnull=True).update(removido_em=agora)
+
+
 def _id_externo(dados):
     """`id` do evento em texto; `None` se não der para identificá-lo."""
     valor = dados.get("id") if isinstance(dados, dict) else None
@@ -218,6 +263,9 @@ def _salvar_evento(dados, agora):
     venue = _venue(dados)
     datas = _objeto(dados, "dates")
     inicio = _objeto(datas, "start")
+    data_inicio = _data(inicio["localDate"])
+    hora_inicio = _hora(inicio)
+    data_fim, hora_fim = _data_e_hora_fim(datas, data_inicio, hora_inicio)
     classificacoes = dados.get("classifications") or []
     evento, criado = Evento.objects.update_or_create(
         provedor=Provedor.TICKETMASTER,
@@ -227,10 +275,15 @@ def _salvar_evento(dados, agora):
             "descricao": _texto(dados, "info"),
             "avisos": _texto(dados, "pleaseNote"),
             "url_externa": _texto(dados, "url"),
-            "situacao": _texto(_objeto(datas, "status"), "code"),
+            "situacao": _situacao(dados),
             "local": _salvar_local(venue),
-            "data_inicio": _data(inicio["localDate"]),
-            "hora_inicio": _hora(inicio),
+            "data_inicio": data_inicio,
+            "hora_inicio": hora_inicio,
+            "data_fim": data_fim,
+            "hora_fim": hora_fim,
+            # O Ticketmaster não diz se é gratuito (ver `Evento.gratuito`):
+            # o que alguém marcou no admin volta ao valor da API.
+            "gratuito": False,
             "fuso": datas.get("timezone")
             or (venue or {}).get("timezone")
             or FUSO_PADRAO,
@@ -306,9 +359,12 @@ def importar(eventos, agora):
     ids_com_erro = set()
     for dados in eventos:
         try:
-            situacao = _objeto(_objeto(dados, "dates"), "status").get("code")
-            if dados.get("test") is True or situacao == "cancelled":
+            if dados.get("test") is True:
                 resumo.ignorados += 1
+                continue
+            if _situacao(dados).lower() in CANCELADO:
+                resumo.ignorados += 1
+                resumo.removidos += _cancelar(dados, agora)
                 continue
             with transaction.atomic():
                 evento, criado, tem_categoria = _salvar_evento(dados, agora)
@@ -330,5 +386,5 @@ def importar(eventos, agora):
     if None in ids_com_erro:
         resumo.remocao_pulada = True
     else:
-        resumo.removidos = _remover_ausentes(vistos | ids_com_erro, agora)
+        resumo.removidos += _remover_ausentes(vistos | ids_com_erro, agora)
     return resumo

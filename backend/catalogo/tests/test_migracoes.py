@@ -1,3 +1,4 @@
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from importlib import import_module
 
@@ -6,7 +7,7 @@ from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 
-from catalogo.models import FaixaPreco, Local, Provedor
+from catalogo.models import Evento, FaixaPreco, Local, Provedor
 from catalogo.tests.fabrica import criar_evento
 
 geocodificar_de_novo = import_module(
@@ -15,6 +16,9 @@ geocodificar_de_novo = import_module(
 copiar_e_geocodificar_de_novo = import_module(
     "catalogo.migrations.0009_local_dados_informados"
 ).copiar_e_geocodificar_de_novo
+calcular_fim_do_ultimo_dia = import_module(
+    "catalogo.migrations.0010_evento_fim_do_ultimo_dia"
+).calcular
 limpar_valores_invalidos = import_module(
     "catalogo.migrations.0005_validar_valores"
 ).limpar_valores_invalidos
@@ -209,3 +213,26 @@ class GeocodificarDeNovoTest(TestCase):
                 (local.cidade_geocodificada, local.estado_geocodificado),
                 ("", ""),
             )
+
+
+class CalcularFimDoUltimoDiaTest(TestCase):
+    def test_0010_meia_noite_depois_do_ultimo_dia_no_fuso_do_evento(self):
+        um_dia = criar_evento(
+            data_inicio=date(2026, 11, 20), fuso="America/Rio_Branco"
+        )
+        varios_dias = criar_evento(
+            data_inicio=date(2026, 11, 20), data_fim=date(2026, 11, 22)
+        )
+        Evento.objects.update(fim_do_ultimo_dia=None)
+
+        calcular_fim_do_ultimo_dia(apps, None)
+
+        um_dia.refresh_from_db()
+        varios_dias.refresh_from_db()
+        self.assertEqual(
+            um_dia.fim_do_ultimo_dia, datetime(2026, 11, 21, 5, tzinfo=UTC)
+        )
+        self.assertEqual(
+            varios_dias.fim_do_ultimo_dia,
+            datetime(2026, 11, 23, 3, tzinfo=UTC),
+        )
